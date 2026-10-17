@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { LogOut, Menu, RefreshCw, Trophy, Users, X } from 'lucide-react'
 import { useTeamAuth } from '@/auth/TeamAuthProvider'
 import { useTeamDoc, useTeamPurchases } from '@/data/hooks'
-import { currency, formatDateTime, points as formatPoints } from '@/lib/format'
+import { currency, points as formatPoints } from '@/lib/format'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card'
 import { EmptyState, LoadingBlock } from '@/components/ui/Feedback'
@@ -293,7 +293,7 @@ export function TeamPanelPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold text-white">{purchase.playerNameSnapshot}</p>
                   <p className="mt-0.5 text-xs text-ink-muted">
-                    <span className="font-semibold text-sky-400">{formatPoints(purchase.playerPointsSnapshot)} pts</span> · {formatDateTime(purchase.createdAt)}
+                    <span className="font-semibold text-sky-400">{formatPoints(purchase.playerPointsSnapshot)} pts</span>
                   </p>
                 </div>
                 <p className="text-base font-extrabold tabular-nums text-accent">
@@ -304,11 +304,6 @@ export function TeamPanelPage() {
           </ul>
         )}
       </Card>
-
-      <p className="mt-6 text-center text-xs text-ink-muted">
-        This page is private to your team. Only your purse, points and roster are visible — never
-        other teams' data.
-      </p>
     </div>
   )
 }
