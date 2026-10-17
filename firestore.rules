@@ -1,0 +1,120 @@
+rules_version = '2';
+
+// ---------------------------------------------------------------------------
+// College Auction Manager - Firestore security rules
+//
+// Principles
+//  * Default deny. Nothing is readable or writable unless explicitly allowed.
+//  * All privileged writes happen in Cloud Functions (Admin SDK), which bypass
+//    these rules. Clients never write domain data directly.
+//  * Admins are identified by a verified custom claim (role: admin|superAdmin)
+//    set server-side only (see scripts/bootstrap-admin.mjs).
+//  * Team members authenticate with a PIN that is verified server-side by the
+//    `verifyTeamPin` callable function. That function mints a Firebase Auth
+//    custom token bound to exactly one {eventId, teamId, sessionId}. These
+//    rules re-validate the backing session document on every read so that a
+//    session can be revoked or expired immediately.
+// ---------------------------------------------------------------------------
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function claim(key) {
+      return request.auth.token.get(key, null);
+    }
+
+    function isAdmin() {
+      return signedIn() && (claim('role') == 'admin' || claim('role') == 'superAdmin');
+    }
+
+    function isSuperAdmin() {
+      return signedIn() && claim('role') == 'superAdmin';
+    }
+
+    function isTeamSessionFor(ev) {
+      return signedIn()
+        && claim('kind') == 'team'
+        && claim('eventId') == ev
+        && claim('teamId') != null
+        && claim('sessionId') != null;
+    }
+
+    function sessionDoc(ev) {
+      return /databases/$(database)/documents/events/$(ev)/sessions/$(claim('sessionId'));
+    }
+
+    // A team session is valid when the server-issued session document still
+    // exists, has not been revoked, has not expired, and still belongs to the
+    // team claimed by the token. Team identity can therefore never be changed
+    // by the client.
+    function teamSessionValid(ev) {
+      return isTeamSessionFor(ev)
+        && exists(sessionDoc(ev))
+        && get(sessionDoc(ev)).data.revoked == false
+        && get(sessionDoc(ev)).data.expiresAt > request.time
+        && get(sessionDoc(ev)).data.teamId == claim('teamId');
+    }
+
+    // Public, non-sensitive display configuration only (event name, currency
+    // label, default event id). No totals, no players, no secrets.
+    match /config/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Server-only collections. PIN verifiers, lookups and rate-limit counters
+    // are never exposed to any client, not even admins.
+    match /pinIndex/{docId} {
+      allow read, write: if false;
+    }
+
+    match /rateLimits/{docId} {
+      allow read, write: if false;
+    }
+
+    match /events/{eventId} {
+      allow read: if isAdmin();
+      allow write: if false;
+
+      match /teams/{teamId} {
+        // Admins read every team; a team member reads only its own team.
+        allow read: if isAdmin() || (teamId == claim('teamId') && teamSessionValid(eventId));
+        allow write: if false;
+      }
+
+      match /players/{playerId} {
+        // Player documents include the full auction pool and are admin-only.
+        allow read: if isAdmin();
+        allow write: if false;
+      }
+
+      match /purchases/{purchaseId} {
+        // A team may read only its own confirmed/reversed purchase records.
+        allow read: if isAdmin()
+          || (resource.data.teamId == claim('teamId') && teamSessionValid(eventId));
+        allow write: if false;
+      }
+
+      match /auditLogs/{logId} {
+        allow read: if isAdmin();
+        allow write: if false;
+      }
+
+      match /teamSecrets/{teamId} {
+        allow read, write: if false;
+      }
+
+      match /sessions/{sessionId} {
+        allow read, write: if false;
+      }
+
+      match /rateLimits/{docId} {
+        allow read, write: if false;
+      }
+    }
+  }
+}

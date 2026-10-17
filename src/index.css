@@ -1,0 +1,74 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens.
+ * Restrained light theme: near-white surfaces, charcoal text, muted gray
+ * dividers, a single green accent (success / healthy purse), amber warnings and
+ * red reserved for destructive or error states.
+ */
+@theme {
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif;
+
+  --color-canvas: #f4f5f7;
+  --color-surface: #ffffff;
+  --color-surface-muted: #fafbfc;
+  --color-ink: #14181f;
+  --color-ink-soft: #3b424e;
+  --color-muted: #6b7280;
+  --color-line: #e4e7ec;
+  --color-line-strong: #cfd4dc;
+  --color-charcoal: #1b2027;
+  --color-charcoal-soft: #2b3138;
+  --color-accent: #157f43;
+  --color-accent-strong: #0f6132;
+  --color-accent-soft: #e9f5ee;
+  --color-warn: #a35a06;
+  --color-warn-soft: #fdf4e7;
+  --color-danger: #b3261e;
+  --color-danger-soft: #fdecea;
+  --color-info-soft: #eef2f7;
+
+  --radius-card: 16px;
+  --radius-control: 12px;
+
+  --shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+    min-height: 100dvh;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.01em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
