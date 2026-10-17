@@ -2,47 +2,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
-import { TeamAuthProvider } from '@/auth/TeamAuthProvider'
+import { TeamAuthProvider, useTeamAuth } from '@/auth/TeamAuthProvider'
 import { TeamLoginPage } from '@/features/teamPanel/TeamLoginPage'
 import { CallError } from '@/services/callables'
 import { verifyTeamPin, getTeamContext, logoutTeamSession } from '@/services/team'
 
 /**
  * Team PIN login wiring: the PIN is verified server-side, a wrong PIN shows a
- * generic error, and a rate limit produces an explicit cooldown. Firebase
- * itself is mocked; no network calls happen.
+ * generic error, and a rate limit produces an explicit cooldown. The service
+ * layer is mocked; no network calls happen.
  */
 
-vi.mock('@/lib/firebase', () => {
-  const mockAuth = {
-    currentUser: { getIdTokenResult: vi.fn().mockResolvedValue({ claims: { kind: 'team' } }) },
-  }
-  return {
-    requireFirebase: () => ({ app: {}, auth: mockAuth, db: {}, functions: {} }),
-    getFirebase: () => ({ app: {}, auth: mockAuth, db: {}, functions: {} }),
-  }
-})
-
-const authStateCallback = vi.fn()
-vi.mock('firebase/auth', () => ({
-  onAuthStateChanged: (_auth: unknown, callback: (user: unknown) => void) => {
-    authStateCallback.mockImplementation(callback)
-    callback(null)
-    return () => undefined
-  },
-  signInWithCustomToken: vi.fn().mockResolvedValue(undefined),
-  signOut: vi.fn().mockResolvedValue(undefined),
-}))
-
-vi.mock('firebase/firestore', () => ({
-  doc: () => ({ withConverter: () => ({}) }),
-  collection: () => ({ withConverter: () => ({}) }),
-  onSnapshot: () => () => undefined,
-  query: () => ({}),
-  orderBy: () => ({}),
-  limit: () => ({}),
-  where: () => ({}),
-  getDocFromServer: vi.fn(),
+vi.mock('@/data/hooks', () => ({
+  usePublicConfig: () => ({ data: null, loading: false, error: null, fromCache: false }),
 }))
 
 vi.mock('@/services/team', () => ({
@@ -64,6 +36,16 @@ function renderLogin() {
   )
 }
 
+function Probe() {
+  const auth = useTeamAuth()
+  return (
+    <div>
+      status:{auth.status}
+      {auth.context ? ` team:${auth.context.teamName}` : ''}
+    </div>
+  )
+}
+
 async function typePin(pin: string): Promise<void> {
   for (const digit of pin) {
     await userEvent.click(screen.getByRole('button', { name: digit }))
@@ -75,6 +57,7 @@ describe('TeamLoginPage', () => {
     verifyMock.mockReset()
     contextMock.mockReset()
     vi.mocked(logoutTeamSession).mockResolvedValue({ revoked: true })
+    window.localStorage.clear()
   })
 
   it('shows a generic error for a wrong PIN and clears the keypad', async () => {
@@ -105,7 +88,7 @@ describe('TeamLoginPage', () => {
     expect(screen.getByRole('button', { name: '1' })).toBeDisabled()
   })
 
-  it('signs in and leaves the login screen when the PIN is accepted', async () => {
+  it('signs in, stores the session token and leaves the login screen', async () => {
     verifyMock.mockResolvedValue({
       sessionToken: 'token',
       sessionId: 'sess1',
@@ -118,6 +101,21 @@ describe('TeamLoginPage', () => {
       currencyLabel: '₹',
       eventStatus: 'active',
     })
+
+    renderLogin()
+    await typePin('2468')
+
+    await waitFor(() => expect(screen.queryByText('Team login')).not.toBeInTheDocument())
+    const stored = window.localStorage.getItem('auction:team:session')
+    expect(stored).not.toBeNull()
+    expect(JSON.parse(stored ?? '{}')).toMatchObject({ token: 'token', eventId: 'default', teamId: 'teamA' })
+  })
+
+  it('restores a stored session on reload via getTeamContext', async () => {
+    window.localStorage.setItem(
+      'auction:team:session',
+      JSON.stringify({ token: 'stored-token', expiresAt: Date.now() + 60_000, eventId: 'default', teamId: 'teamA' }),
+    )
     contextMock.mockResolvedValue({
       eventId: 'default',
       eventName: 'College Auction',
@@ -129,10 +127,14 @@ describe('TeamLoginPage', () => {
       expiresAt: Date.now() + 60_000,
     })
 
-    renderLogin()
-    await typePin('2468')
+    render(
+      <TeamAuthProvider>
+        <Probe />
+      </TeamAuthProvider>,
+    )
 
-    await waitFor(() => expect(contextMock).toHaveBeenCalled())
-    await waitFor(() => expect(screen.queryByText('Team login')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/status:signedIn/)).toBeInTheDocument())
+    expect(screen.getByText(/team:Team Alpha/)).toBeInTheDocument()
+    expect(contextMock).toHaveBeenCalled()
   })
 })

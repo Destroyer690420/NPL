@@ -10,52 +10,27 @@ export interface FriendlyError {
   retryable: boolean
 }
 
-/** Maps Firebase SDK errors to app error codes. */
-function codeFromFirebase(errorCode: string): AppErrorCode | null {
-  switch (errorCode) {
-    case 'functions/unauthenticated':
-      return 'unauthenticated'
-    case 'functions/permission-denied':
-      return 'permission-denied'
-    case 'functions/resource-exhausted':
-      return 'rate-limited'
-    case 'functions/not-found':
-      return 'not-found'
-    case 'functions/already-exists':
-      return 'already-exists'
-    case 'functions/failed-precondition':
-      return 'failed-precondition'
-    case 'functions/invalid-argument':
-      return 'invalid-argument'
-    case 'functions/unavailable':
-    case 'unavailable':
-    case 'firestore/unavailable':
-      return 'network'
-    case 'functions/internal':
-    case 'functions/unknown':
-    case 'internal':
-    case 'firestore/internal':
-      return 'internal'
-    case 'firestore/permission-denied':
-      return 'permission-denied'
-    case 'auth/invalid-credential':
-    case 'auth/wrong-password':
-    case 'auth/user-not-found':
-    case 'auth/invalid-login-credentials':
-    case 'auth/invalid-email':
-      return 'unauthenticated'
-    case 'auth/too-many-requests':
-      return 'rate-limited'
-    case 'auth/network-request-failed':
-      return 'network'
-    default:
-      return null
-  }
+/** Codes that mean the session itself is no longer valid. */
+export const SESSION_INVALID_CODES: readonly AppErrorCode[] = [
+  'unauthenticated',
+  'session-expired',
+  'session-revoked',
+  'team-inactive',
+]
+
+export function isSessionInvalidCode(code: AppErrorCode): boolean {
+  return SESSION_INVALID_CODES.includes(code)
 }
 
 /**
  * Converts any thrown value into a friendly, non-sensitive message.
  * Never surfaces stack traces, secrets or raw server internals.
+ *
+ * The Supabase transport (edge function envelope and read RPCs) carries the
+ * machine-readable app code directly — as `details.code` in the envelope, as a
+ * raw `message` string from the database functions, or as `.code` on a
+ * `CallError`. Anything else falls back to `unknown`, with fetch failures
+ * mapped to `network`.
  */
 export function toFriendlyError(error: unknown): FriendlyError {
   const fallback: FriendlyError = { code: 'unknown', ...appErrorMessage('unknown'), retryable: true }
@@ -71,14 +46,20 @@ export function toFriendlyError(error: unknown): FriendlyError {
 
   const details = (value.details ?? {}) as { code?: unknown; retryAfterSeconds?: unknown }
   // Errors that are already friendly (`CallError`) carry the app code directly
-  // in `.code`; prefer that over any Firebase transport mapping.
+  // in `.code`; prefer that over any transport mapping.
   const directCode = isAppErrorCode(value.code) ? value.code : null
-  const appCode = isAppErrorCode(details.code)
-    ? details.code
-    : directCode ?? (isAppErrorCode(value.message) ? value.message : null)
+  const rawMessage = typeof value.message === 'string' ? value.message.trim() : ''
+  // Postgres functions raise the app code as the raw message (e.g. 'session-expired').
+  const messageCode = isAppErrorCode(rawMessage) ? rawMessage : null
+  const appCode = isAppErrorCode(details.code) ? details.code : directCode ?? messageCode
 
-  const firebaseCode = typeof value.code === 'string' ? codeFromFirebase(value.code) : null
-  const code = appCode ?? firebaseCode ?? 'unknown'
+  let code: AppErrorCode = appCode ?? 'unknown'
+  if (code === 'unknown') {
+    const name = typeof value.name === 'string' ? value.name : ''
+    if (name === 'FunctionsFetchError' || name === 'TypeError' || name === 'AbortError') {
+      code = 'network'
+    }
+  }
   const info = appErrorMessage(code)
 
   const retryAfterFromDetails =
@@ -93,9 +74,7 @@ export function toFriendlyError(error: unknown): FriendlyError {
 
   // A human readable server supplied message wins when we only have a generic code.
   const serverMessage =
-    typeof value.message === 'string' && !isAppErrorCode(value.message) && value.message.length < 200
-      ? value.message
-      : undefined
+    rawMessage !== '' && !isAppErrorCode(rawMessage) && rawMessage.length < 200 ? rawMessage : undefined
 
   const useServerMessage = code === 'invalid-argument' || code === 'failed-precondition'
 

@@ -10,7 +10,7 @@ import { Pill } from '@/components/ui/StatusPill'
 
 /**
  * The private team panel: one team's purse, spend, points and roster, live.
- * Reads are limited by Firestore rules to this team's own documents and are
+ * Reads are limited server-side to this team's own documents and are
  * re-validated against the server session on every read.
  */
 export function TeamPanelPage() {

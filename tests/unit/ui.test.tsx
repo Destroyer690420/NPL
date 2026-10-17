@@ -7,8 +7,7 @@ import { SetupScreen } from '@/app/SetupScreen'
 
 // Deterministic regardless of the local .env.local (which may be configured).
 vi.mock('@/lib/config', () => ({
-  missingFirebaseKeys: () => ['VITE_FIREBASE_API_KEY', 'VITE_FIREBASE_PROJECT_ID'],
-  useEmulators: false,
+  missingSupabaseKeys: () => ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'],
 }))
 
 const ITEMS: ComboboxItem[] = [
@@ -89,8 +88,8 @@ describe('Dialog', () => {
 describe('SetupScreen', () => {
   it('lists every missing environment key instead of faking data', () => {
     render(<SetupScreen />)
-    expect(screen.getByText(/Firebase is not configured yet/i)).toBeInTheDocument()
-    expect(screen.getByText('VITE_FIREBASE_API_KEY')).toBeInTheDocument()
-    expect(screen.getByText('VITE_FIREBASE_PROJECT_ID')).toBeInTheDocument()
+    expect(screen.getByText(/Supabase is not configured yet/i)).toBeInTheDocument()
+    expect(screen.getAllByText('VITE_SUPABASE_URL').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('VITE_SUPABASE_ANON_KEY').length).toBeGreaterThan(0)
   })
 })

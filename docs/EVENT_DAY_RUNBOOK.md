@@ -8,9 +8,9 @@ Teams, Transactions, Settings — and each action below is a working button, not
 
 ## 0. Before the event (one time)
 
-- [ ] `npm run setup`, `.env.local` filled, `npx firebase deploy --only firestore:rules,firestore:indexes,functions,hosting`.
-- [ ] `PIN_HMAC_SECRET` secret set (`npx firebase functions:secrets:set PIN_HMAC_SECRET`).
-- [ ] Admin credentials configured in `functions/.env` (`ADMIN_LOGIN_ID`, `ADMIN_LOGIN_PASSWORD` — **not** the `admin`/`admin` defaults); sign in at `/admin` and confirm the console opens.
+- [ ] `npm run setup`, `.env.local` filled (project URL + publishable key), SQL migrations run and `auction-api` deployed — see README → Supabase setup.
+- [ ] `ADMIN_LOGIN_ID` / `ADMIN_LOGIN_PASSWORD` secrets set to something **other than** `admin`/`admin`; sign in at `/admin` and confirm the console opens and no default-credentials banner shows.
+- [ ] Optional: set the `PIN_HMAC_SECRET` secret so the PIN hashing secret is explicit rather than auto-generated (fine either way).
 - [ ] Open the site on the purchase-desk laptop, sign in, **bookmark it**. Test Wi-Fi and a backup hotspot.
 
 ## 1. Readiness checklist (evening before)
@@ -29,9 +29,10 @@ Do this in the **real event**, then repeat it in a throwaway demo event as a dre
 
 ## 2. Connectivity and live check
 
-- **Dashboard**: cards (teams, available/sold, spend) and *Recent purchases* update live. If the
-  header shows an **offline/updating** badge, data is being served from cache — do not panic, the
-  next successful write reconciles it.
+- **Dashboard**: cards (teams, available/sold, spend) and *Recent purchases* refresh automatically
+  (every few seconds and whenever the tab regains focus). If the header badge says
+  **“Offline — showing cached data”**, a refresh failed — the last good data stays visible and the
+  app keeps retrying; writes are unaffected once the network returns.
 - **Team panel**: open `/team` on a phone, pick the team, enter its PIN. The roster must appear and
   update when you record a purchase. This is the real end-to-end check — do it once before the
   first sale.
@@ -79,7 +80,7 @@ What protects you here:
 | Player details wrong (name/points/price) after sale | **Players** → edit with a reason; totals are re-derived atomically. Editing *into* a state that conflicts with the purchase is blocked (`player-status-conflict`) — reverse first if ownership must change. |
 | Team’s phone lost / PIN leaked | **Teams** → team → **Reset PIN** (new PIN, all sessions revoked) and hand over the new PIN. |
 | Someone left the team’s device logged in | **Teams** → team → **Revoke sessions** — the panel locks on the next read, no waiting. |
-| Totals look wrong | **Settings** → **Run consistency check**. It reports exactly which document disagrees and blocks finalization while problems exist. Bring the report to the developer before editing anything manually in the console. |
+| Totals look wrong | **Settings** → **Run consistency check**. It reports exactly which record disagrees and blocks finalization while problems exist. Bring the report to the developer before editing anything manually in the Supabase Table Editor. |
 | Sold player appears on the wrong team | Reverse the purchase, then the player returns to the pool and can be sold to the correct team. |
 | Two operators, double submit | Second submit gets the recorded result (idempotent replay) or `player-already-sold`. Never delete purchase docs by hand. |
 
@@ -102,7 +103,9 @@ Need a post-event correction after finalizing? Only a **superAdmin** can **Reope
 
 - Leave the data in place — team panels stay valid as historical records.
 - Keep the Transactions export with the event documents.
-- Demo events (`[DEMO] …`) can be deleted wholesale from the Firebase console (`events/demo` tree).
+- Demo events (`[DEMO] …`) can be deleted from the Supabase Table Editor: delete rows with
+  `event_id = 'demo'` in `teams`, `players`, `purchases`, `audit_logs`, `team_secrets`, then the
+  `demo` row in `events`.
 
 ## Quick reference
 
@@ -111,7 +114,7 @@ Need a post-event correction after finalizing? Only a **superAdmin** can **Reope
 | Fastest path to sell a player | `/admin/purchases/new` |
 | Undo a sale | `/admin/transactions` → Reverse |
 | Everyone’s money | `/admin` (Dashboard) |
-| Audit trail of every action + reasons | `/admin/transactions` + Firestore `auditLogs` |
+| Audit trail of every action + reasons | `/admin/transactions` + Postgres `audit_logs` table |
 | Lock out a team | `/admin/teams` → Revoke sessions / Deactivate |
 | Integrity check | `/admin/settings` → Run consistency check |
 | Start / finalize | `/admin/settings` → Auction lifecycle |

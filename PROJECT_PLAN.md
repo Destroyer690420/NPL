@@ -7,20 +7,26 @@ Nothing is marked done unless it was executed and observed to work.
 
 ---
 
-> **2026-10-17 — Platform change in progress: Firebase → Supabase.**
+> **2026-10-17 — Platform change COMPLETE in code: Firebase → Supabase.**
 > The organizer's Firebase project cannot be upgraded to Blaze (no card), which blocks
-> deploying Cloud Functions and secrets. By organizer decision, the backend is ported to
+> deploying Cloud Functions and secrets. By organizer decision, the backend was ported to
 > Supabase (free tier, no card). Current state:
-> - **Phase 8 (backend) COMPLETE, committed (`6fd8b38`):** Postgres schema, deny-all
->   security rules, an atomic write pipeline with preconditions, and a single Edge
+> - **Phase 8 (backend) COMPLETE, committed (`6fd8b38`):** Postgres schema, revoke-all +
+>   deny-by-default rules, an atomic write pipeline with preconditions, and a single Edge
 >   Function carrying all 19 actions. The tested domain logic and handlers were reused
->   unchanged behind a Firestore-compatible shim. Verified: web `tsc`, edge `tsc`,
->   116/116 unit tests, ESLint, production build.
-> - **Not yet executed against the live project:** applying the SQL migration and
->   deploying the Edge Function (next step), then end-to-end verification.
-> - **Phase 9 (web client) NEXT:** the browser app still speaks Firebase until the
->   client port lands (session tokens + polling reads).
-> - Firebase-specific docs (setup, rules, runbook) are rewritten when the port completes.
+>   unchanged behind a Firestore-compatible shim.
+> - **Phase 9 (web client) COMPLETE (committed alongside this update):** the browser now
+>   speaks Supabase — session-token auth for admin and teams, polling reads through the
+>   three read RPCs, reworked seed script, tests and docs. Verified offline: web `tsc`,
+>   edge `tsc`, 117/117 unit tests, ESLint, production build.
+> - **Migration fix-up:** the initial SQL returned read rows without their `id`; a follow-up
+>   migration (`20261017000002_read_payload_ids.sql`, written during Phase 9) merges the row
+>   id into every read payload. **The user must run it once** in the SQL Editor.
+> - **Not yet executed against the live project:** applying migration 002, setting the
+>   function secrets, deploying `auction-api`, and the end-to-end test purchase. The
+>   migrations 001 were applied by the organizer on 2026-10-17.
+> - Docs (README, SECURITY, DATA_MODEL, runbook) were rewritten for the Supabase design
+>   during Phase 9.
 
 ---
 
@@ -172,6 +178,46 @@ Admin email/password sign-in was replaced by a single shared **admin ID + passwo
 
 ---
 
+## Phase 9 — Web client port to Supabase (2026-10-17)
+
+The browser app was ported from the Firebase SDK to Supabase. All UI, business rules and tests were
+kept; only the transport and session plumbing changed.
+
+- **Transport (`src/services/callables.ts`):** same `callFunction(name, input)` API, now posts
+  `{action, input, token}` to the `auction-api` edge function and unwraps the
+  `{ok,data|error}` envelope. Token routing is by action class (`verifyTeamPin`/`adminLogin` need
+  none; `getTeamContext`/`logoutTeamSession` use the team token; everything else the admin token).
+- **Sessions (`src/services/session.ts`, new):** opaque tokens stored in `localStorage`
+  (admin + team), expiry-aware, plus a session-invalid bus so any rejected call (expired/revoked/
+  deactivated) signs the affected surface out immediately.
+- **Admin login:** `src/services/adminAuth.ts` now calls `adminLogin` and stores the returned
+  session; the browser still never checks credentials. The server login response was extended with
+  `role` (always `superAdmin` for the interim shared identity).
+- **Reads (`src/services/reads.ts`, `src/data/hooks.ts`):** the Firestore `onSnapshot` hooks were
+  replaced by polled reads through `api_admin_read` / `api_team_read` / `api_public_config`
+  (~4 s, visibility-aware, de-duplicated in-flight). The `{data,loading,error,fromCache}` contract
+  is unchanged; `fromCache` now means "last refresh failed, showing the most recent data".
+  `fetchPurchaseFromServer` reconciles through the purchases read.
+- **Config:** `src/lib/firebase.ts` → `src/lib/supabase.ts`; `src/lib/config.ts` now reads
+  `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` (publishable key accepted too);
+  `SetupScreen` lists the Supabase keys and setup steps; `main.tsx` gates on Supabase config.
+  `src/data/converters.ts` (Firestore converters) deleted; hooks use the shared `@shared/convert`
+  mappers directly.
+- **Migration fix-up:** during the port it was verified that `api_admin_read`/`api_team_read`
+  returned raw `data` without the row `id`, which the shared mappers need. Follow-up migration
+  `supabase/migrations/20261017000002_read_payload_ids.sql` merges `id` into every read payload.
+- **Tests:** `adminLogin.test.tsx` and `teamLogin.test.tsx` rewritten against the session design
+  (no Firebase mocks; new reload-restore test for teams); `ui.test.tsx` SetupScreen copy updated.
+  New totals: **117 passed / 10 files**.
+- **Seed script:** `scripts/seed-demo.mjs` rewritten to drive the edge function via `fetch` and to
+  read existing demo entities through `api_admin_read`; emulator mode removed (no local emulators).
+- **Dependency:** `firebase` removed from `package.json`; the production bundle dropped from
+  ~978 kB to ~633 kB (pre-minified).
+- **Docs:** README, `docs/SECURITY.md`, `docs/DATA_MODEL.md` and `docs/EVENT_DAY_RUNBOOK.md`
+  rewritten for the Supabase design.
+
+---
+
 ## Verification log
 
 | Date | Check | Command | Result |
@@ -197,22 +243,28 @@ Admin email/password sign-in was replaced by a single shared **admin ID + passwo
 | 2026-10-17 | Bug found by the new tests | `npx vitest run` (before fix) | `errorMessage(CallError)` returned “Something went wrong.” — `toFriendlyError` now honours app codes and `retryAfterSeconds` carried on the error itself |
 | 2026-10-17 | Gates after interim change | `npx tsc --noEmit -p tsconfig.json`, `npm --prefix functions run typecheck`, `npx eslint .`, `npm run build` | all pass |
 | 2026-10-17 | Seed script reworked for shared login | `node scripts/seed-demo.mjs --event production` / `--purchases 99` / `--help` / default run vs unconfigured project | guard + range + help paths unchanged (exit 1/1/0); sign-in path reached the live project and failed cleanly (`[not-found] [404]` — functions not deployed) with guidance and exit 1 |
+| 2026-10-17 | Phase 8 backend gates | `npx tsc --noEmit -p tsconfig.json && npx tsc --noEmit -p tsconfig.edge.json`, `npx vitest run`, `npx eslint .`, `npm run build` | all pass (**116 tests**); commit `6fd8b38` |
+| 2026-10-17 | SQL migration applied (user) | Supabase SQL Editor → `20261017000001_init.sql` | “Success. No rows returned” (reported by the organizer) |
+| 2026-10-17 | Read payload gap found in Phase 9 review | source inspection of `api_admin_read` + `_shared/convert.ts` | rows returned without `id`; fixed by `20261017000002_read_payload_ids.sql` (**user must run it once**) |
+| 2026-10-17 | Phase 9 gates | `npx tsc --noEmit -p tsconfig.json`, `npx tsc --noEmit -p tsconfig.edge.json`, `npx vitest run`, `npx eslint .`, `npm run build` | all pass — **117 tests / 10 files**; bundle 632.69 kB (pre 970 kB) |
+| 2026-10-17 | Firestore still imported anywhere? | repo-wide grep for `firebase` in `src/`, `tests/`, `scripts/` | none (only historical notes in docs); `npm ls firebase` → not installed |
+| 2026-10-17 | Not yet executed | live edge-function deploy + test purchase | pending: organizer must run migration 002, set secrets and deploy `auction-api` (interactive `npx supabase login`), then the Event-day runbook §2 test purchase |
 
 ## Open risks / notes
 
-- **A live project is now wired in** (`.env.local` + `.firebaserc` → `attendance-tracker-d08ed`,
-  2026-10-17) but was probed and found unconfigured: Auth not initialized
-  (`CONFIGURATION_NOT_FOUND`), no Firestore database (404), no hosting site. Initializing Auth
-  (Get started — no provider needed), creating Firestore, deploying rules/functions/hosting, and
-  setting `PIN_HMAC_SECRET` + a non-default `ADMIN_LOGIN_PASSWORD` remain user steps; after that, do
-  the Event-day runbook's one-minute test purchase. No end-to-end run has happened yet.
-- Firestore transaction read-then-write ordering is respected everywhere (all reads precede all writes).
-- `finalizeEvent` reads the whole event inside the transaction (fine at this event scale: hundreds of docs).
-- CSV import is capped at 400 rows per batch so a single transaction stays atomic (Firestore 500-write limit).
-- App Check is opt-in (`ENFORCE_APP_CHECK=true` + `VITE_APP_CHECK_SITE_KEY`) because it requires a reCAPTCHA key.
-- No Firebase user accounts are needed any more: admin access is minted by the `adminLogin`
-  callable, so `scripts/seed-demo.mjs` works against a fresh project with no bootstrap step.
-- Web bundle is one ~978 kB chunk (Firebase SDK dominates) — acceptable at this scale; code
-  splitting remains an optional polish item.
-- `.gitignore`: verify `functions/.env` and service-account files are never committed (patterns exist;
-  no git repo was initialised in this workspace).
+- **Supabase project wired in** (`.env.local` → `https://zskbpnzhxntnupdnlecp.supabase.co`, 2026-10-17).
+  Migration 001 applied by the organizer; migration 002 (read payload ids) still needs to be run.
+  The edge function `auction-api` is **not deployed yet** and its secrets are not set; after those
+  user steps, do the Event-day runbook's one-minute test purchase. No live end-to-end run has
+  happened yet.
+- All writes go through the atomic `apply_plan` pipeline (reads first, then writes with
+  preconditions); a conflict retries with fresh state. Same contract Firestore transactions gave.
+- `finalizeEvent` reads the whole event inside one plan (fine at this event scale: hundreds of rows).
+- CSV import is capped at 400 rows per batch so a single apply-plan stays small.
+- PIN rate-limit policy mirrors the old Firebase one but the old `ENFORCE_APP_CHECK`/reCAPTCHA path
+  is gone (Supabase's equivalent is not required for this threat model — see `docs/SECURITY.md`).
+- No Supabase Auth accounts are needed: admin access is a session minted by the `adminLogin`
+  action, so `scripts/seed-demo.mjs` works against a fresh project with no bootstrap step.
+- Web bundle is one ~633 kB chunk — acceptable at this scale; code splitting remains optional.
+- `.gitignore`: `.env.local` is ignored; no service-role key or database password ever enters the
+  repo or the frontend.

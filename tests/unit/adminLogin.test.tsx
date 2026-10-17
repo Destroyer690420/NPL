@@ -9,22 +9,9 @@ import { adminLogin } from '@/services/adminAuth'
 
 /**
  * Admin login wiring: credentials are verified server-side by the `adminLogin`
- * callable (mocked here), failures show generic copy, and the default-credential
- * warning flag is persisted after a successful login.
+ * edge action (mocked here), failures show generic copy, and the
+ * default-credential warning flag is persisted after a successful login.
  */
-
-vi.mock('@/lib/firebase', () => ({
-  requireFirebase: () => ({ app: {}, auth: {}, db: {}, functions: {} }),
-}))
-
-vi.mock('firebase/auth', () => ({
-  onAuthStateChanged: (_auth: unknown, callback: (user: unknown) => void) => {
-    callback(null)
-    return () => undefined
-  },
-  signInWithCustomToken: vi.fn().mockResolvedValue(undefined),
-  signOut: vi.fn().mockResolvedValue(undefined),
-}))
 
 vi.mock('@/services/adminAuth', () => ({ adminLogin: vi.fn() }))
 
@@ -96,7 +83,12 @@ describe('AdminLoginPage', () => {
   })
 
   it('enters the console after a successful login and remembers default credentials', async () => {
-    loginMock.mockResolvedValue({ usingDefaultCredentials: true })
+    loginMock.mockResolvedValue({
+      usingDefaultCredentials: true,
+      role: 'superAdmin',
+      displayName: 'admin',
+      expiresAt: Date.now() + 60_000,
+    })
     renderLogin()
     await submitCredentials('admin', 'admin')
 
@@ -105,7 +97,12 @@ describe('AdminLoginPage', () => {
   })
 
   it('does not flag default credentials when they were changed server-side', async () => {
-    loginMock.mockResolvedValue({ usingDefaultCredentials: false })
+    loginMock.mockResolvedValue({
+      usingDefaultCredentials: false,
+      role: 'superAdmin',
+      displayName: 'organizer',
+      expiresAt: Date.now() + 60_000,
+    })
     renderLogin()
     await submitCredentials('organizer', 'long-secret')
 

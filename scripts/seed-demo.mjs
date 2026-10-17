@@ -3,9 +3,10 @@
  * seed-demo.mjs — opt-in, clearly labelled demo data for development and
  * rehearsal. Never run this against your real event.
  *
- * It signs in as an admin and drives the real callable functions (createEvent,
- * createTeam, createPlayer, recordPurchase), so the demo data follows exactly
- * the same rules as the app itself: correct totals, PIN hashing, audit logs.
+ * It signs in as the admin and drives the real `auction-api` edge function
+ * (createEvent, createTeam, createPlayer, recordPurchase), so the demo data
+ * follows exactly the same rules as the app itself: correct totals, PIN
+ * hashing, audit logs.
  *
  * Usage
  *   node scripts/seed-demo.mjs [options]
@@ -15,8 +16,6 @@
  *   --password <pw>          or set ADMIN_PASSWORD in the environment
  *                            (default: admin — the interim shared credentials)
  *   --password-stdin         read the password from one stdin line instead
- *   --emulator               target the local emulator suite (project
- *                            demo-auction). Run `npm run emulators` first.
  *   --event <id>             event id; must be `demo` or start with `demo-`
  *                            (default: demo). This guard prevents seeding a
  *                            real event by accident.
@@ -25,21 +24,19 @@
  *                            the demo event because purchases require the
  *                            event to be active.
  *
- * Non-emulator mode reads the Firebase web config from .env.local / .env
- * (VITE_FIREBASE_*), exactly like the app.
+ * The Supabase project URL and publishable key are read from .env.local /
+ * .env (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY), exactly like the app.
  *
- * Removing demo data: delete the `events/<id>` tree in the Firebase console,
- * or reset the emulator data.
+ * Removing demo data: in the Supabase Table Editor delete the rows where
+ * event_id = 'demo' from teams, players, purchases, audit_logs and
+ * team_secrets, then delete the `demo` row from events and clear
+ * app_config.defaultEventId if it points at it.
  */
 
 import { readFileSync, existsSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import path from 'node:path'
 import process from 'node:process'
-import { initializeApp } from 'firebase/app'
-import { connectAuthEmulator, getAuth, signInWithCustomToken } from 'firebase/auth'
-import { connectFirestoreEmulator, getFirestore, collection, getDocs } from 'firebase/firestore'
-import { connectFunctionsEmulator, getFunctions, httpsCallable } from 'firebase/functions'
 
 const ROOT = path.resolve(import.meta.dirname, '..')
 
@@ -87,7 +84,6 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i += 1) {
     const token = argv[i]
     if (token === '--help' || token === '-h') args.flags.help = true
-    else if (token === '--emulator') args.flags.emulator = true
     else if (token === '--append') args.flags.append = true
     else if (token === '--password-stdin') args.flags.passwordStdin = true
     else if (token === '--id') args.flags.id = argv[++i]
@@ -117,14 +113,10 @@ function readWebConfig() {
   for (const file of ['.env.local', '.env']) {
     const env = readEnvFile(path.join(ROOT, file))
     if (!env) continue
-    const config = {
-      apiKey: env.VITE_FIREBASE_API_KEY,
-      authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
-      projectId: env.VITE_FIREBASE_PROJECT_ID,
-      appId: env.VITE_FIREBASE_APP_ID,
-      functionsRegion: env.VITE_FUNCTIONS_REGION || 'us-central1',
-    }
-    if (config.apiKey && config.projectId && config.appId) return config
+    const url = env.VITE_SUPABASE_URL
+    const anonKey = env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_PUBLISHABLE_KEY
+    const functionName = env.VITE_AUCTION_FUNCTION_NAME || 'auction-api'
+    if (url && anonKey) return { url: url.replace(/\/+$/, ''), anonKey, functionName }
   }
   return null
 }
@@ -139,16 +131,54 @@ async function readStdinLine() {
   return data.split(/\r?\n/)[0] ?? ''
 }
 
-/** Calls a callable and returns its payload; throws Error with .code set. */
-function callable(client, name, data) {
-  return httpsCallable(client.functions, name)(data)
-    .then((response) => response.data)
-    .catch((error) => {
-      const code = typeof error?.code === 'string' ? error.code.replace(/^functions\//, '') : 'unknown'
-      const wrapped = new Error(`[${code}] ${error?.message ?? error}`)
-      wrapped.code = code
-      throw wrapped
+/* -------------------------------- transport ------------------------------- */
+
+function makeClient(config) {
+  const { url, anonKey, functionName } = config
+  const headers = {
+    'content-type': 'application/json',
+    apikey: anonKey,
+    authorization: `Bearer ${anonKey}`,
+  }
+
+  /** Calls an auction-api action; throws Error with .code set. */
+  async function callable(name, input, token) {
+    const response = await fetch(`${url}/functions/v1/${functionName}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ action: name, input, token: token ?? null }),
     })
+    const body = await response.json().catch(() => null)
+    if (!response.ok || !body) {
+      const error = new Error(`Unexpected response (HTTP ${response.status}).`)
+      error.code = 'unavailable'
+      throw error
+    }
+    if (body.ok !== true) {
+      const error = new Error(body.error?.message ?? 'The server rejected the request.')
+      error.code = typeof body.error?.code === 'string' ? body.error.code : 'unknown'
+      throw error
+    }
+    return body.data
+  }
+
+  /** Reads an admin resource through the read API (anon key + admin token). */
+  async function adminRead(resource, params, token) {
+    const response = await fetch(`${url}/rest/v1/rpc/api_admin_read`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ p_token: token, p_resource: resource, p_params: params ?? {} }),
+    })
+    const body = await response.json().catch(() => null)
+    if (!response.ok || body === null) {
+      const error = new Error(`Read failed (HTTP ${response.status}).`)
+      error.code = 'unavailable'
+      throw error
+    }
+    return body
+  }
+
+  return { callable, adminRead }
 }
 
 /* --------------------------------- main ----------------------------------- */
@@ -161,7 +191,6 @@ if (args.flags.help) {
 
 const adminId = (args.flags.id ?? '').trim() || 'admin'
 
-const emulator = args.flags.emulator === true
 const eventId = args.flags.event ?? 'demo'
 if (!/^demo(-|$)/.test(eventId)) {
   fail(
@@ -180,75 +209,50 @@ if (args.flags.passwordStdin) {
   password = (await readStdinLine()).trim()
 }
 
-let webConfig
-if (emulator) {
-  webConfig = {
-    apiKey: 'demo-api-key',
-    authDomain: '127.0.0.1:9099',
-    projectId: 'demo-auction',
-    appId: '1:1:web:demo',
-    functionsRegion: 'us-central1',
-  }
-} else {
-  webConfig = readWebConfig()
-  if (!webConfig) {
-    fail(
-      'No Firebase web config found. Copy .env.example to .env.local and fill in VITE_FIREBASE_* ' +
-        'values, or pass --emulator to use the local emulator suite.',
-    )
-  }
-  console.log(
-    `\n! Seeding DEMO data into project "${webConfig.projectId}" (event "${eventId}").\n` +
-      '  All names are prefixed "Demo" and the event name starts with [DEMO].\n' +
-      '  Press Ctrl+C now if this is the wrong project.\n',
+const webConfig = readWebConfig()
+if (!webConfig) {
+  fail(
+    'No Supabase web config found. Copy .env.example to .env.local and fill in ' +
+      'VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.',
   )
 }
 
-const app = initializeApp(webConfig)
-const auth = getAuth(app)
-const db = getFirestore(app)
-const functions = getFunctions(app, webConfig.functionsRegion)
+console.log(
+  `\n! Seeding DEMO data into "${webConfig.url}" (event "${eventId}").\n` +
+    '  All names are prefixed "Demo" and the event name starts with [DEMO].\n' +
+    '  Press Ctrl+C now if this is the wrong project.\n',
+)
 
-if (emulator) {
-  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
-  connectFirestoreEmulator(db, '127.0.0.1', 8080)
-  connectFunctionsEmulator(functions, '127.0.0.1', 5001)
-}
-
-const client = { app, auth, db, functions }
+const client = makeClient(webConfig)
 
 console.log(`→ Signing in as admin "${adminId}"…`)
-let payload
+let login
 try {
-  payload = await callable(client, 'adminLogin', { adminId, password })
+  login = await client.callable('adminLogin', { adminId, password }, null)
 } catch (error) {
   fail(
     `Admin login failed: ${error.message}\n\n` +
-      (emulator
-        ? 'Is the emulator suite running? Start it with `npm run emulators`.\n' +
-          'Admin credentials are ADMIN_LOGIN_ID / ADMIN_LOGIN_PASSWORD (default admin/admin).'
-        : 'Check the admin ID/password (ADMIN_LOGIN_ID / ADMIN_LOGIN_PASSWORD in functions/.env).'),
+      'Check the admin ID/password (ADMIN_LOGIN_ID / ADMIN_LOGIN_PASSWORD secrets of the ' +
+      'auction-api edge function; defaults admin/admin).',
   )
 }
-try {
-  await signInWithCustomToken(auth, payload.token)
-} catch (error) {
-  fail(`Could not establish the admin session: ${error?.message ?? error}`)
-}
-
-const claims = (await auth.currentUser.getIdTokenResult()).claims
-if (claims.role !== 'admin' && claims.role !== 'superAdmin') {
-  fail(`adminLogin returned a session without the admin claim (role=${String(claims.role)}).`)
+const token = login.token
+if (typeof token !== 'string' || token === '') {
+  fail('adminLogin returned no session token.')
 }
 
 console.log('→ Creating the demo event…')
 try {
-  const result = await callable(client, 'createEvent', {
-    eventId,
-    name: '[DEMO] Auction rehearsal',
-    currencyLabel: '₹',
-    defaultStartingPurse: 100_000,
-  })
+  const result = await client.callable(
+    'createEvent',
+    {
+      eventId,
+      name: '[DEMO] Auction rehearsal',
+      currencyLabel: '₹',
+      defaultStartingPurse: 100_000,
+    },
+    token,
+  )
   console.log(
     `  ✓ event "${result.eventId}" created` +
       (result.setAsDefault ? ' (now the default event)' : ''),
@@ -266,15 +270,14 @@ try {
   }
 }
 
-// Existing entities (for --append) are read straight from Firestore; admin
-// claims allow this. Fresh entities are created through the callables.
+// Existing entities (for --append) are read through the admin read API.
 const existingTeams = new Map()
 const existingPlayers = new Map()
 if (args.flags.append) {
-  const teamSnap = await getDocs(collection(db, 'events', eventId, 'teams'))
-  teamSnap.forEach((doc) => existingTeams.set(doc.data().name, { id: doc.id, ...doc.data() }))
-  const playerSnap = await getDocs(collection(db, 'events', eventId, 'players'))
-  playerSnap.forEach((doc) => existingPlayers.set(doc.data().name, { id: doc.id, ...doc.data() }))
+  const teamRows = await client.adminRead('teams', { eventId }, token)
+  for (const row of teamRows) existingTeams.set(row.name, row)
+  const playerRows = await client.adminRead('players', { eventId }, token)
+  for (const row of playerRows) existingPlayers.set(row.name, row)
 }
 
 console.log('→ Creating demo teams…')
@@ -288,11 +291,11 @@ for (const team of TEAMS) {
     continue
   }
   try {
-    const created = await callable(client, 'createTeam', {
-      eventId,
-      name: team.name,
-      startingPurse: team.startingPurse,
-    })
+    const created = await client.callable(
+      'createTeam',
+      { eventId, name: team.name, startingPurse: team.startingPurse },
+      token,
+    )
     teamIds.push(created.teamId)
     pinLines.push(`    ${team.name.padEnd(18)} PIN ${created.pin}   (teamId ${created.teamId})`)
   } catch (error) {
@@ -310,7 +313,7 @@ for (const player of PLAYERS) {
     continue
   }
   try {
-    const created = await callable(client, 'createPlayer', { eventId, ...player })
+    const created = await client.callable('createPlayer', { eventId, ...player }, token)
     playerIds.push({ id: created.playerId, status: 'available', basePrice: player.basePrice })
   } catch (error) {
     fail(`createPlayer(${player.name}) failed: ${error.message}`)
@@ -320,7 +323,7 @@ for (const player of PLAYERS) {
 if (purchasesRequested > 0) {
   console.log(`→ Starting the demo event and recording ${purchasesRequested} purchase(s)…`)
   try {
-    await callable(client, 'updateEvent', { eventId, status: 'active' })
+    await client.callable('updateEvent', { eventId, status: 'active' }, token)
   } catch (error) {
     fail(`Could not start the demo event: ${error.message}`)
   }
@@ -334,13 +337,11 @@ if (purchasesRequested > 0) {
     const player = available[index]
     const teamId = teamIds[index % teamIds.length]
     try {
-      await callable(client, 'recordPurchase', {
-        eventId,
-        playerId: player.id,
-        teamId,
-        finalPrice: player.basePrice + 2_000,
-        requestId: randomUUID(),
-      })
+      await client.callable(
+        'recordPurchase',
+        { eventId, playerId: player.id, teamId, finalPrice: player.basePrice + 2_000, requestId: randomUUID() },
+        token,
+      )
       recorded += 1
     } catch (error) {
       console.log(`  • skipped ${player.id}: ${error.message}`)
@@ -356,5 +357,6 @@ console.log('\nTeam PINs (shown once — reset any PIN from the admin panel at a
 for (const line of pinLines) console.log(line)
 console.log('\nOpen the app, sign in as admin, and the demo event is ready.')
 console.log('Team panels: choose the team and enter its PIN.')
-console.log('Remove demo data: delete the events/' + eventId + ' tree in the Firebase console.\n')
+console.log("Remove demo data: in the Supabase Table Editor delete rows with event_id = 'demo'")
+console.log('from teams, players, purchases, audit_logs and team_secrets, then the events row.\n')
 process.exit(0)

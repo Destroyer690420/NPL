@@ -1,35 +1,41 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react'
-import { onAuthStateChanged, signOut as firebaseSignOut, type User } from 'firebase/auth'
-import { requireFirebase } from '@/lib/firebase'
-import { errorMessage } from '@/lib/errors'
+import { errorMessage, toFriendlyError } from '@/lib/errors'
 import { adminLogin } from '@/services/adminAuth'
+import { readAdminResource } from '@/services/reads'
+import {
+  clearStoredSession,
+  readStoredSession,
+  setSessionInvalidHandler,
+} from '@/services/session'
 import type { AdminRole } from '@shared/types'
 
 /**
  * Admin authentication (interim shared-credential design).
  *
- * The `adminLogin` callable verifies the configured admin ID/password
- * server-side and mints a Firebase custom token carrying `role: admin|superAdmin`.
- * This provider only exchanges that token for a session and reads the claim —
- * it never checks credentials itself. When the email/claims flow returns, only
- * `services/adminAuth.ts` changes.
+ * `adminLogin` verifies the configured admin ID/password server-side and
+ * creates a database session; the browser only ever stores the opaque session
+ * token. This provider restores the stored session on load, validates it in
+ * the background, and signs out the moment the server rejects it. It never
+ * checks credentials itself.
  */
 
 export type AdminAuthStatus = 'loading' | 'signedOut' | 'signedIn' | 'notAuthorized'
 
 export interface AdminAuthValue {
   status: AdminAuthStatus
-  user: User | null
   role: AdminRole | null
   /** Display label for the signed-in operator. */
   displayName: string
+  /** When the session ends (epoch ms), when known. */
+  expiresAt: number | null
   /** Signs in with the shared admin ID/password; throws a friendly error on failure. */
   signIn: (adminId: string, password: string) => Promise<void>
   signOut: () => Promise<void>
@@ -41,12 +47,6 @@ export function useAdminAuth(): AdminAuthValue {
   const value = useContext(AdminAuthContext)
   if (!value) throw new Error('useAdminAuth must be used inside <AdminAuthProvider>.')
   return value
-}
-
-function roleFromClaims(claims: Record<string, unknown>): AdminRole | null {
-  if (claims.superAdmin === true || claims.role === 'superAdmin') return 'superAdmin'
-  if (claims.admin === true || claims.role === 'admin') return 'admin'
-  return null
 }
 
 /**
@@ -74,60 +74,80 @@ function setDefaultCredsFlag(value: boolean): void {
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<AdminAuthStatus>('loading')
-  const [user, setUser] = useState<User | null>(null)
   const [role, setRole] = useState<AdminRole | null>(null)
+  const [displayName, setDisplayName] = useState('Organizer')
+  const [expiresAt, setExpiresAt] = useState<number | null>(null)
+
+  const endSession = useCallback(() => {
+    clearStoredSession('admin')
+    setRole(null)
+    setDisplayName('Organizer')
+    setExpiresAt(null)
+    setStatus('signedOut')
+  }, [])
+
+  // A rejected admin session (expired, revoked or a non-admin token) signs the
+  // console out immediately, wherever the failing call happened.
+  useEffect(() => {
+    setSessionInvalidHandler((scope) => {
+      if (scope === 'admin') endSession()
+    })
+    return () => setSessionInvalidHandler(null)
+  }, [endSession])
 
   useEffect(() => {
-    const { auth } = requireFirebase()
     let active = true
+    const stored = readStoredSession('admin')
+    if (!stored) {
+      setStatus('signedOut')
+      return
+    }
 
-    const unsubscribe = onAuthStateChanged(auth, (nextUser) => {
+    setRole(stored.role)
+    setDisplayName(stored.displayName)
+    setExpiresAt(stored.expiresAt)
+    setStatus('signedIn')
+
+    // Validate in the background: revoked/stale sessions are cleaned up on
+    // load, without blocking the console on a healthy reload.
+    void readAdminResource('events').catch((error) => {
       if (!active) return
-      if (!nextUser) {
-        setUser(null)
-        setRole(null)
-        setStatus('signedOut')
-        return
+      const code = toFriendlyError(error).code
+      if (
+        code === 'unauthenticated' ||
+        code === 'session-expired' ||
+        code === 'session-revoked' ||
+        code === 'not-admin'
+      ) {
+        endSession()
       }
-      setUser(nextUser)
-      void nextUser
-        .getIdTokenResult()
-        .then((token) => {
-          if (!active) return
-          const nextRole = roleFromClaims(token.claims)
-          setRole(nextRole)
-          setStatus(nextRole ? 'signedIn' : 'notAuthorized')
-        })
-        .catch(() => {
-          if (!active) return
-          setRole(null)
-          setStatus('notAuthorized')
-        })
     })
 
     return () => {
       active = false
-      unsubscribe()
     }
-  }, [])
+  }, [endSession])
 
   const value = useMemo<AdminAuthValue>(
     () => ({
       status,
-      user,
       role,
-      displayName: user?.displayName || user?.email || 'Organizer',
+      displayName,
+      expiresAt,
       signIn: async (adminId, password) => {
         const result = await adminLogin(adminId, password)
         setDefaultCredsFlag(result.usingDefaultCredentials)
+        setRole(result.role)
+        setDisplayName(result.displayName)
+        setExpiresAt(typeof result.expiresAt === 'number' ? result.expiresAt : null)
+        setStatus('signedIn')
       },
       signOut: async () => {
         setDefaultCredsFlag(false)
-        const { auth } = requireFirebase()
-        await firebaseSignOut(auth)
+        endSession()
       },
     }),
-    [status, user, role],
+    [status, role, displayName, expiresAt, endSession],
   )
 
   return <AdminAuthContext.Provider value={value}>{children}</AdminAuthContext.Provider>

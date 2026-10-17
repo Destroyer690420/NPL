@@ -1,8 +1,0 @@
-# Firebase project id used by the Firebase CLI (deploy / emulators).
-# Copy this file to `.firebaserc` and replace the placeholder with your own
-# Firebase project id:  { "projects": { "default": "your-project-id" } }
-{
-  "projects": {
-    "default": "YOUR_FIREBASE_PROJECT_ID"
-  }
-}

@@ -3,8 +3,8 @@ import { Pill } from '@/components/ui/StatusPill'
 import type { FriendlyError } from '@/lib/errors'
 
 /**
- * Live-connection indicator driven by Firestore snapshot metadata.
- * `error` wins, then offline (cached snapshot), then connecting.
+ * Connection indicator driven by the polling data hooks.
+ * `error` wins, then a failed refresh (cached data), then connecting.
  */
 export function ConnectionBadge({
   fromCache,

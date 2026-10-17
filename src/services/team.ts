@@ -9,7 +9,7 @@ export interface VerifyTeamPinInput {
 }
 
 export interface VerifyTeamPinResult {
-  /** Firebase Auth custom token bound to {eventId, teamId, sessionId}. */
+  /** Opaque 256-bit session token bound to {eventId, teamId, sessionId}. */
   sessionToken: string
   sessionId: string
   eventId: string

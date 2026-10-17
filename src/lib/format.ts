@@ -2,7 +2,7 @@ import { formatAmount, formatNumber } from '@shared/money'
 import { timestampToMillis } from '@shared/convert'
 import type { TimestampValue } from '@shared/types'
 
-/** Timestamp helpers that accept Firestore Timestamps, Dates, millis or null. */
+/** Timestamp helpers that accept `{seconds,nanoseconds}` values, Dates, millis or null. */
 
 export function toMillis(value: TimestampValue | undefined): number | null {
   return timestampToMillis(value)

@@ -1,12 +1,9 @@
 /** Client configuration read from Vite environment variables. */
 
-export interface FirebaseWebConfig {
-  apiKey: string
-  authDomain: string
-  projectId: string
-  storageBucket: string
-  messagingSenderId: string
-  appId: string
+export interface SupabaseWebConfig {
+  url: string
+  /** Publishable (or legacy anon) key — a public identifier, not a secret. */
+  anonKey: string
 }
 
 function read(key: string): string {
@@ -14,41 +11,36 @@ function read(key: string): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
-export function readFirebaseConfig(): FirebaseWebConfig | null {
-  const config: FirebaseWebConfig = {
-    apiKey: read('VITE_FIREBASE_API_KEY'),
-    authDomain: read('VITE_FIREBASE_AUTH_DOMAIN'),
-    projectId: read('VITE_FIREBASE_PROJECT_ID'),
-    storageBucket: read('VITE_FIREBASE_STORAGE_BUCKET'),
-    messagingSenderId: read('VITE_FIREBASE_MESSAGING_SENDER_ID'),
-    appId: read('VITE_FIREBASE_APP_ID'),
+export function readSupabaseConfig(): SupabaseWebConfig | null {
+  const config: SupabaseWebConfig = {
+    url: read('VITE_SUPABASE_URL'),
+    // Both the new-style publishable key and the legacy anon key are accepted.
+    anonKey: read('VITE_SUPABASE_ANON_KEY') || read('VITE_SUPABASE_PUBLISHABLE_KEY'),
   }
-
-  const required: Array<keyof FirebaseWebConfig> = ['apiKey', 'authDomain', 'projectId', 'appId']
-  const missing = required.filter((key) => config[key] === '')
-  if (missing.length > 0) return null
+  if (config.url === '' || config.anonKey === '') return null
+  if (!/^https?:\/\//.test(config.url)) return null
   return config
 }
 
-export function isFirebaseConfigured(): boolean {
-  return readFirebaseConfig() !== null
+export function isSupabaseConfigured(): boolean {
+  return readSupabaseConfig() !== null
 }
 
-export function missingFirebaseKeys(): string[] {
-  const keys = [
-    'VITE_FIREBASE_API_KEY',
-    'VITE_FIREBASE_AUTH_DOMAIN',
-    'VITE_FIREBASE_PROJECT_ID',
-    'VITE_FIREBASE_APP_ID',
-  ] as const
-  return keys.filter((key) => read(key) === '')
+export function missingSupabaseKeys(): string[] {
+  const keys = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'] as const
+  return keys.filter((key) => {
+    if (key === 'VITE_SUPABASE_ANON_KEY') {
+      return read('VITE_SUPABASE_ANON_KEY') === '' && read('VITE_SUPABASE_PUBLISHABLE_KEY') === ''
+    }
+    return read(key) === ''
+  })
 }
 
-export const useEmulators = read('VITE_USE_FIREBASE_EMULATORS') === 'true'
-export const appCheckSiteKey = read('VITE_APP_CHECK_SITE_KEY') || null
-export const appCheckDebugToken = read('VITE_APP_CHECK_DEBUG_TOKEN') || null
+/** Edge function that carries every auction action. */
+export const auctionFunctionName = read('VITE_AUCTION_FUNCTION_NAME') || 'auction-api'
+
+/** Optional: override the event id used by the app (defaults to the public config). */
 export const defaultEventIdOverride = read('VITE_DEFAULT_EVENT_ID') || null
-export const functionsRegion = read('VITE_FUNCTIONS_REGION') || 'us-central1'
 
-export const EMULATOR_HOST = '127.0.0.1'
-export const EMULATOR_PORTS = { auth: 9099, firestore: 8080, functions: 5001 } as const
+/** How often live pages re-fetch their data (polling replaces realtime). */
+export const pollIntervalMs = 4000

@@ -426,7 +426,7 @@ export function SettingsPage() {
       <SectionTitle className="mt-8">About this build</SectionTitle>
       <p className="mt-2 max-w-3xl text-xs text-muted">
         Money and points are integers end-to-end; every purchase is validated and written inside a
-        single Firestore transaction, and retries reuse the same request id so a team can never be
+        single atomic database write, and retries reuse the same request id so a team can never be
         charged twice. See <code className="rounded bg-surface-muted px-1 py-0.5">docs/SECURITY.md</code> for the
         full data-protection model.
       </p>

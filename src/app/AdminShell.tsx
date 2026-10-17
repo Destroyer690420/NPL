@@ -96,8 +96,8 @@ export function AdminShell() {
         </nav>
         {usingDefaultCreds ? (
           <div className="border-t border-warn/25 bg-warn-soft px-4 py-1.5 text-center text-[11px] font-medium text-warn sm:px-6">
-            Using the default admin credentials (admin/admin). Set ADMIN_LOGIN_PASSWORD in
-            functions/.env and redeploy before the real event.
+            Using the default admin credentials (admin/admin). Set ADMIN_LOGIN_PASSWORD as a Supabase
+            edge function secret and redeploy auction-api before the real event.
           </div>
         ) : null}
       </header>

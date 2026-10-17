@@ -1,26 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
-  collection,
-  doc,
-  limit as fsLimit,
-  onSnapshot,
-  orderBy,
-  query,
-  where,
-  type DocumentReference,
-  type Query,
-  type QuerySnapshot,
-} from 'firebase/firestore'
-import { getFirebase, type FirebaseServices } from '@/lib/firebase'
-import { toFriendlyError, type FriendlyError } from '@/lib/errors'
-import {
-  auditLogConverter,
-  eventConverter,
-  playerConverter,
-  publicConfigConverter,
-  purchaseConverter,
-  teamConverter,
-} from './converters'
+  toAuditLogDoc,
+  toEventDoc,
+  toPlayerDoc,
+  toPublicConfigDoc,
+  toPurchaseDoc,
+  toTeamDoc,
+} from '@shared/convert'
 import type {
   AuditLogDoc,
   EventDoc,
@@ -29,209 +15,230 @@ import type {
   PurchaseDoc,
   TeamDoc,
 } from '@shared/types'
+import { pollIntervalMs } from '@/lib/config'
+import { toFriendlyError, type FriendlyError } from '@/lib/errors'
+import { getSupabase } from '@/lib/supabase'
+import { readAdminResource, readPublicConfig, readTeamResource } from '@/services/reads'
+import { readStoredSession } from '@/services/session'
 
 /**
- * Live Firestore hooks.
+ * Live data hooks backed by polling.
  *
- * Every hook returns `{ data, loading, error, fromCache }`. `fromCache` is true
- * while a snapshot is being served from the local cache (offline or still
- * connecting), which the UI surfaces as "Updating…". Listener errors are
- * converted to friendly, non-sensitive messages.
+ * Every hook re-fetches its read API on an interval (and on tab focus), so
+ * dashboards stay current without a realtime channel. The result shape stays
+ * `{ data, loading, error, fromCache }`; `fromCache` now means "the last
+ * refresh failed — showing the most recent data". Reads are re-validated
+ * server-side on every request, and a rejected session signs the user out via
+ * the session-invalid handler the auth providers register.
  */
 
 export interface LiveResult<T> {
   data: T
   loading: boolean
   error: FriendlyError | null
-  /** Snapshot served from the local cache (offline or still connecting). */
+  /** The last refresh failed (offline or server unreachable); data is stale. */
   fromCache: boolean
 }
 
-type Emit<T> = (value: T, fromCache: boolean) => void
-type Fail = (error: unknown) => void
-type Subscribe<T> = (services: FirebaseServices, emit: Emit<T>, fail: Fail) => () => void
+type Row = Record<string, unknown>
 
 const NO_TEAMS: TeamDoc[] = []
 const NO_PLAYERS: PlayerDoc[] = []
 const NO_PURCHASES: PurchaseDoc[] = []
 const NO_LOGS: AuditLogDoc[] = []
-const NOOP = () => undefined
 
-function useLive<T>(key: string | null, initial: T, subscribe: Subscribe<T>): LiveResult<T> {
+function rowId(row: Row): string {
+  return typeof row.id === 'string' ? row.id : ''
+}
+
+function rowsOf(value: unknown): Row[] {
+  return Array.isArray(value) ? (value as Row[]) : []
+}
+
+/** TimestampValue ({seconds,nanoseconds}) -> epoch ms for client-side sorting. */
+function timestampKey(value: unknown): number {
+  if (value && typeof value === 'object') {
+    const seconds = (value as { seconds?: unknown }).seconds
+    const nanoseconds = (value as { nanoseconds?: unknown }).nanoseconds
+    if (typeof seconds === 'number') {
+      return seconds * 1000 + (typeof nanoseconds === 'number' ? nanoseconds / 1_000_000 : 0)
+    }
+  }
+  return 0
+}
+
+function newestFirst(purchases: PurchaseDoc[]): PurchaseDoc[] {
+  return [...purchases].sort((a, b) => timestampKey(b.createdAt) - timestampKey(a.createdAt))
+}
+
+function mapTeams(value: unknown): TeamDoc[] {
+  return rowsOf(value)
+    .map((row) => (rowId(row) ? toTeamDoc(rowId(row), row) : null))
+    .filter((team): team is TeamDoc => team !== null)
+}
+
+function mapPlayers(value: unknown): PlayerDoc[] {
+  return rowsOf(value)
+    .map((row) => (rowId(row) ? toPlayerDoc(rowId(row), row) : null))
+    .filter((player): player is PlayerDoc => player !== null)
+}
+
+function mapPurchases(value: unknown): PurchaseDoc[] {
+  return rowsOf(value)
+    .map((row) => (rowId(row) ? toPurchaseDoc(rowId(row), row) : null))
+    .filter((purchase): purchase is PurchaseDoc => purchase !== null)
+}
+
+/** True when this browser holds a team session for the given event (and team). */
+function hasTeamSessionFor(eventId: string | null, teamId?: string | null): boolean {
+  if (!eventId) return false
+  const session = readStoredSession('team')
+  if (!session || session.eventId !== eventId) return false
+  if (teamId && session.teamId !== teamId) return false
+  return true
+}
+
+function usePolled<T>(key: string | null, initial: T, fetcher: () => Promise<T>): LiveResult<T> {
   const [state, setState] = useState<LiveResult<T>>({
     data: initial,
     loading: key !== null,
     error: null,
     fromCache: false,
   })
+  const fetcherRef = useRef(fetcher)
+  fetcherRef.current = fetcher
 
   useEffect(() => {
     if (key === null) {
       setState({ data: initial, loading: false, error: null, fromCache: false })
       return
     }
-    const services = getFirebase()
-    if (!services) {
+    if (!getSupabase()) {
       setState({
         data: initial,
         loading: false,
-        error: toFriendlyError(new Error('Firebase is not configured.')),
+        error: toFriendlyError(new Error('Supabase is not configured.')),
         fromCache: false,
       })
       return
     }
 
+    let active = true
+    let haveData = false
     setState({ data: initial, loading: true, error: null, fromCache: false })
 
-    let active = true
-    const unsubscribe = subscribe(
-      services,
-      (value, fromCache) => {
-        if (active) setState({ data: value, loading: false, error: null, fromCache })
-      },
-      (error) => {
-        if (active) {
-          setState((previous) => ({ ...previous, loading: false, error: toFriendlyError(error) }))
+    const load = async (): Promise<void> => {
+      if (!active || document.hidden) return
+      try {
+        const value = await fetcherRef.current()
+        if (!active) return
+        haveData = true
+        setState({ data: value, loading: false, error: null, fromCache: false })
+      } catch (error) {
+        if (!active) return
+        if (haveData) {
+          // Keep showing the last good snapshot; the badge explains that the
+          // refresh failed.
+          setState((previous) => ({ ...previous, loading: false, error: null, fromCache: true }))
+        } else {
+          setState({ data: initial, loading: false, error: toFriendlyError(error), fromCache: false })
         }
-      },
-    )
+      }
+    }
+
+    void load()
+    const timer = window.setInterval(() => void load(), pollIntervalMs)
+    const refresh = (): void => {
+      if (!document.hidden) void load()
+    }
+    document.addEventListener('visibilitychange', refresh)
+    window.addEventListener('focus', refresh)
 
     return () => {
       active = false
-      unsubscribe()
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', refresh)
+      window.removeEventListener('focus', refresh)
     }
-    // `subscribe` closes over the same parameters as `key`, so re-subscribing
-    // on key change is sufficient.
+    // The fetcher closes over the same parameters as `key`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key])
 
   return state
 }
 
-function querySubscribe<T>(build: (services: FirebaseServices) => Query<T> | null): Subscribe<T[]> {
-  return (services, emit, fail) => {
-    const q = build(services)
-    if (!q) return NOOP
-    return onSnapshot(
-      q,
-      { includeMetadataChanges: true },
-      (snapshot: QuerySnapshot<T>) => emit(snapshot.docs.map((entry) => entry.data()), snapshot.metadata.fromCache),
-      fail,
-    )
-  }
-}
-
-function docSubscribe<T>(build: (services: FirebaseServices) => DocumentReference<T> | null): Subscribe<T | null> {
-  return (services, emit, fail) => {
-    const ref = build(services)
-    if (!ref) return NOOP
-    return onSnapshot(
-      ref,
-      { includeMetadataChanges: true },
-      (snapshot) => emit(snapshot.data() ?? null, snapshot.metadata.fromCache),
-      fail,
-    )
-  }
-}
-
 /* --------------------------------- event ---------------------------------- */
 
 export function useEvent(eventId: string | null): LiveResult<EventDoc | null> {
-  return useLive(
-    eventId,
-    null,
-    docSubscribe((services) =>
-      eventId ? doc(services.db, 'events', eventId).withConverter(eventConverter) : null,
-    ),
-  )
+  return usePolled(eventId ? `event:${eventId}` : null, null, async () => {
+    const row = await readAdminResource<Row | null>('event', { eventId })
+    if (!row) return null
+    return toEventDoc(rowId(row) || (eventId ?? ''), row)
+  })
 }
 
-/** Public, non-sensitive config document (`config/app`). */
+/** Public, non-sensitive config document (`app_config.id = 'app'`). */
 export function usePublicConfig(): LiveResult<PublicConfigDoc | null> {
-  return useLive(
-    'config/app',
-    null,
-    docSubscribe((services) =>
-      doc(services.db, 'config', 'app').withConverter(publicConfigConverter),
-    ),
-  )
+  return usePolled('config/app', null, async () => {
+    const row = await readPublicConfig()
+    return row ? toPublicConfigDoc(row) : null
+  })
 }
 
 /* ------------------------------ admin queries ----------------------------- */
 
 export function useTeams(eventId: string | null): LiveResult<TeamDoc[]> {
-  return useLive(
-    eventId ? `teams:${eventId}` : null,
-    NO_TEAMS,
-    querySubscribe((services) =>
-      eventId
-        ? collection(services.db, 'events', eventId, 'teams').withConverter(teamConverter)
-        : null,
-    ),
+  return usePolled(eventId ? `teams:${eventId}` : null, NO_TEAMS, async () =>
+    mapTeams(await readAdminResource<unknown>('teams', { eventId })),
   )
 }
 
 export function usePlayers(eventId: string | null): LiveResult<PlayerDoc[]> {
-  return useLive(
-    eventId ? `players:${eventId}` : null,
-    NO_PLAYERS,
-    querySubscribe((services) =>
-      eventId
-        ? collection(services.db, 'events', eventId, 'players').withConverter(playerConverter)
-        : null,
-    ),
+  return usePolled(eventId ? `players:${eventId}` : null, NO_PLAYERS, async () =>
+    mapPlayers(await readAdminResource<unknown>('players', { eventId })),
   )
 }
 
 /** Newest-first purchases, capped at `max` documents. */
 export function usePurchases(eventId: string | null, max = 50): LiveResult<PurchaseDoc[]> {
-  return useLive(
-    eventId ? `purchases:${eventId}:${max}` : null,
-    NO_PURCHASES,
-    querySubscribe((services) =>
-      eventId
-        ? query(
-            collection(services.db, 'events', eventId, 'purchases').withConverter(purchaseConverter),
-            orderBy('createdAt', 'desc'),
-            fsLimit(max),
-          )
-        : null,
-    ),
-  )
+  return usePolled(eventId ? `purchases:${eventId}:${max}` : null, NO_PURCHASES, async () => {
+    const all = mapPurchases(await readAdminResource<unknown>('purchases', { eventId }))
+    return newestFirst(all).slice(0, max)
+  })
 }
 
 /** Newest-first audit logs (admin-only reads), capped at `max` documents. */
 export function useAuditLogs(eventId: string | null, max = 50): LiveResult<AuditLogDoc[]> {
-  return useLive(
-    eventId ? `auditLogs:${eventId}:${max}` : null,
-    NO_LOGS,
-    querySubscribe((services) =>
-      eventId
-        ? query(
-            collection(services.db, 'events', eventId, 'auditLogs').withConverter(auditLogConverter),
-            orderBy('createdAt', 'desc'),
-            fsLimit(max),
-          )
-        : null,
-    ),
-  )
+  return usePolled(eventId ? `auditLogs:${eventId}:${max}` : null, NO_LOGS, async () => {
+    const value = await readAdminResource<unknown>('audit', { eventId, limit: max })
+    return rowsOf(value)
+      .map((row) => (rowId(row) ? toAuditLogDoc(rowId(row), row) : null))
+      .filter((log): log is AuditLogDoc => log !== null)
+      .slice(0, max)
+  })
 }
 
 /* ------------------------------ team queries ------------------------------ */
 
+/**
+ * One team document. The team panel reads it through `api_team_read` (which
+ * only ever returns the caller's own team); the admin console reads it from
+ * the event team list.
+ */
 export function useTeamDoc(
   eventId: string | null,
   teamId: string | null,
 ): LiveResult<TeamDoc | null> {
-  return useLive(
-    eventId && teamId ? `team:${eventId}:${teamId}` : null,
-    null,
-    docSubscribe((services) =>
-      eventId && teamId
-        ? doc(services.db, 'events', eventId, 'teams', teamId).withConverter(teamConverter)
-        : null,
-    ),
-  )
+  return usePolled(eventId && teamId ? `team:${eventId}:${teamId}` : null, null, async () => {
+    if (hasTeamSessionFor(eventId, teamId)) {
+      const state = await readTeamResource<{ team?: unknown }>('state')
+      const row = state.team as Row | undefined
+      if (!row || !rowId(row)) return null
+      return toTeamDoc(rowId(row), row)
+    }
+    const teams = mapTeams(await readAdminResource<unknown>('teams', { eventId }))
+    return teams.find((team) => team.id === teamId) ?? null
+  })
 }
 
 /** The team's own purchase history, newest first. */
@@ -240,18 +247,16 @@ export function useTeamPurchases(
   teamId: string | null,
   max = 200,
 ): LiveResult<PurchaseDoc[]> {
-  return useLive(
+  return usePolled(
     eventId && teamId ? `teamPurchases:${eventId}:${teamId}:${max}` : null,
     NO_PURCHASES,
-    querySubscribe((services) =>
-      eventId && teamId
-        ? query(
-            collection(services.db, 'events', eventId, 'purchases').withConverter(purchaseConverter),
-            where('teamId', '==', teamId),
-            orderBy('createdAt', 'desc'),
-            fsLimit(max),
-          )
-        : null,
-    ),
+    async () => {
+      if (hasTeamSessionFor(eventId, teamId)) {
+        const state = await readTeamResource<{ purchases?: unknown }>('state')
+        return newestFirst(mapPurchases(state.purchases)).slice(0, max)
+      }
+      const all = mapPurchases(await readAdminResource<unknown>('purchases', { eventId }))
+      return newestFirst(all.filter((purchase) => purchase.teamId === teamId)).slice(0, max)
+    },
   )
 }

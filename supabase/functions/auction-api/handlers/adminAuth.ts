@@ -110,6 +110,7 @@ export const adminLogin = publicCallable({
       token,
       sessionId,
       expiresAt: expiresAt.toMillis(),
+      role: 'superAdmin' as const,
       usingDefaultCredentials: ADMIN_LOGIN_USING_DEFAULTS,
     }
   },
