@@ -9,6 +9,7 @@ import { EmptyState, LoadingBlock } from '@/components/ui/Feedback'
 import { Pill } from '@/components/ui/StatusPill'
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar'
 import { SpotlightPlayerCard } from '@/features/auction/SpotlightPlayerCard'
+import { subscribeToAuctionRealtime } from '@/lib/realtime'
 
 function getTeamInitials(name: string): string {
   const trimmed = name.trim()
@@ -36,6 +37,13 @@ export function TeamPanelPage() {
   const eventLive = useTeamEvent(context?.eventId ?? null)
   const purchases = useTeamPurchases(context?.eventId ?? null, context?.teamId ?? null, 200)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Subscribes to real-time auction broadcasts for instantaneous card display
+  useEffect(() => {
+    if (!context?.eventId) return
+    const unsubscribe = subscribeToAuctionRealtime(context.eventId)
+    return unsubscribe
+  }, [context?.eventId])
 
   // A revoked/expired session (or a deactivated team) surfaces as a read
   // failure; end the local session so the PIN screen explains what happened.

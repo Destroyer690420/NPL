@@ -42,5 +42,5 @@ export const auctionFunctionName = read('VITE_AUCTION_FUNCTION_NAME') || 'auctio
 /** Optional: override the event id used by the app (defaults to the public config). */
 export const defaultEventIdOverride = read('VITE_DEFAULT_EVENT_ID') || null
 
-/** How often live pages re-fetch their data (polling replaces realtime). */
-export const pollIntervalMs = 4000
+/** How often live pages re-fetch their data (fast auto-refresh). */
+export const pollIntervalMs = 2000

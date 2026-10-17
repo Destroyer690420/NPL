@@ -1,5 +1,5 @@
 import { NavLink, Navigate, Outlet, useNavigate } from 'react-router'
-import type { ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
 import {
   LayoutDashboard,
   ReceiptText,
@@ -15,6 +15,7 @@ import { CreateEventPanel } from '@/features/events/CreateEventPanel'
 import { LoadingBlock } from '@/components/ui/Feedback'
 import { SpotlightPlayerCard } from '@/features/auction/SpotlightPlayerCard'
 import { clearSpotlightPlayer } from '@/services/admin'
+import { subscribeToAuctionRealtime } from '@/lib/realtime'
 import { useToast } from '@/components/ui/Toast'
 import { cn } from '@/lib/cn'
 
@@ -41,6 +42,12 @@ export function AdminShell() {
   const navigate = useNavigate()
   const toast = useToast()
   const { event, eventId, loading, error, fromCache } = useAdminEvent()
+
+  useEffect(() => {
+    if (!eventId) return
+    const unsubscribe = subscribeToAuctionRealtime(eventId)
+    return unsubscribe
+  }, [eventId])
 
   if (loading && !event && !error) {
     return <LoadingBlock label="Loading event…" />

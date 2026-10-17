@@ -170,14 +170,36 @@ function usePolled<T>(key: string | null, initial: T, fetcher: () => Promise<T>)
     const refresh = (): void => {
       if (!document.hidden) void load()
     }
+    const onSpotlightChange = (e: Event): void => {
+      const custom = e as CustomEvent<{ eventId: string; spotlightPlayer: import('@shared/types').SpotlightPlayer | null }>
+      if (!active) return
+      setState((previous) => {
+        if (!previous.data || typeof previous.data !== 'object') return previous
+        const doc = previous.data as Record<string, unknown>
+        if ('spotlightPlayer' in doc) {
+          return {
+            ...previous,
+            data: {
+              ...doc,
+              spotlightPlayer: custom.detail?.spotlightPlayer ?? null,
+            } as T,
+          }
+        }
+        return previous
+      })
+      void load()
+    }
+
     document.addEventListener('visibilitychange', refresh)
     window.addEventListener('focus', refresh)
+    window.addEventListener('auction:spotlight_change', onSpotlightChange)
 
     return () => {
       active = false
       window.clearInterval(timer)
       document.removeEventListener('visibilitychange', refresh)
       window.removeEventListener('focus', refresh)
+      window.removeEventListener('auction:spotlight_change', onSpotlightChange)
     }
     // The fetcher closes over the same parameters as `key`.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -290,7 +312,8 @@ export function useTeamEvent(eventId: string | null): LiveResult<EventDoc | null
     if (!eventId) return null
     const state = await readTeamResource<{ event?: unknown }>('state')
     const row = state.event as Row | undefined
-    if (!row || !rowId(row)) return null
-    return toEventDoc(rowId(row), row)
+    if (!row) return null
+    const id = rowId(row) || eventId
+    return toEventDoc(id, row)
   })
 }

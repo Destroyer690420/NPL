@@ -1,4 +1,5 @@
 import { callFunction } from './callables'
+import { broadcastSpotlight } from '@/lib/realtime'
 import type { EventStatus, PlayerStatus } from '@shared/types'
 import type { TeamSummary } from '@shared/types'
 
@@ -247,8 +248,10 @@ export interface RecordPurchaseResult {
   idempotentReplay: boolean
 }
 
-export function recordPurchase(input: RecordPurchaseInput): Promise<RecordPurchaseResult> {
-  return callFunction('recordPurchase', input)
+export async function recordPurchase(input: RecordPurchaseInput): Promise<RecordPurchaseResult> {
+  const result: RecordPurchaseResult = await callFunction('recordPurchase', input)
+  broadcastSpotlight(input.eventId, null)
+  return result
 }
 
 export interface ReversePurchaseResult {
@@ -289,13 +292,17 @@ export interface SetSpotlightPlayerResult {
   spotlightPlayer: import('@shared/types').SpotlightPlayer | null
 }
 
-export function setSpotlightPlayer(
+export async function setSpotlightPlayer(
   eventId: string,
   playerId: string | null,
 ): Promise<SetSpotlightPlayerResult> {
-  return callFunction('setSpotlightPlayer', { eventId, playerId })
+  const result: SetSpotlightPlayerResult = await callFunction('setSpotlightPlayer', { eventId, playerId })
+  broadcastSpotlight(eventId, result.spotlightPlayer)
+  return result
 }
 
-export function clearSpotlightPlayer(eventId: string): Promise<SetSpotlightPlayerResult> {
-  return callFunction('setSpotlightPlayer', { eventId, playerId: null })
+export async function clearSpotlightPlayer(eventId: string): Promise<SetSpotlightPlayerResult> {
+  const result: SetSpotlightPlayerResult = await callFunction('setSpotlightPlayer', { eventId, playerId: null })
+  broadcastSpotlight(eventId, null)
+  return result
 }
