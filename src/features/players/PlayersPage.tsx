@@ -14,7 +14,7 @@ import { EmptyState, LoadingBlock } from '@/components/ui/Feedback'
 import { PlayerStatusPill } from '@/components/ui/StatusPill'
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar'
 import { useToast } from '@/components/ui/Toast'
-import { createPlayer, setPlayerStatus, updatePlayer, setSpotlightPlayer, clearSpotlightPlayer } from '@/services/admin'
+import { createPlayer, setPlayerStatus, updatePlayer } from '@/services/admin'
 import { isCallError } from '@/services/callables'
 import { errorMessage } from '@/lib/errors'
 import { cn } from '@/lib/cn'
@@ -130,28 +130,6 @@ export function PlayersPage() {
     }
   }
 
-  async function handleToggleSpotlight(player: PlayerDoc): Promise<void> {
-    setActionBusyId(`spotlight-${player.id}`)
-    try {
-      if (event?.spotlightPlayer?.playerId === player.id) {
-        await clearSpotlightPlayer(eventId)
-        toast.push({
-          kind: 'info',
-          message: `${player.name} removed from live auction card.`,
-        })
-      } else {
-        await setSpotlightPlayer(eventId, player.id)
-        toast.push({
-          kind: 'success',
-          message: `${player.name} is now LIVE on everyone's screen!`,
-        })
-      }
-    } catch (error) {
-      toast.push({ kind: 'error', message: isCallError(error) ? error.message : errorMessage(error) })
-    } finally {
-      setActionBusyId(null)
-    }
-  }
 
   return (
     <div>
@@ -269,25 +247,6 @@ export function PlayersPage() {
                         </td>
                         <td className="px-4 py-3 text-right sm:px-5">
                           <div className="flex justify-end items-center gap-2">
-                            {player.status === 'available' ? (
-                              <Button
-                                variant={isSpotlighted ? 'primary' : 'secondary'}
-                                size="sm"
-                                loading={actionBusyId === `spotlight-${player.id}`}
-                                icon={
-                                  <Radio
-                                    className={cn(
-                                      'size-3.5',
-                                      isSpotlighted ? 'animate-pulse text-amber-950' : 'text-accent',
-                                    )}
-                                    aria-hidden
-                                  />
-                                }
-                                onClick={() => void handleToggleSpotlight(player)}
-                              >
-                                {isSpotlighted ? 'In Auction' : 'Auction'}
-                              </Button>
-                            ) : null}
                             <Button variant="ghost" size="sm" onClick={() => openEdit(player)}>
                               Edit
                             </Button>

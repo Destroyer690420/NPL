@@ -14,7 +14,7 @@ import type { AdminOutletContext } from '@/app/outlet'
 import { useAdminEvent } from '@/app/AdminEventProvider'
 import { usePlayers, usePurchases, useTeams } from '@/data/hooks'
 import { isCallError } from '@/services/callables'
-import { recordPurchase, clearSpotlightPlayer, type RecordPurchaseResult } from '@/services/admin'
+import { recordPurchase, clearSpotlightPlayer, setSpotlightPlayer, type RecordPurchaseResult } from '@/services/admin'
 import { fetchPurchaseFromServer } from '@/services/reads'
 import { newRequestId } from '@/lib/ids'
 import { errorMessage, toFriendlyError, type FriendlyError } from '@/lib/errors'
@@ -72,6 +72,9 @@ export function RecordPurchasePage() {
   useEffect(() => {
     if (queryPlayerId) {
       setPlayerId(queryPlayerId)
+      if (event?.spotlightPlayer?.playerId !== queryPlayerId) {
+        void setSpotlightPlayer(eventId, queryPlayerId).catch(() => {})
+      }
     } else if (event?.spotlightPlayer?.playerId && !playerId) {
       setPlayerId(event.spotlightPlayer.playerId)
     }
@@ -81,6 +84,8 @@ export function RecordPurchasePage() {
     try {
       setClosingSpotlight(true)
       await clearSpotlightPlayer(eventId)
+      setPlayerId(null)
+      setPriceText('')
       toast.push({ kind: 'info', message: 'Live auction card closed.' })
     } catch {
       toast.push({ kind: 'error', message: 'Failed to close auction card.' })
@@ -424,6 +429,17 @@ export function RecordPurchasePage() {
                 onChange={(id) => {
                   setPlayerId(id)
                   setSubmit((current) => (current.kind === 'failed' ? { kind: 'idle' } : current))
+                  if (id) {
+                    if (event?.spotlightPlayer?.playerId !== id) {
+                      void setSpotlightPlayer(eventId, id).catch((err) => {
+                        toast.push({ kind: 'error', message: isCallError(err) ? err.message : errorMessage(err) })
+                      })
+                    }
+                  } else {
+                    if (event?.spotlightPlayer) {
+                      void clearSpotlightPlayer(eventId).catch(() => {})
+                    }
+                  }
                 }}
                 placeholder="Search players by name or ID…"
                 emptyMessage="No players match. Add players before selling."
