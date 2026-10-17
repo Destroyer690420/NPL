@@ -7,6 +7,23 @@ Nothing is marked done unless it was executed and observed to work.
 
 ---
 
+> **2026-10-17 — Platform change in progress: Firebase → Supabase.**
+> The organizer's Firebase project cannot be upgraded to Blaze (no card), which blocks
+> deploying Cloud Functions and secrets. By organizer decision, the backend is ported to
+> Supabase (free tier, no card). Current state:
+> - **Phase 8 (backend) COMPLETE, committed (`6fd8b38`):** Postgres schema, deny-all
+>   security rules, an atomic write pipeline with preconditions, and a single Edge
+>   Function carrying all 19 actions. The tested domain logic and handlers were reused
+>   unchanged behind a Firestore-compatible shim. Verified: web `tsc`, edge `tsc`,
+>   116/116 unit tests, ESLint, production build.
+> - **Not yet executed against the live project:** applying the SQL migration and
+>   deploying the Edge Function (next step), then end-to-end verification.
+> - **Phase 9 (web client) NEXT:** the browser app still speaks Firebase until the
+>   client port lands (session tokens + polling reads).
+> - Firebase-specific docs (setup, rules, runbook) are rewritten when the port completes.
+
+---
+
 ## 0. Repository inspection (Phase 0) — COMPLETE
 
 | Item | Finding |
