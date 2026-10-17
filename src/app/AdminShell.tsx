@@ -1,4 +1,4 @@
-import { NavLink, Navigate, Outlet } from 'react-router'
+import { Link, NavLink, Navigate, Outlet } from 'react-router'
 import type { ReactNode } from 'react'
 import {
   LayoutDashboard,
@@ -13,7 +13,6 @@ import { useAdminAuth } from '@/auth/AdminAuthProvider'
 import { useAdminEvent } from '@/app/AdminEventProvider'
 import { ConnectionBadge } from '@/app/ConnectionBadge'
 import { CreateEventPanel } from '@/features/events/CreateEventPanel'
-import { EventStatusPill } from '@/components/ui/StatusPill'
 import { LoadingBlock } from '@/components/ui/Feedback'
 import { cn } from '@/lib/cn'
 
@@ -54,22 +53,20 @@ export function AdminShell() {
     <div className="min-h-dvh">
       <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-x-4 px-4 py-2.5 sm:px-6">
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2.5">
             <span className="h-5 w-1 rounded-full bg-accent shadow-[0_0_10px_rgba(230,0,110,0.6)]" aria-hidden />
-            <div className="flex shrink-0 items-center gap-2">
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-line bg-surface-muted text-accent">
-                <ShieldCheck className="size-4" aria-hidden />
+            <Link
+              to="/admin"
+              className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-line bg-surface-muted text-accent transition-colors hover:border-accent hover:text-white"
+              title="Dashboard"
+            >
+              <ShieldCheck className="size-4" aria-hidden />
+            </Link>
+            {!event.purchasesEnabled && event.status === 'active' ? (
+              <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">
+                paused
               </span>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="truncate text-sm font-bold tracking-tight text-ink">{event.name}</p>
-                  <EventStatusPill status={event.status} />
-                </div>
-                {!event.purchasesEnabled && event.status === 'active' ? (
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-warn">purchases paused</p>
-                ) : null}
-              </div>
-            </div>
+            ) : null}
           </div>
 
           <nav className="flex items-center gap-1 overflow-x-auto py-0.5" aria-label="Admin sections">
@@ -83,14 +80,6 @@ export function AdminShell() {
 
           <div className="flex shrink-0 items-center gap-3">
             <ConnectionBadge fromCache={fromCache} loading={loading} error={error} />
-            <div className="hidden items-center gap-2 text-xs text-ink-muted sm:flex">
-              <span className="max-w-[140px] truncate">{auth.displayName}</span>
-              {auth.role === 'superAdmin' ? (
-                <span className="rounded-md border border-accent/30 bg-accent/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-light">
-                  super
-                </span>
-              ) : null}
-            </div>
             <button
               type="button"
               onClick={() => void auth.signOut()}
