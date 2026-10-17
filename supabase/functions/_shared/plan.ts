@@ -1,4 +1,4 @@
-import { isAppErrorCode, type AppErrorCode } from './errors'
+import { isAppErrorCode, type AppErrorCode } from './errors.ts'
 
 /**
  * Domain error. Thrown inside Cloud Functions (and converted to HttpsError in

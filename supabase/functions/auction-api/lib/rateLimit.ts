@@ -1,6 +1,6 @@
-import { AppFunctionError } from './errors'
-import { logger } from './logger'
-import { supabase } from './supabase'
+import { AppFunctionError } from './errors.ts'
+import { logger } from './logger.ts'
+import { supabase } from './supabase.ts'
 
 /**
  * Fixed-window rate limiting with escalating cooldowns.

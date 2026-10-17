@@ -1,4 +1,4 @@
-import { SERVER_TIMESTAMP, type ServerTimestampMarker } from '../../_shared/plan'
+import { SERVER_TIMESTAMP, type ServerTimestampMarker } from '../../_shared/plan.ts'
 
 /**
  * Firestore-compatible API surface implemented over Supabase Postgres.

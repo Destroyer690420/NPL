@@ -1,10 +1,10 @@
-import { MAX_NOTES_LENGTH, MAX_REASON_LENGTH, MAX_ROSTER_SIZE_LIMIT, MAX_URL_LENGTH } from './constants'
-import type { ConsistencyReport } from './calculations'
-import type { AppErrorCode } from './errors'
-import { isValidAmount, isValidPoints } from './money'
-import { SERVER_TIMESTAMP, type PlannedWrite, type PlanResult } from './plan'
-import { cleanOptionalText, cleanDisplayName, isValidHttpUrl, normalizeName } from './text'
-import type { AuditAction, EventDoc, EventStatus, PlayerDoc, PlayerStatus, PurchaseDoc, TeamDoc } from './types'
+import { MAX_NOTES_LENGTH, MAX_REASON_LENGTH, MAX_ROSTER_SIZE_LIMIT, MAX_URL_LENGTH } from './constants.ts'
+import type { ConsistencyReport } from './calculations.ts'
+import type { AppErrorCode } from './errors.ts'
+import { isValidAmount, isValidPoints } from './money.ts'
+import { SERVER_TIMESTAMP, type PlannedWrite, type PlanResult } from './plan.ts'
+import { cleanOptionalText, cleanDisplayName, isValidHttpUrl, normalizeName } from './text.ts'
+import type { AuditAction, EventDoc, EventStatus, PlayerDoc, PlayerStatus, PurchaseDoc, TeamDoc } from './types.ts'
 
 /** Pure planners for admin mutations (players, teams, event settings). */
 

@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { planPurchase, planReversal, type PurchaseCommand, type PurchaseState } from './purchases'
-import { makeEvent, makePlayer, makePurchase, makeTeam } from './fixtures'
-import type { PlanResult } from './plan'
+import { planPurchase, planReversal, type PurchaseCommand, type PurchaseState } from './purchases.ts'
+import { makeEvent, makePlayer, makePurchase, makeTeam } from './fixtures.ts'
+import type { PlanResult } from './plan.ts'
 
 const REQUEST_ID = 'req_12345678-abcd'
 

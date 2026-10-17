@@ -1,4 +1,4 @@
-import { MAX_NAME_LENGTH, REQUEST_ID_PATTERN } from './constants'
+import { MAX_NAME_LENGTH, REQUEST_ID_PATTERN } from './constants.ts'
 
 /** Collapses runs of whitespace and trims. */
 export function collapseWhitespace(raw: string): string {

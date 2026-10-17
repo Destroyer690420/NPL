@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto'
-import { isServerTimestamp, type PlanResult, type PlannedWrite } from '../../_shared/plan'
+import { isServerTimestamp, type PlanResult, type PlannedWrite } from '../../_shared/plan.ts'
 import {
   toAuditLogDoc,
   toEventDoc,
@@ -9,11 +9,11 @@ import {
   toTeamDoc,
   toTeamSecretDoc,
   toTeamSessionDoc,
-} from '../../_shared/convert'
-import { AppFunctionError, fail } from './errors'
-import { isTimestampLike, type SnapshotLike } from './firestore-shim'
-import { logger } from './logger'
-import { supabase } from './supabase'
+} from '../../_shared/convert.ts'
+import { AppFunctionError, fail } from './errors.ts'
+import { isTimestampLike, type SnapshotLike } from './firestore-shim.ts'
+import { logger } from './logger.ts'
+import { supabase } from './supabase.ts'
 
 /**
  * Document references + the atomic write pipeline.

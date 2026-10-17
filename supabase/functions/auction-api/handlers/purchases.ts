@@ -1,15 +1,15 @@
-import { recordPurchaseSchema, reversePurchaseSchema } from '../../_shared/schemas'
-import { planPurchase, planReversal } from '../../_shared/purchases'
-import { adminCallable } from '../lib/callables'
-import { unwrapPlan } from '../lib/errors'
-import { auditRef, db } from '../lib/refs'
+import { recordPurchaseSchema, reversePurchaseSchema } from '../../_shared/schemas.ts'
+import { planPurchase, planReversal } from '../../_shared/purchases.ts'
+import { adminCallable } from '../lib/callables.ts'
+import { unwrapPlan } from '../lib/errors.ts'
+import { auditRef, db } from '../lib/refs.ts'
 import {
   applyWrites,
   readEventTx,
   readPlayerTx,
   readPurchaseTx,
   readTeamTx,
-} from '../lib/store'
+} from '../lib/store.ts'
 
 /**
  * Records a purchase.

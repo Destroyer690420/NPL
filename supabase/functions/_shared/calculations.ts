@@ -1,5 +1,5 @@
-import { addInts, subtractInts } from './money'
-import type { EventDoc, PlayerDoc, PurchaseDoc, TeamDoc, TeamSummary } from './types'
+import { addInts, subtractInts } from './money.ts'
+import type { EventDoc, PlayerDoc, PurchaseDoc, TeamDoc, TeamSummary } from './types.ts'
 
 /**
  * Derived totals. These pure helpers are the single source of truth for purse,

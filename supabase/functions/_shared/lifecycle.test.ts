@@ -1,10 +1,10 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { planCreateEvent, planCreatePlayer, planCreateTeam } from './mutations'
-import { planPurchase, planReversal } from './purchases'
-import { computeTeamSummary, validateEventConsistency } from './calculations'
-import type { PlannedWrite, PlanResult } from './plan'
-import type { EventDoc, PlayerDoc, PurchaseDoc, TeamDoc } from './types'
+import { planCreateEvent, planCreatePlayer, planCreateTeam } from './mutations.ts'
+import { planPurchase, planReversal } from './purchases.ts'
+import { computeTeamSummary, validateEventConsistency } from './calculations.ts'
+import type { PlannedWrite, PlanResult } from './plan.ts'
+import type { EventDoc, PlayerDoc, PurchaseDoc, TeamDoc } from './types.ts'
 
 /**
  * In-memory stand-in for Firestore that applies the exact writes a planner

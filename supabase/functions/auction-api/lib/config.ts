@@ -1,4 +1,4 @@
-import { readEnv } from './supabase'
+import { readEnv } from './supabase.ts'
 
 /**
  * Runtime configuration for the auction Edge Function.

@@ -1,8 +1,8 @@
 import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto'
-import { PIN_MAX, PIN_MIN } from '../../_shared/constants'
-import { AppFunctionError, fail } from './errors'
-import { logger } from './logger'
-import { readEnv, supabase } from './supabase'
+import { PIN_MAX, PIN_MIN } from '../../_shared/constants.ts'
+import { AppFunctionError, fail } from './errors.ts'
+import { logger } from './logger.ts'
+import { readEnv, supabase } from './supabase.ts'
 
 /**
  * PIN and session-token handling.

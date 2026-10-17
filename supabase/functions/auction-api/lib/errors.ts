@@ -1,6 +1,6 @@
-import { isAppErrorCode, type AppErrorCode } from '../../_shared/errors'
-import { DomainError, isDomainError, type PlannedWrite, type PlanResult } from '../../_shared/plan'
-import { logger } from './logger'
+import { isAppErrorCode, type AppErrorCode } from '../../_shared/errors.ts'
+import { DomainError, isDomainError, type PlannedWrite, type PlanResult } from '../../_shared/plan.ts'
+import { logger } from './logger.ts'
 
 /**
  * Typed application error. The entry point converts it into the JSON error

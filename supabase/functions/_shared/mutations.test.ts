@@ -10,10 +10,10 @@ import {
   planUpdatePlayer,
   planUpdateTeam,
   validatePlayerInput,
-} from './mutations'
-import { makeEvent, makePlayer, makePurchase, makeTeam } from './fixtures'
-import { validateEventConsistency } from './calculations'
-import type { PlanResult } from './plan'
+} from './mutations.ts'
+import { makeEvent, makePlayer, makePurchase, makeTeam } from './fixtures.ts'
+import { validateEventConsistency } from './calculations.ts'
+import type { PlanResult } from './plan.ts'
 
 function expectFailure(result: PlanResult<unknown>, code: string) {
   expect(result.ok).toBe(false)

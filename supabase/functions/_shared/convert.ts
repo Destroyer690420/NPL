@@ -9,7 +9,7 @@ import type {
   TeamSecretDoc,
   TeamSessionDoc,
   TimestampValue,
-} from './types'
+} from './types.ts'
 
 /**
  * Document converters shared by the Cloud Functions (Admin SDK) and the web

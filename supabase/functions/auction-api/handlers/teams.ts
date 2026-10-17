@@ -1,9 +1,9 @@
-import { FieldValue, type Transaction } from '../lib/firestore-shim'
-import { createTeamSchema, revokeTeamSessionsSchema, teamIdSchema, updateTeamSchema } from '../../_shared/schemas'
-import { planCreateTeam, planUpdateTeam } from '../../_shared/mutations'
-import { normalizeName } from '../../_shared/text'
-import { adminCallable } from '../lib/callables'
-import { fail, unwrapPlan } from '../lib/errors'
+import { FieldValue, type Transaction } from '../lib/firestore-shim.ts'
+import { createTeamSchema, revokeTeamSessionsSchema, teamIdSchema, updateTeamSchema } from '../../_shared/schemas.ts'
+import { planCreateTeam, planUpdateTeam } from '../../_shared/mutations.ts'
+import { normalizeName } from '../../_shared/text.ts'
+import { adminCallable } from '../lib/callables.ts'
+import { fail, unwrapPlan } from '../lib/errors.ts'
 import {
   PIN_SECRET_PARAM,
   generatePin,
@@ -11,8 +11,8 @@ import {
   pinLookupHash,
   pinVerifierHash,
   pinSecret,
-} from '../lib/pin'
-import { auditCollection, auditRef, db, pinIndexRef, secretRef, teamsCollection } from '../lib/refs'
+} from '../lib/pin.ts'
+import { auditCollection, auditRef, db, pinIndexRef, secretRef, teamsCollection } from '../lib/refs.ts'
 import {
   applyWrites,
   getSecret,
@@ -21,7 +21,7 @@ import {
   readSecretTx,
   readTeamTx,
   revokeTeamSessions,
-} from '../lib/store'
+} from '../lib/store.ts'
 
 /**
  * Generates a four digit PIN whose lookup hash is not already taken.

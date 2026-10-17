@@ -1,9 +1,9 @@
 import type { z } from 'zod'
-import type { AppErrorCode } from '../../_shared/errors'
-import { firstIssueMessage } from '../../_shared/schemas'
-import { ALLOWED_ORIGINS } from './config'
-import { AppFunctionError, fail, invalidArgument, toFunctionError } from './errors'
-import { supabase } from './supabase'
+import type { AppErrorCode } from '../../_shared/errors.ts'
+import { firstIssueMessage } from '../../_shared/schemas.ts'
+import { ALLOWED_ORIGINS } from './config.ts'
+import { AppFunctionError, fail, invalidArgument, toFunctionError } from './errors.ts'
+import { supabase } from './supabase.ts'
 
 /**
  * Handler framework for the Edge Function.

@@ -1,10 +1,10 @@
-import type { Transaction } from '../lib/firestore-shim'
-import { createPlayerSchema, importPlayersSchema, setPlayerStatusSchema, updatePlayerSchema } from '../../_shared/schemas'
-import { planCreatePlayer, planImportPlayers, planSetPlayerStatus, planUpdatePlayer } from '../../_shared/mutations'
-import { adminCallable } from '../lib/callables'
-import { fail, unwrapPlan } from '../lib/errors'
-import { newId } from '../lib/pin'
-import { auditRef, db, playersCollection } from '../lib/refs'
+import type { Transaction } from '../lib/firestore-shim.ts'
+import { createPlayerSchema, importPlayersSchema, setPlayerStatusSchema, updatePlayerSchema } from '../../_shared/schemas.ts'
+import { planCreatePlayer, planImportPlayers, planSetPlayerStatus, planUpdatePlayer } from '../../_shared/mutations.ts'
+import { adminCallable } from '../lib/callables.ts'
+import { fail, unwrapPlan } from '../lib/errors.ts'
+import { newId } from '../lib/pin.ts'
+import { auditRef, db, playersCollection } from '../lib/refs.ts'
 import {
   applyWrites,
   readEventTx,
@@ -12,7 +12,7 @@ import {
   readPlayersTx,
   readPurchaseTx,
   readTeamTx,
-} from '../lib/store'
+} from '../lib/store.ts'
 
 async function externalReferenceTaken(
   tx: Transaction,

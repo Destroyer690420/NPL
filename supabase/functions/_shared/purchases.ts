@@ -3,13 +3,13 @@ import {
   isTeamConsistent,
   summaryFromTeam,
   type PurchaseLite,
-} from './calculations'
-import type { AppErrorCode } from './errors'
-import { addInts, isValidAmount, subtractInts } from './money'
-import { SERVER_TIMESTAMP, type PlannedWrite, type PlanResult, type ServerTimestampMarker } from './plan'
-import { cleanOptionalText, collapseWhitespace, isValidRequestId } from './text'
-import { MAX_REASON_LENGTH, MIN_REASON_LENGTH } from './constants'
-import type { EventDoc, PlayerDoc, PurchaseDoc, TeamDoc, TeamSummary } from './types'
+} from './calculations.ts'
+import type { AppErrorCode } from './errors.ts'
+import { addInts, isValidAmount, subtractInts } from './money.ts'
+import { SERVER_TIMESTAMP, type PlannedWrite, type PlanResult, type ServerTimestampMarker } from './plan.ts'
+import { cleanOptionalText, collapseWhitespace, isValidRequestId } from './text.ts'
+import { MAX_REASON_LENGTH, MIN_REASON_LENGTH } from './constants.ts'
+import type { EventDoc, PlayerDoc, PurchaseDoc, TeamDoc, TeamSummary } from './types.ts'
 
 /**
  * Pure purchase planning.

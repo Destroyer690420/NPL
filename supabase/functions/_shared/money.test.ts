@@ -1,8 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { parseAmountInput, parseIntegerInput, parsePointsInput } from './money'
-import { isValidRequestId, normalizeName, cleanDisplayName, isValidHttpUrl } from './text'
-import { MAX_AMOUNT } from './constants'
+import { parseAmountInput, parseIntegerInput, parsePointsInput } from './money.ts'
+import { isValidRequestId, normalizeName, cleanDisplayName, isValidHttpUrl } from './text.ts'
+import { MAX_AMOUNT } from './constants.ts'
 
 describe('parseIntegerInput', () => {
   it('parses plain integers', () => {

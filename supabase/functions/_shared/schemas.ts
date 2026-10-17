@@ -10,8 +10,8 @@ import {
   MIN_REASON_LENGTH,
   PIN_LENGTH,
   REQUEST_ID_PATTERN,
-} from './constants'
-import { isValidHttpUrl } from './text'
+} from './constants.ts'
+import { isValidHttpUrl } from './text.ts'
 
 /**
  * Zod schemas for every privileged Cloud Function input. The server always

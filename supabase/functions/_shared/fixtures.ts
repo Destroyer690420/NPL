@@ -1,4 +1,4 @@
-import type { EventDoc, PlayerDoc, PurchaseDoc, TeamDoc } from './types'
+import type { EventDoc, PlayerDoc, PurchaseDoc, TeamDoc } from './types.ts'
 
 /** Test fixtures. Kept out of the production build by the `.test` naming rule. */
 

@@ -1,22 +1,22 @@
-import { createEventSchema, eventIdSchema, updateEventSchema } from '../../_shared/schemas'
-import { DEFAULT_EVENT_ID } from '../../_shared/constants'
-import { computeEventTotals, validateEventConsistency } from '../../_shared/calculations'
+import { createEventSchema, eventIdSchema, updateEventSchema } from '../../_shared/schemas.ts'
+import { DEFAULT_EVENT_ID } from '../../_shared/constants.ts'
+import { computeEventTotals, validateEventConsistency } from '../../_shared/calculations.ts'
 import {
   planCreateEvent,
   planEventConsistencyCheck,
   planSetDefaultEvent,
   planUpdateEvent,
-} from '../../_shared/mutations'
-import { adminCallable } from '../lib/callables'
-import { unwrapPlan } from '../lib/errors'
-import { auditRef, configRef, db } from '../lib/refs'
+} from '../../_shared/mutations.ts'
+import { adminCallable } from '../lib/callables.ts'
+import { unwrapPlan } from '../lib/errors.ts'
+import { auditRef, configRef, db } from '../lib/refs.ts'
 import {
   applyWrites,
   readEventTx,
   readPlayersTx,
   readPurchasesTx,
   readTeamsTx,
-} from '../lib/store'
+} from '../lib/store.ts'
 
 /** Creates an event and (when it is the first one) makes it the default event. */
 export const createEvent = adminCallable({

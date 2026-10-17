@@ -1,11 +1,12 @@
 # Dependencies
 node_modules/
-functions/node_modules/
 
 # Build output
 dist/
-functions/lib/
 *.tsbuildinfo
+
+# Supabase CLI local link state (machine-specific)
+supabase/.temp/
 
 # Environment / local secrets
 .env
@@ -22,7 +23,6 @@ ui-debug.log
 serviceAccount*.json
 *-service-account.json
 service-account*.json
-functions/serviceAccount*.json
 .runtimeconfig.json
 
 # Editor / OS

@@ -1,15 +1,15 @@
 import { z } from 'zod'
-import { verifyTeamPinSchema } from '../../_shared/schemas'
-import { timestampToMillis } from '../../_shared/convert'
+import { verifyTeamPinSchema } from '../../_shared/schemas.ts'
+import { timestampToMillis } from '../../_shared/convert.ts'
 import {
   PIN_ATTEMPT_LIMIT,
   PIN_ATTEMPT_WINDOW_MINUTES,
   PIN_GLOBAL_ATTEMPT_LIMIT,
   sessionTtlMs,
-} from '../lib/config'
-import { publicCallable, rateLimited, teamCallable } from '../lib/callables'
-import { fail } from '../lib/errors'
-import { Timestamp } from '../lib/firestore-shim'
+} from '../lib/config.ts'
+import { publicCallable, rateLimited, teamCallable } from '../lib/callables.ts'
+import { fail } from '../lib/errors.ts'
+import { Timestamp } from '../lib/firestore-shim.ts'
 import {
   PIN_SECRET_PARAM,
   hashValue,
@@ -20,10 +20,10 @@ import {
   pinVerifierHash,
   safeEqualHex,
   sessionTokenHash,
-} from '../lib/pin'
-import { RateLimiter } from '../lib/rateLimit'
-import { auditCollection, db, fetchDocById, sessionRef } from '../lib/refs'
-import { getConfig, getEvent, getSecret, getSession, getTeam } from '../lib/store'
+} from '../lib/pin.ts'
+import { RateLimiter } from '../lib/rateLimit.ts'
+import { auditCollection, db, fetchDocById, sessionRef } from '../lib/refs.ts'
+import { getConfig, getEvent, getSecret, getSession, getTeam } from '../lib/store.ts'
 
 /**
  * Team PIN verification.

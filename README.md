@@ -247,10 +247,11 @@ all pass.
 
 Honest limitations — read this before a real event:
 
-- **Live end-to-end verification is the remaining step.** The code is fully ported and everything
-  that can be verified offline has been; the migrations were applied to the live project on
-  2026-10-17, but the edge function had not yet been deployed and no live purchase had been
-  recorded when this file was last updated. Do the one-minute test purchase from
+- **Live end-to-end verification is the remaining step.** The code is fully ported, and the
+  deployed edge function passed live smoke tests on 2026-10-17 (admin login with sessions,
+  authenticated + public reads, CORS preflight). Two remaining items: run
+  `supabase/migrations/20261017000002_read_payload_ids.sql` in the SQL Editor (read payloads need
+  row ids for the client), then do the one-minute test purchase from
   `docs/EVENT_DAY_RUNBOOK.md` §2 before trusting the system with real sales.
 - **Admin auth is an interim shared-credential design** (admin ID/password verified server-side,
   minting an opaque session): shared identity, one secret value, no per-person accounts, no MFA.

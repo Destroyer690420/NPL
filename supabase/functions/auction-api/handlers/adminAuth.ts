@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { adminLoginSchema } from '../../_shared/schemas'
+import { adminLoginSchema } from '../../_shared/schemas.ts'
 import {
   ADMIN_LOGIN_ATTEMPT_LIMIT,
   ADMIN_LOGIN_ID,
@@ -7,14 +7,14 @@ import {
   ADMIN_LOGIN_USING_DEFAULTS,
   PIN_ATTEMPT_WINDOW_MINUTES,
   adminSessionTtlMs,
-} from '../lib/config'
-import { publicCallable, rateLimited } from '../lib/callables'
-import { fail } from '../lib/errors'
-import { Timestamp } from '../lib/firestore-shim'
-import { logger } from '../lib/logger'
-import { newSessionId, newSessionToken, safeEqual, sessionTokenHash } from '../lib/pin'
-import { RateLimiter } from '../lib/rateLimit'
-import { db, sessionRef } from '../lib/refs'
+} from '../lib/config.ts'
+import { publicCallable, rateLimited } from '../lib/callables.ts'
+import { fail } from '../lib/errors.ts'
+import { Timestamp } from '../lib/firestore-shim.ts'
+import { logger } from '../lib/logger.ts'
+import { newSessionId, newSessionToken, safeEqual, sessionTokenHash } from '../lib/pin.ts'
+import { RateLimiter } from '../lib/rateLimit.ts'
+import { db, sessionRef } from '../lib/refs.ts'
 
 /**
  * Interim admin login with shared credentials.

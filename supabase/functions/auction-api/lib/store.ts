@@ -1,5 +1,5 @@
-import type { PlannedWrite } from '../../_shared/plan'
-import type { DocumentData, Transaction } from './firestore-shim'
+import type { PlannedWrite } from '../../_shared/plan.ts'
+import type { DocumentData, Transaction } from './firestore-shim.ts'
 import {
   auditCollection,
   configRef,
@@ -25,7 +25,7 @@ import {
   toTeamSecretDoc,
   toTeamSessionDoc,
   type DocRef,
-} from './refs'
+} from './refs.ts'
 import type {
   EventDoc,
   PlayerDoc,
@@ -34,7 +34,7 @@ import type {
   TeamDoc,
   TeamSecretDoc,
   TeamSessionDoc,
-} from '../../_shared/types'
+} from '../../_shared/types.ts'
 
 /**
  * Supabase adapter: all reads happen before all writes inside a plan

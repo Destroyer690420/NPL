@@ -22,9 +22,14 @@ Nothing is marked done unless it was executed and observed to work.
 > - **Migration fix-up:** the initial SQL returned read rows without their `id`; a follow-up
 >   migration (`20261017000002_read_payload_ids.sql`, written during Phase 9) merges the row
 >   id into every read payload. **The user must run it once** in the SQL Editor.
-> - **Not yet executed against the live project:** applying migration 002, setting the
->   function secrets, deploying `auction-api`, and the end-to-end test purchase. The
->   migrations 001 were applied by the organizer on 2026-10-17.
+> - **Deployed and live-verified (2026-10-17):** `auction-api` is deployed and answering over
+>   HTTPS. Verified against the live project: `adminLogin` with admin/admin returns a session
+>   (`role: superAdmin`, `usingDefaultCredentials: true`), session-authenticated and public
+>   reads work, and the browser CORS preflight is correct. Two deploy-time bugs were fixed on
+>   the way (extensionless imports; `deno.json` location) — details in the verification log.
+> - **Still pending:** running migration 002 and the in-app end-to-end run (create event →
+>   team → player → purchase → team PIN). Migration 001 was applied by the organizer on
+>   2026-10-17.
 > - Docs (README, SECURITY, DATA_MODEL, runbook) were rewritten for the Supabase design
 >   during Phase 9.
 
@@ -248,15 +253,20 @@ kept; only the transport and session plumbing changed.
 | 2026-10-17 | Read payload gap found in Phase 9 review | source inspection of `api_admin_read` + `_shared/convert.ts` | rows returned without `id`; fixed by `20261017000002_read_payload_ids.sql` (**user must run it once**) |
 | 2026-10-17 | Phase 9 gates | `npx tsc --noEmit -p tsconfig.json`, `npx tsc --noEmit -p tsconfig.edge.json`, `npx vitest run`, `npx eslint .`, `npm run build` | all pass — **117 tests / 10 files**; bundle 632.69 kB (pre 970 kB) |
 | 2026-10-17 | Firestore still imported anywhere? | repo-wide grep for `firebase` in `src/`, `tests/`, `scripts/` | none (only historical notes in docs); `npm ls firebase` → not installed |
-| 2026-10-17 | Not yet executed | live edge-function deploy + test purchase | pending: organizer must run migration 002, set secrets and deploy `auction-api` (interactive `npx supabase login`), then the Event-day runbook §2 test purchase |
+| 2026-10-17 | Not yet executed | live edge-function deploy + test purchase | resolved in two steps below: function deployed + auth-level smoke tests passed; the in-app test purchase is the last remaining step |
+| 2026-10-17 | Edge function deploy (user attempt) | `npx supabase functions deploy auction-api` | failed HTTP 400: only `index.ts` was uploaded; remote bundler could not resolve `./lib/config` — Supabase's Deno bundler requires explicit `.ts` extensions on relative imports (extensionless imports came from the Firebase/esbuild era) |
+| 2026-10-17 | Deploy fix | scripted rewrite of 29 edge/shared files to `.ts`-suffixed imports; `allowImportingTsExtensions` in tsconfig; moved `deno.json` import map from `supabase/functions/` into `supabase/functions/auction-api/` (docs: per-function config is required for deployment); removed stale `functions/*` lines from `.gitignore` | redeploy uploaded all 29 assets → `{"message":"Deployed Functions."}` |
+| 2026-10-17 | Gates after deploy fix | `npx tsc --noEmit -p tsconfig.json`, `npx tsc --noEmit -p tsconfig.edge.json`, `npx vitest run`, `npm run build` | all pass — 117 tests; bundle unchanged (632.69 kB) |
+| 2026-10-17 | Live smoke tests (deployed function) | REST calls to `/functions/v1/auction-api` + `/rest/v1/rpc/*` with the publishable key | `adminLogin` admin/admin → `{ok:true, token, role:'superAdmin', usingDefaultCredentials:true}`; `api_admin_read` events with that session → `[]` (no auth error); `api_public_config` → `{}`; CORS preflight from `http://localhost:5173` → 204 with `access-control-allow-origin: *` |
+| 2026-10-17 | Still pending | migration 002 + in-app E2E | organizer runs `20261017000002_read_payload_ids.sql`, then restart dev server, create event/team/player/purchase and test a team PIN |
 
 ## Open risks / notes
 
 - **Supabase project wired in** (`.env.local` → `https://zskbpnzhxntnupdnlecp.supabase.co`, 2026-10-17).
   Migration 001 applied by the organizer; migration 002 (read payload ids) still needs to be run.
-  The edge function `auction-api` is **not deployed yet** and its secrets are not set; after those
-  user steps, do the Event-day runbook's one-minute test purchase. No live end-to-end run has
-  happened yet.
+  The edge function `auction-api` is **deployed and live-verified at the API level** (admin login,
+  authenticated + public reads, CORS). Secrets are not set yet, so login is currently admin/admin.
+  The last remaining step is the in-app end-to-end run after migration 002.
 - All writes go through the atomic `apply_plan` pipeline (reads first, then writes with
   preconditions); a conflict retries with fresh state. Same contract Firestore transactions gave.
 - `finalizeEvent` reads the whole event inside one plan (fine at this event scale: hundreds of rows).

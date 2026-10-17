@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { computeTeamSummary, projectPurchase } from './calculations'
+import { computeTeamSummary, projectPurchase } from './calculations.ts'
 
 describe('computeTeamSummary', () => {
   it('sums confirmed purchase prices, points and roster size', () => {

@@ -1,4 +1,4 @@
-import { MAX_AMOUNT, MAX_POINTS } from './constants'
+import { MAX_AMOUNT, MAX_POINTS } from './constants.ts'
 
 /**
  * Money and points are always integers in the event's smallest currency unit.

@@ -1,13 +1,13 @@
-import { ALLOWED_ORIGINS } from './lib/config'
-import { invokeCallable, type Descriptor } from './lib/callables'
-import { logger } from './lib/logger'
-import { ensurePinSecret } from './lib/pin'
-import { adminLogin } from './handlers/adminAuth'
-import { getTeamContext, logoutTeamSession, verifyTeamPin } from './handlers/teamAuth'
-import { createTeam, getTeamPinStatus, resetTeamPin, revokeSessions, updateTeam } from './handlers/teams'
-import { createPlayer, importPlayers, setPlayerStatus, updatePlayer } from './handlers/players'
-import { recordPurchase, reversePurchase } from './handlers/purchases'
-import { checkEventConsistency, createEvent, setDefaultEvent, updateEvent } from './handlers/event'
+import { ALLOWED_ORIGINS } from './lib/config.ts'
+import { invokeCallable, type Descriptor } from './lib/callables.ts'
+import { logger } from './lib/logger.ts'
+import { ensurePinSecret } from './lib/pin.ts'
+import { adminLogin } from './handlers/adminAuth.ts'
+import { getTeamContext, logoutTeamSession, verifyTeamPin } from './handlers/teamAuth.ts'
+import { createTeam, getTeamPinStatus, resetTeamPin, revokeSessions, updateTeam } from './handlers/teams.ts'
+import { createPlayer, importPlayers, setPlayerStatus, updatePlayer } from './handlers/players.ts'
+import { recordPurchase, reversePurchase } from './handlers/purchases.ts'
+import { checkEventConsistency, createEvent, setDefaultEvent, updateEvent } from './handlers/event.ts'
 
 /**
  * Auction API Edge Function.
