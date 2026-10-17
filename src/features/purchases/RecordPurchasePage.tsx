@@ -109,7 +109,7 @@ export function RecordPurchasePage() {
     if (selectedPlayer) {
       if (lastPrefilledPlayerIdRef.current !== selectedPlayer.id) {
         lastPrefilledPlayerIdRef.current = selectedPlayer.id
-        setPriceText(String(selectedPlayer.basePrice))
+        setPriceText(Number(selectedPlayer.basePrice).toLocaleString('en-IN'))
       }
     } else {
       lastPrefilledPlayerIdRef.current = null
@@ -160,6 +160,27 @@ export function RecordPurchasePage() {
       playerCount: selectedTeam.playerCount + 1,
     }
   }, [selectedTeam, selectedPlayer, price])
+
+  function handlePriceChange(event: React.ChangeEvent<HTMLInputElement>): void {
+    const raw = event.target.value
+    const digitsOnly = raw.replace(/\D/g, '')
+    if (!digitsOnly) {
+      setPriceText('')
+      setSubmit((current) => (current.kind === 'failed' ? { kind: 'idle' } : current))
+      return
+    }
+    const trimmed = digitsOnly.slice(0, 12)
+    const num = Number(trimmed)
+    setPriceText(num.toLocaleString('en-IN'))
+    setSubmit((current) => (current.kind === 'failed' ? { kind: 'idle' } : current))
+  }
+
+  function addBidIncrement(increment: number): void {
+    const currentPrice = price ?? selectedPlayer?.basePrice ?? 0
+    const nextPrice = currentPrice + increment
+    setPriceText(nextPrice.toLocaleString('en-IN'))
+    setSubmit((current) => (current.kind === 'failed' ? { kind: 'idle' } : current))
+  }
 
   function resetForm(): void {
     setPlayerId(null)
@@ -437,38 +458,70 @@ export function RecordPurchasePage() {
               />
             </div>
 
-            <InputField
-              label={`Final sale price (${currencyLabel})`}
-              inputMode="numeric"
-              value={priceText}
-              placeholder="e.g. 20000"
-              onChange={(event) => {
-                setPriceText(event.target.value)
-                setSubmit((current) => (current.kind === 'failed' ? { kind: 'idle' } : current))
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && ready) {
-                  event.preventDefault()
-                  setConfirmOpen(true)
+            <div className="space-y-2.5">
+              <InputField
+                label={`Final sale price (${currencyLabel})`}
+                inputMode="numeric"
+                value={priceText}
+                placeholder="e.g. 1,00,00,000"
+                onChange={handlePriceChange}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && ready) {
+                    event.preventDefault()
+                    setConfirmOpen(true)
+                  }
+                }}
+                hint={
+                  selectedPlayer && price !== null ? (
+                    <button
+                      type="button"
+                      className="underline underline-offset-2 hover:text-ink cursor-pointer"
+                      onClick={() => {
+                        setPriceText(Number(selectedPlayer.basePrice).toLocaleString('en-IN'))
+                      }}
+                    >
+                      Use base price {currency(selectedPlayer.basePrice, currencyLabel)}
+                    </button>
+                  ) : (
+                    'Whole numbers only. Commas are added automatically as you type.'
+                  )
                 }
-              }}
-              hint={
-                selectedPlayer && price !== null ? (
+                error={priceText.trim() !== '' && price === null ? 'Enter a whole, positive amount.' : undefined}
+              />
+
+              {price !== null && price > 0 ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line-strong bg-surface-muted/60 px-3.5 py-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted">Amount in words:</span>
+                  <span className="rounded-md border border-accent/40 bg-accent/15 px-2.5 py-0.5 text-xs font-bold text-accent">
+                    {currency(price, currencyLabel)}
+                  </span>
+                  <span className="text-xs font-mono font-medium text-ink-muted">
+                    ({currencyLabel}{price.toLocaleString('en-IN')})
+                  </span>
+                </div>
+              ) : null}
+
+              <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted mr-1">Quick Add:</span>
+                {[
+                  { label: '+5L', val: 500_000 },
+                  { label: '+10L', val: 1_000_000 },
+                  { label: '+25L', val: 2_500_000 },
+                  { label: '+50L', val: 5_000_000 },
+                  { label: '+1 Cr', val: 10_000_000 },
+                  { label: '+2 Cr', val: 20_000_000 },
+                ].map((chip) => (
                   <button
+                    key={chip.label}
                     type="button"
-                    className="underline underline-offset-2 hover:text-ink"
-                    onClick={() => {
-                      setPriceText(String(selectedPlayer.basePrice))
-                    }}
+                    onClick={() => addBidIncrement(chip.val)}
+                    className="rounded-lg border border-line-strong bg-surface-muted px-2.5 py-1 text-xs font-bold text-ink hover:border-accent hover:text-accent hover:bg-accent/10 transition-colors cursor-pointer"
                   >
-                    Use base price {currency(selectedPlayer.basePrice, currencyLabel)}
+                    {chip.label}
                   </button>
-                ) : (
-                  'Whole numbers only. Prefilled with the base price — adjust as auctioned.'
-                )
-              }
-              error={priceText.trim() !== '' && price === null ? 'Enter a whole, positive amount.' : undefined}
-            />
+                ))}
+              </div>
+            </div>
 
             {selectedTeam && price !== null ? (
               <div className="rounded-xl border border-line-strong bg-surface-muted/50 p-4">

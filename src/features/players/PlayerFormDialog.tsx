@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { CheckboxField, InputField, SelectField, TextareaField } from '@/components/ui/Field'
 import { parseAmountInput, parsePointsInput } from '@shared/money'
+import { currency } from '@/lib/format'
 import type { PlayerDoc } from '@shared/types'
 
 export interface PlayerFormValues {
@@ -75,7 +76,7 @@ export function PlayerFormDialog({
       if (player) {
         setName(player.name)
         setPoints(String(player.points))
-        setBasePrice(String(player.basePrice))
+        setBasePrice(player.basePrice > 0 ? Number(player.basePrice).toLocaleString('en-IN') : '')
         setPhotoUrl(player.photoUrl ?? '')
         setExternalReference(player.externalReference ?? '')
         setNotes(player.notes ?? '')
@@ -186,7 +187,21 @@ export function PlayerFormDialog({
             label={`Base / reference price (${currencyLabel})`}
             value={basePrice}
             inputMode="numeric"
-            onChange={(event) => setBasePrice(event.target.value)}
+            placeholder="e.g. 20,00,000"
+            onChange={(event) => {
+              const digits = event.target.value.replace(/\D/g, '')
+              if (!digits) {
+                setBasePrice('')
+                return
+              }
+              const num = Number(digits.slice(0, 12))
+              setBasePrice(num.toLocaleString('en-IN'))
+            }}
+            hint={
+              nextPrice !== null && nextPrice > 0
+                ? `= ${currency(nextPrice, currencyLabel)} (${currencyLabel}${nextPrice.toLocaleString('en-IN')})`
+                : 'Whole numbers only (e.g. 1,00,00,000)'
+            }
           />
         </div>
         <InputField
