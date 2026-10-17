@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router'
-import { Delete, KeyRound, ShieldCheck } from 'lucide-react'
+import { Delete, ShieldCheck } from 'lucide-react'
 import { useTeamAuth } from '@/auth/TeamAuthProvider'
 import { usePublicConfig } from '@/data/hooks'
 import { isCallError } from '@/services/callables'
@@ -73,9 +73,6 @@ export function TeamLoginPage() {
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-sm flex-col justify-center px-5 py-10">
       <div className="mb-6 text-center">
-        <span className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-charcoal text-white">
-          <KeyRound className="size-5" aria-hidden />
-        </span>
         <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">Team login</p>
         <h1 className="mt-1 text-xl font-semibold text-ink">{eventName}</h1>
         <p className="mt-1 text-sm text-muted">Enter the four-digit PIN from your organizer.</p>

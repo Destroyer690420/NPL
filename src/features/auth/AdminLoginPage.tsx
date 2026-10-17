@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useNavigate } from 'react-router'
-import { Eye, EyeOff, LockKeyhole, ShieldCheck } from 'lucide-react'
+import { Eye, EyeOff, LockKeyhole } from 'lucide-react'
 import { useAdminAuth, signInErrorMessage } from '@/auth/AdminAuthProvider'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody } from '@/components/ui/Card'
@@ -43,9 +43,6 @@ export function AdminLoginPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-12">
       <div className="mb-6 text-center">
-        <span className="mx-auto mb-3 flex size-11 items-center justify-center rounded-2xl bg-charcoal text-white">
-          <ShieldCheck className="size-5" aria-hidden />
-        </span>
         <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">
           College IPL Auction Manager
         </p>
