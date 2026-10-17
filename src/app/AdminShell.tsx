@@ -1,5 +1,5 @@
 import { NavLink, Navigate, Outlet } from 'react-router'
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import {
   LayoutDashboard,
   ReceiptText,
@@ -9,7 +9,7 @@ import {
   Users,
   UsersRound,
 } from 'lucide-react'
-import { useAdminAuth, isUsingDefaultAdminCredentials } from '@/auth/AdminAuthProvider'
+import { useAdminAuth } from '@/auth/AdminAuthProvider'
 import { useAdminEvent } from '@/app/AdminEventProvider'
 import { ConnectionBadge } from '@/app/ConnectionBadge'
 import { CreateEventPanel } from '@/features/events/CreateEventPanel'
@@ -36,7 +36,6 @@ function navClass({ isActive }: { isActive: boolean }): string {
 export function AdminShell() {
   const auth = useAdminAuth()
   const { event, eventId, loading, error, fromCache } = useAdminEvent()
-  const [usingDefaultCreds] = useState(() => isUsingDefaultAdminCredentials())
 
   if (loading && !event && !error) {
     return <LoadingBlock label="Loading event…" />
@@ -52,25 +51,35 @@ export function AdminShell() {
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 sm:px-6">
-          <div className="flex min-w-0 items-center gap-2.5">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-x-4 px-4 py-2 sm:px-6">
+          <div className="flex shrink-0 items-center gap-2.5">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-charcoal text-white">
               <ShieldCheck className="size-4" aria-hidden />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold leading-tight text-ink">{event.name}</p>
-              <p className="flex items-center gap-1.5 text-[11px] leading-tight text-muted">
+              <div className="flex items-center gap-2">
+                <p className="truncate text-sm font-semibold leading-tight text-ink">{event.name}</p>
                 <EventStatusPill status={event.status} />
-                {!event.purchasesEnabled && event.status === 'active' ? (
-                  <span className="text-warn">purchases paused</span>
-                ) : null}
-              </p>
+              </div>
+              {!event.purchasesEnabled && event.status === 'active' ? (
+                <p className="text-[10px] font-medium leading-none text-warn">purchases paused</p>
+              ) : null}
             </div>
           </div>
-          <div className="ml-auto flex items-center gap-3">
+
+          <nav className="flex items-center gap-1 overflow-x-auto py-0.5" aria-label="Admin sections">
+            {NAV_ITEMS.map((item) => (
+              <NavLink key={item.to} to={item.to} end={'end' in item ? item.end : false} className={navClass}>
+                <item.icon className="size-3.5" aria-hidden />
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="flex shrink-0 items-center gap-3">
             <ConnectionBadge fromCache={fromCache} loading={loading} error={error} />
             <div className="hidden items-center gap-2 text-xs text-muted sm:flex">
-              <span className="max-w-[160px] truncate">{auth.displayName}</span>
+              <span className="max-w-[140px] truncate">{auth.displayName}</span>
               {auth.role === 'superAdmin' ? (
                 <span className="rounded-full bg-charcoal px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
                   super
@@ -86,20 +95,6 @@ export function AdminShell() {
             </button>
           </div>
         </div>
-        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-4 pb-2 sm:px-6" aria-label="Admin sections">
-          {NAV_ITEMS.map((item) => (
-            <NavLink key={item.to} to={item.to} end={'end' in item ? item.end : false} className={navClass}>
-              <item.icon className="size-3.5" aria-hidden />
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-        {usingDefaultCreds ? (
-          <div className="border-t border-warn/25 bg-warn-soft px-4 py-1.5 text-center text-[11px] font-medium text-warn sm:px-6">
-            Using the default admin credentials (admin/admin). Set ADMIN_LOGIN_PASSWORD as a Supabase
-            edge function secret and redeploy auction-api before the real event.
-          </div>
-        ) : null}
       </header>
       <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-6">
         <Outlet context={{ eventId }} />

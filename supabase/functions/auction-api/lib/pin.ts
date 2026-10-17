@@ -108,9 +108,10 @@ export function newId(prefix: string): string {
 }
 
 export function safeEqualHex(a: string, b: string): boolean {
-  const bufferA = Buffer.from(a, 'utf8')
-  const bufferB = Buffer.from(b, 'utf8')
-  if (bufferA.length !== bufferB.length) return false
+  if (a.length !== b.length) return false
+  const encoder = new TextEncoder()
+  const bufferA = encoder.encode(a)
+  const bufferB = encoder.encode(b)
   return timingSafeEqual(bufferA, bufferB)
 }
 
