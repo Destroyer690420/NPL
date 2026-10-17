@@ -8,8 +8,13 @@ import { useAdminAuth } from '@/auth/AdminAuthProvider'
 import { createEvent } from '@/services/admin'
 import { isCallError } from '@/services/callables'
 import { errorMessage } from '@/lib/errors'
-import { parseAmountInput } from '@shared/money'
-import { DEFAULT_CURRENCY_LABEL, DEFAULT_EVENT_NAME, DEFAULT_STARTING_PURSE } from '@shared/constants'
+import { formatAmount, parseIntegerInput } from '@shared/money'
+import {
+  DEFAULT_CURRENCY_LABEL,
+  DEFAULT_EVENT_NAME,
+  DEFAULT_STARTING_PURSE,
+  MAX_AMOUNT,
+} from '@shared/constants'
 import { useAdminEvent } from '@/app/AdminEventProvider'
 
 /**
@@ -31,7 +36,7 @@ export function CreateEventPanel() {
     setError(null)
     const trimmedName = name.trim()
     const trimmedCurrency = currencyLabel.trim()
-    const amount = parseAmountInput(purse, true)
+    const rawAmount = parseIntegerInput(purse)
     if (trimmedName === '') {
       setError('Enter an event name.')
       return
@@ -40,10 +45,15 @@ export function CreateEventPanel() {
       setError('Enter a currency or credit label.')
       return
     }
-    if (amount === null) {
+    if (rawAmount === null || rawAmount < 0) {
       setError('Starting purse must be a whole number of 0 or more.')
       return
     }
+    if (rawAmount > MAX_AMOUNT) {
+      setError(`Starting purse cannot exceed ${formatAmount(MAX_AMOUNT, trimmedCurrency)}.`)
+      return
+    }
+    const amount = rawAmount
     setSubmitting(true)
     try {
       const result = await createEvent({

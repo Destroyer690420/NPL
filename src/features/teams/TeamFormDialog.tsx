@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { InputField, TextareaField } from '@/components/ui/Field'
-import { parseAmountInput } from '@shared/money'
+import { formatAmount, parseAmountInput, parseIntegerInput } from '@shared/money'
+import { MAX_AMOUNT } from '@shared/constants'
 import type { TeamDoc } from '@shared/types'
 
 export interface TeamFormValues {
@@ -62,15 +63,20 @@ export function TeamFormDialog({
 
   function submit(): void {
     const trimmed = name.trim()
-    const amount = parseAmountInput(purse, true)
+    const rawPurse = parseIntegerInput(purse)
     if (trimmed === '') {
       setLocalError('Enter a team name.')
       return
     }
-    if (amount === null) {
+    if (rawPurse === null || rawPurse < 0) {
       setLocalError('Starting purse must be a whole number of 0 or more.')
       return
     }
+    if (rawPurse > MAX_AMOUNT) {
+      setLocalError(`Starting purse cannot exceed ${formatAmount(MAX_AMOUNT, currencyLabel)}.`)
+      return
+    }
+    const amount = rawPurse
     if (needsReason && reason.trim().length < 3) {
       setLocalError('Enter a reason (at least 3 characters) for changing the starting purse.')
       return

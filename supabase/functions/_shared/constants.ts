@@ -5,7 +5,7 @@ export const PIN_LENGTH = 4
 export const PIN_MIN = 1000
 export const PIN_MAX = 9999
 
-export const MAX_AMOUNT = 1_000_000_000
+export const MAX_AMOUNT = 1_000_000_000_000
 export const MAX_POINTS = 1_000_000
 export const MAX_NAME_LENGTH = 80
 export const MAX_REASON_LENGTH = 240

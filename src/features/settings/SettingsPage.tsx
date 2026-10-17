@@ -25,8 +25,8 @@ import { useToast } from '@/components/ui/Toast'
 import { checkEventConsistency, setDefaultEvent, updateEvent } from '@/services/admin'
 import { isCallError } from '@/services/callables'
 import { errorMessage } from '@/lib/errors'
-import { parseAmountInput } from '@shared/money'
-import { MAX_ROSTER_SIZE_LIMIT } from '@shared/constants'
+import { formatAmount, parseAmountInput, parseIntegerInput } from '@shared/money'
+import { MAX_ROSTER_SIZE_LIMIT, MAX_AMOUNT } from '@shared/constants'
 import { formatRelative, points as formatPoints } from '@/lib/format'
 
 export function SettingsPage() {
@@ -86,7 +86,6 @@ export function SettingsPage() {
 
   async function save(): Promise<void> {
     if (!event) return
-    const purse = parseAmountInput(defaultPurse, true)
     const trimmedRoster = maxRoster.trim()
     const roster = trimmedRoster === '' ? null : Number(trimmedRoster)
     if (name.trim() === '') {
@@ -97,10 +96,16 @@ export function SettingsPage() {
       setFormError('A currency or credit label is required.')
       return
     }
-    if (purse === null) {
+    const rawPurse = parseIntegerInput(defaultPurse)
+    if (rawPurse === null || rawPurse < 0) {
       setFormError('Default starting purse must be a whole number of 0 or more.')
       return
     }
+    if (rawPurse > MAX_AMOUNT) {
+      setFormError(`Default starting purse cannot exceed ${formatAmount(MAX_AMOUNT, currencyLabel.trim())}.`)
+      return
+    }
+    const purse = rawPurse
     if (
       roster !== null &&
       (!Number.isSafeInteger(roster) || roster < 1 || roster > MAX_ROSTER_SIZE_LIMIT)
