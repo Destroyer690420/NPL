@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed:demo": "node scripts/seed-demo.mjs",
+    "sync:images": "node scripts/sync-player-images.mjs",
     "setup": "npm install"
   },
   "dependencies": {

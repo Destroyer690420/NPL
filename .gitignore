@@ -34,3 +34,9 @@ Thumbs.db
 
 # Test / coverage
 coverage/
+
+# Player images binary cache & backup
+public/player-images/*
+!public/player-images/.gitkeep
+players.csv.original.bak
+

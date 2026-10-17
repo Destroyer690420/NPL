@@ -99,9 +99,9 @@ describe('buildPlayerImportPreview', () => {
       expect(preview.canCommit).toBe(true)
       // Check that Rohit Sharma and Naman Dhir have their photoUrls parsed
       const rohit = preview.rows.find((r) => r.name.toLowerCase().includes('rohit sharma'))
-      expect(rohit?.photoUrl).toBe('https://documents.iplt20.com/ipl/IPLHeadshot2026/6.png')
+      expect(rohit?.photoUrl).toMatch(/(P002\.png|\/6\.png)/)
       const naman = preview.rows.find((r) => r.name.toLowerCase().includes('naman dhir'))
-      expect(naman?.photoUrl).toBe('https://documents.iplt20.com/ipl/IPLHeadshot2026/3107.png')
+      expect(naman?.photoUrl).toMatch(/(P007\.png|\/3107\.png)/)
     }
   })
 })
