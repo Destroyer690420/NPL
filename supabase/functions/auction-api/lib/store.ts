@@ -1,28 +1,30 @@
-import { FieldValue, type DocumentData, type Query, type Transaction } from 'firebase-admin/firestore'
-import { logger } from 'firebase-functions'
-import type { PlannedWrite } from '../shared/plan'
+import type { PlannedWrite } from '../../_shared/plan'
+import type { DocumentData, Transaction } from './firestore-shim'
 import {
   auditCollection,
-  db,
+  configRef,
   eventRef,
+  fetchDocById,
+  fetchQueryRows,
+  generateDocId,
   playerRef,
   purchaseRef,
-  purchasesCollection,
-  playersCollection,
-  replaceServerTimestamps,
   refForWrite,
   secretRef,
   sessionRef,
   sessionsCollection,
   teamRef,
   teamsCollection,
+  playersCollection,
+  purchasesCollection,
+  db,
   toEventDoc,
   toPlayerDoc,
   toPurchaseDoc,
   toTeamDoc,
   toTeamSecretDoc,
   toTeamSessionDoc,
-  configRef,
+  type DocRef,
 } from './refs'
 import type {
   EventDoc,
@@ -32,9 +34,13 @@ import type {
   TeamDoc,
   TeamSecretDoc,
   TeamSessionDoc,
-} from '../shared/types'
+} from '../../_shared/types'
 
-/** Firestore adapter: all reads happen before all writes inside a transaction. */
+/**
+ * Supabase adapter: all reads happen before all writes inside a plan
+ * "transaction"; the writes themselves are applied atomically by
+ * `apply_plan` with the preconditions captured during the reads.
+ */
 
 export function applyWrites(
   tx: Transaction,
@@ -48,15 +54,14 @@ export function applyWrites(
       write.kind === 'auditLog' && options?.actorEmail
         ? { ...write.data, actorEmail: options.actorEmail }
         : write.data
-    const data = replaceServerTimestamps(source) as DocumentData
     // `merge: true` keeps partial patches safe while `set` stays an upsert.
-    tx.set(ref, data, { merge: write.op === 'update' })
+    tx.set(ref, source as DocumentData, { merge: write.op === 'update' })
   }
 }
 
 async function readDocTx<T>(
   tx: Transaction,
-  ref: ReturnType<typeof eventRef>,
+  ref: DocRef,
   mapper: (id: string, data: DocumentData | undefined) => T | null,
 ): Promise<T | null> {
   const snapshot = await tx.get(ref)
@@ -105,7 +110,7 @@ export function readSessionTx(
 
 async function readQueryTx<T>(
   tx: Transaction,
-  query: Query,
+  query: { kind: 'query' },
   mapper: (id: string, data: DocumentData | undefined) => T | null,
 ): Promise<T[]> {
   const snapshot = await tx.get(query)
@@ -129,28 +134,30 @@ export function readPurchasesTx(tx: Transaction, eventId: string): Promise<Purch
 /* --------------------------- non transactional ---------------------------- */
 
 export async function getEvent(eventId: string): Promise<EventDoc | null> {
-  const snapshot = await eventRef(eventId).get()
-  return toEventDoc(snapshot.id, snapshot.data())
+  const data = await fetchDocById('events', eventId)
+  return toEventDoc(eventId, data ?? undefined)
 }
 
 export async function getTeam(eventId: string, teamId: string): Promise<TeamDoc | null> {
-  const snapshot = await teamRef(eventId, teamId).get()
-  return toTeamDoc(snapshot.id, snapshot.data())
+  const data = await fetchDocById('teams', teamId)
+  if (data && data.eventId !== undefined && data.eventId !== eventId) return null
+  return toTeamDoc(teamId, data ?? undefined)
 }
 
 export async function getSecret(eventId: string, teamId: string): Promise<TeamSecretDoc | null> {
-  const snapshot = await secretRef(eventId, teamId).get()
-  return toTeamSecretDoc(snapshot.id, snapshot.data())
+  const data = await fetchDocById('team_secrets', teamId)
+  if (data && typeof data.eventId === 'string' && data.eventId !== eventId) return null
+  return toTeamSecretDoc(teamId, data ?? undefined)
 }
 
 export async function getSession(eventId: string, sessionId: string): Promise<TeamSessionDoc | null> {
-  const snapshot = await sessionRef(eventId, sessionId).get()
-  return toTeamSessionDoc(snapshot.id, snapshot.data())
+  const data = await fetchDocById('sessions', sessionId)
+  if (data && typeof data.eventId === 'string' && eventId && data.eventId !== eventId) return null
+  return toTeamSessionDoc(sessionId, data ?? undefined)
 }
 
 export async function getConfig(): Promise<PublicConfigDoc | null> {
-  const snapshot = await configRef().get()
-  const data = snapshot.data()
+  const data = await fetchDocById('app_config', 'app')
   if (!data) return null
   return {
     defaultEventId: typeof data.defaultEventId === 'string' ? data.defaultEventId : null,
@@ -158,16 +165,15 @@ export async function getConfig(): Promise<PublicConfigDoc | null> {
     currencyLabel: typeof data.currencyLabel === 'string' ? data.currencyLabel : 'credits',
     eventStatus:
       data.eventStatus === 'active' || data.eventStatus === 'finalized' ? data.eventStatus : null,
-    updatedAt: data.updatedAt ?? null,
+    updatedAt: (data.updatedAt as PublicConfigDoc['updatedAt']) ?? null,
   }
 }
 
 /* --------------------------------- sessions ------------------------------- */
 
 /**
- * Marks every open session of a team as revoked. Runs outside the calling
- * transaction because it may touch many documents; revocation is checked by
- * the security rules on every read, so it takes effect immediately.
+ * Marks every open session of a team as revoked. Revocation is checked on
+ * every authenticated call, so it takes effect immediately.
  */
 export async function revokeTeamSessions(
   eventId: string,
@@ -179,35 +185,25 @@ export async function revokeTeamSessions(
     action: 'team.sessions-revoked' | 'team.pin-reset' | 'team.deactivated'
   },
 ): Promise<number> {
-  const snapshot = await sessionsCollection(eventId)
-    .where('teamId', '==', teamId)
-    .where('revoked', '==', false)
-    .get()
+  const query = sessionsCollection(eventId).where('teamId', '==', teamId)
+  const rows = (await fetchQueryRows(query)).filter((row) => row.data.revoked === false)
 
-  if (snapshot.empty) return 0
+  if (rows.length === 0) return 0
 
-  let revoked = 0
-  const docs = snapshot.docs
-  for (let index = 0; index < docs.length; index += 400) {
-    const chunk = docs.slice(index, index + 400)
-    const batch = db().batch()
-    for (const doc of chunk) {
-      batch.set(
-        doc.ref,
-        {
-          revoked: true,
-          revokedAt: FieldValue.serverTimestamp(),
-          revokedBy: options.actorUid,
-          revokedReason: options.action,
-        },
-        { merge: true },
-      )
-      revoked += 1
-    }
-    await batch.commit()
+  const batch = db().batch()
+  for (const row of rows) {
+    batch.set(
+      sessionRef(eventId, row.id),
+      {
+        revoked: true,
+        revokedAt: new Date(),
+        revokedBy: options.actorUid,
+        revokedReason: options.action,
+      } as DocumentData,
+      { merge: true },
+    )
   }
-
-  await auditCollection(eventId).add({
+  batch.set(auditCollection(eventId).doc(generateDocId()), {
     eventId,
     actorUid: options.actorUid,
     actorRole: 'admin',
@@ -216,12 +212,12 @@ export async function revokeTeamSessions(
     targetType: 'session',
     targetId: teamId,
     reason: options.reason,
-    metadata: { revokedCount: revoked, trigger: options.action },
-    createdAt: FieldValue.serverTimestamp(),
+    metadata: { revokedCount: rows.length, trigger: options.action },
+    createdAt: new Date(),
   })
+  await batch.commit()
 
-  logger.info('Revoked team sessions', { eventId, teamId, revoked })
-  return revoked
+  return rows.length
 }
 
 export { configRef }

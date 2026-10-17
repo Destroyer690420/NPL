@@ -1,12 +1,12 @@
-import { createEventSchema, eventIdSchema, updateEventSchema } from '../shared/schemas'
-import { DEFAULT_EVENT_ID } from '../shared/constants'
-import { computeEventTotals, validateEventConsistency } from '../shared/calculations'
+import { createEventSchema, eventIdSchema, updateEventSchema } from '../../_shared/schemas'
+import { DEFAULT_EVENT_ID } from '../../_shared/constants'
+import { computeEventTotals, validateEventConsistency } from '../../_shared/calculations'
 import {
   planCreateEvent,
   planEventConsistencyCheck,
   planSetDefaultEvent,
   planUpdateEvent,
-} from '../shared/mutations'
+} from '../../_shared/mutations'
 import { adminCallable } from '../lib/callables'
 import { unwrapPlan } from '../lib/errors'
 import { auditRef, configRef, db } from '../lib/refs'

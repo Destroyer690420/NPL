@@ -1,5 +1,5 @@
-import { recordPurchaseSchema, reversePurchaseSchema } from '../shared/schemas'
-import { planPurchase, planReversal } from '../shared/purchases'
+import { recordPurchaseSchema, reversePurchaseSchema } from '../../_shared/schemas'
+import { planPurchase, planReversal } from '../../_shared/purchases'
 import { adminCallable } from '../lib/callables'
 import { unwrapPlan } from '../lib/errors'
 import { auditRef, db } from '../lib/refs'

@@ -1,7 +1,6 @@
-import { FieldValue, Timestamp } from 'firebase-admin/firestore'
-import { getAuth } from 'firebase-admin/auth'
 import { z } from 'zod'
-import { verifyTeamPinSchema } from '../shared/schemas'
+import { verifyTeamPinSchema } from '../../_shared/schemas'
+import { timestampToMillis } from '../../_shared/convert'
 import {
   PIN_ATTEMPT_LIMIT,
   PIN_ATTEMPT_WINDOW_MINUTES,
@@ -10,23 +9,35 @@ import {
 } from '../lib/config'
 import { publicCallable, rateLimited, teamCallable } from '../lib/callables'
 import { fail } from '../lib/errors'
-import { PIN_SECRET_PARAM, hashValue, newSessionId, pinLookupHash, pinVerifierHash, pinSecret, safeEqualHex } from '../lib/pin'
+import { Timestamp } from '../lib/firestore-shim'
+import {
+  PIN_SECRET_PARAM,
+  hashValue,
+  newSessionId,
+  newSessionToken,
+  pinLookupHash,
+  pinSecret,
+  pinVerifierHash,
+  safeEqualHex,
+  sessionTokenHash,
+} from '../lib/pin'
 import { RateLimiter } from '../lib/rateLimit'
-import { auditCollection, db, pinIndexRef, sessionRef } from '../lib/refs'
+import { auditCollection, db, fetchDocById, sessionRef } from '../lib/refs'
 import { getConfig, getEvent, getSecret, getSession, getTeam } from '../lib/store'
-import { timestampToMillis } from '../shared/convert'
 
 /**
  * Team PIN verification.
  *
- * The PIN is verified server-side, never client-side. On success the function
- * mints a Firebase Auth custom token whose claims are bound to exactly one
- * {eventId, teamId, sessionId}; the Firestore rules re-check the backing
- * session document on every read, so revocation and expiry are immediate.
+ * The PIN is verified server-side, never client-side. On success an opaque
+ * 256-bit session token is issued bound to exactly one
+ * {eventId, teamId, sessionId}; the database stores only the token hash, and
+ * every authenticated call re-validates the session row, so revocation (PIN
+ * reset, deactivation, logout) takes effect immediately.
  */
 
 const MINUTE = 60_000
 
+/** Per-IP limiter: blocks scanning a range of PINs from a single host. */
 const IP_LIMITER = new RateLimiter(
   {
     windowMs: PIN_ATTEMPT_WINDOW_MINUTES * MINUTE,
@@ -37,10 +48,10 @@ const IP_LIMITER = new RateLimiter(
   'pin-ip',
 )
 
-/** Blocks repeated guessing of the *same* four digits across all teams. */
+/** Per-PIN-value limiter: blocks hammering one code from many IPs. */
 const VALUE_LIMITER = new RateLimiter(
   {
-    windowMs: 60 * MINUTE,
+    windowMs: PIN_ATTEMPT_WINDOW_MINUTES * MINUTE,
     maxFailures: 5,
     baseLockMs: 30 * MINUTE,
     maxLockMs: 720 * MINUTE,
@@ -98,13 +109,12 @@ export const verifyTeamPin = publicCallable({
     if (!event) fail('event-not-found')
 
     const lookupHash = pinLookupHash(secret, eventId, input.pin)
-    const indexSnapshot = await pinIndexRef(lookupHash).get()
-    if (!indexSnapshot.exists) return registrationFailed()
+    const indexRow = await fetchDocById('pin_index', lookupHash)
+    if (!indexRow) return registrationFailed()
 
-    const index = indexSnapshot.data() as { eventId?: string; teamId?: string } | undefined
-    if (!index?.teamId || index.eventId !== eventId) return registrationFailed()
+    const teamId = typeof indexRow.teamId === 'string' ? indexRow.teamId : null
+    if (!teamId || indexRow.eventId !== eventId) return registrationFailed()
 
-    const teamId = index.teamId
     const secretDoc = await getSecret(eventId, teamId)
     const expected = pinVerifierHash(secret, eventId, teamId, input.pin)
     if (!secretDoc || !safeEqualHex(expected, secretDoc.pinVerifier)) {
@@ -118,23 +128,19 @@ export const verifyTeamPin = publicCallable({
     }
 
     const sessionId = newSessionId()
+    const sessionToken = newSessionToken()
     const expiresAt = Timestamp.fromMillis(Date.now() + sessionTtlMs())
     const uid = `team_${teamId}_${sessionId}`.slice(0, 120)
 
-    const token = await getAuth().createCustomToken(uid, {
-      kind: 'team',
-      role: 'team',
-      eventId,
-      teamId,
-      sessionId,
-    })
-
     const batch = db().batch()
     batch.set(sessionRef(eventId, sessionId), {
+      kind: 'team',
       eventId,
       teamId,
+      uid,
+      tokenHash: sessionTokenHash(sessionToken),
       revoked: false,
-      createdAt: FieldValue.serverTimestamp(),
+      createdAt: new Date(),
       expiresAt,
       createdByIpHash: ipKey,
     })
@@ -147,14 +153,14 @@ export const verifyTeamPin = publicCallable({
       targetId: sessionId,
       reason: null,
       metadata: { teamId, teamName: team.name, ipHash: ipKey.slice(0, 12) },
-      createdAt: FieldValue.serverTimestamp(),
+      createdAt: new Date(),
     })
     await batch.commit()
 
     await Promise.all([IP_LIMITER.reset(ipKey), VALUE_LIMITER.reset(pinKey)])
 
     return {
-      sessionToken: token,
+      sessionToken,
       sessionId,
       eventId,
       teamId,
@@ -172,7 +178,7 @@ export const verifyTeamPin = publicCallable({
  * Returns the display context for the calling team session (event + team
  * names, currency label, session expiry). Used after a page reload, when the
  * `verifyTeamPin` response is no longer in memory. Re-validates the backing
- * session document so a revoked or expired session is rejected here too.
+ * session row so a revoked or expired session is rejected here too.
  */
 export const getTeamContext = teamCallable({
   schema: z.object({}),
@@ -218,22 +224,15 @@ export const logoutTeamSession = teamCallable({
   schema: z.object({}),
   handler: async (_input, context) => {
     if (!context.sessionId) return { revoked: false }
-    const ref = sessionRef(context.eventId, context.sessionId)
-    const snapshot = await ref.get()
-    if (snapshot.exists) {
-      await ref.set(
-        {
-          revoked: true,
-          revokedAt: FieldValue.serverTimestamp(),
-          revokedReason: 'logout',
-        },
-        { merge: true },
-      )
-    }
-    try {
-      await getAuth().revokeRefreshTokens(context.uid)
-    } catch {
-      // Best effort - the session document is already revoked.
+    const session = await getSession(context.eventId, context.sessionId)
+    if (session) {
+      const batch = db().batch()
+      batch.set(sessionRef(context.eventId, context.sessionId), {
+        revoked: true,
+        revokedAt: new Date(),
+        revokedReason: 'logout',
+      })
+      await batch.commit()
     }
     return { revoked: true }
   },

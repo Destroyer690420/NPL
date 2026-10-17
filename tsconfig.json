@@ -21,8 +21,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@shared/*": ["functions/src/shared/*"]
+      "@shared/*": ["supabase/functions/_shared/*"]
     }
   },
-  "include": ["src", "tests", "functions/src/shared", "vite.config.ts", "vitest.emulator.config.ts"]
+  "include": ["src", "tests", "supabase/functions/_shared", "vite.config.ts"]
 }

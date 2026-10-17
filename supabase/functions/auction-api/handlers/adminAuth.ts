@@ -1,31 +1,29 @@
 import { createHash } from 'node:crypto'
-import { logger } from 'firebase-functions'
-import { getAuth } from 'firebase-admin/auth'
-import { adminLoginSchema } from '../shared/schemas'
+import { adminLoginSchema } from '../../_shared/schemas'
 import {
   ADMIN_LOGIN_ATTEMPT_LIMIT,
   ADMIN_LOGIN_ID,
   ADMIN_LOGIN_PASSWORD,
   ADMIN_LOGIN_USING_DEFAULTS,
   PIN_ATTEMPT_WINDOW_MINUTES,
+  adminSessionTtlMs,
 } from '../lib/config'
 import { publicCallable, rateLimited } from '../lib/callables'
 import { fail } from '../lib/errors'
+import { Timestamp } from '../lib/firestore-shim'
+import { logger } from '../lib/logger'
+import { newSessionId, newSessionToken, safeEqual, sessionTokenHash } from '../lib/pin'
 import { RateLimiter } from '../lib/rateLimit'
-import { safeEqual } from '../lib/pin'
+import { db, sessionRef } from '../lib/refs'
 
 /**
  * Interim admin login with shared credentials.
  *
  * The credentials (ADMIN_LOGIN_ID / ADMIN_LOGIN_PASSWORD, defaults admin/admin)
- * are verified here, server-side, and this function mints a Firebase Auth
- * custom token carrying `role: superAdmin` — the same claim the Firestore rules
- * and every admin callable require. A client-side-only check would leave the
- * whole backend locked out, so it is deliberately NOT done in the browser.
- *
- * Weaknesses (accepted for now, see docs/SECURITY.md): the credentials are
- * shared, stored as plain env values, and every operator shares one identity.
- * Change ADMIN_LOGIN_PASSWORD before any real event.
+ * are verified here, server-side, and a database session bound to
+ * `role: superAdmin` is created. The 256-bit session token returned to the
+ * client is the only credential it holds; the database stores just its hash.
+ * See docs/SECURITY.md for the accepted weaknesses of shared credentials.
  */
 
 const MINUTE = 60_000
@@ -53,7 +51,7 @@ const GLOBAL_LIMITER = new RateLimiter(
 )
 
 function ipKeyOf(ip: string): string {
-  // Hashed so no raw IP is stored (rate-limit keys live in a server-only collection).
+  // Hashed so no raw IP is stored (rate-limit keys live in a server-only table).
   return createHash('sha256').update(`admin-login:${ip}`).digest('hex').slice(0, 40)
 }
 
@@ -85,17 +83,34 @@ export const adminLogin = publicCallable({
     await Promise.all([IP_LIMITER.reset(ipKey), GLOBAL_LIMITER.reset('all')])
 
     // One shared organizer identity for now: every action still lands in the
-    // audit log with this uid, and all other callables keep requiring the claim.
-    const token = await getAuth().createCustomToken('organizer', {
-      role: 'superAdmin',
+    // audit log with this uid, and every admin action requires this session.
+    const sessionId = newSessionId()
+    const token = newSessionToken()
+    const expiresAt = Timestamp.fromMillis(Date.now() + adminSessionTtlMs())
+
+    const batch = db().batch()
+    batch.set(sessionRef(null, sessionId), {
       kind: 'admin',
+      uid: 'organizer',
+      role: 'superAdmin',
+      tokenHash: sessionTokenHash(token),
+      revoked: false,
+      createdAt: new Date(),
+      expiresAt,
+      createdByIpHash: ipKey,
     })
+    await batch.commit()
 
     logger.info('Admin signed in with shared credentials', {
       ipHash: ipKey.slice(0, 12),
       usingDefaultCredentials: ADMIN_LOGIN_USING_DEFAULTS,
     })
 
-    return { token, usingDefaultCredentials: ADMIN_LOGIN_USING_DEFAULTS }
+    return {
+      token,
+      sessionId,
+      expiresAt: expiresAt.toMillis(),
+      usingDefaultCredentials: ADMIN_LOGIN_USING_DEFAULTS,
+    }
   },
 })

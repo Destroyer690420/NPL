@@ -1,0 +1,8 @@
+# Supabase CLI configuration for the auction backend.
+project_id = "zskbpnzhxntnupdnlecp"
+
+# The Edge Function authenticates every request itself through opaque session
+# tokens (see docs/SECURITY.md), so the platform JWT gate is disabled and CORS
+# is handled inside the function.
+[functions.auction-api]
+verify_jwt = false

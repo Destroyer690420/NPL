@@ -1,7 +1,7 @@
-import { FieldValue, type Transaction } from 'firebase-admin/firestore'
-import { createTeamSchema, revokeTeamSessionsSchema, teamIdSchema, updateTeamSchema } from '../shared/schemas'
-import { planCreateTeam, planUpdateTeam } from '../shared/mutations'
-import { normalizeName } from '../shared/text'
+import { FieldValue, type Transaction } from '../lib/firestore-shim'
+import { createTeamSchema, revokeTeamSessionsSchema, teamIdSchema, updateTeamSchema } from '../../_shared/schemas'
+import { planCreateTeam, planUpdateTeam } from '../../_shared/mutations'
+import { normalizeName } from '../../_shared/text'
 import { adminCallable } from '../lib/callables'
 import { fail, unwrapPlan } from '../lib/errors'
 import {
