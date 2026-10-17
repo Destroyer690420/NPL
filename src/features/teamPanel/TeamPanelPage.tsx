@@ -43,26 +43,30 @@ export function TeamPanelPage() {
   const confirmed = purchases.data.filter((purchase) => purchase.status === 'confirmed')
 
   return (
-    <div className="mx-auto min-h-dvh w-full max-w-3xl px-4 py-5 sm:px-6">
-      <header className="mb-5 flex flex-wrap items-center gap-3">
+    <div className="mx-auto min-h-dvh w-full max-w-3xl px-4 py-6 sm:px-6">
+      <header className="mb-6 flex flex-wrap items-center gap-3.5">
         {context.logoUrl ? (
           <img
             src={context.logoUrl}
             alt=""
-            className="size-11 rounded-full border border-line object-cover"
+            className="size-12 rounded-xl border border-line-strong object-cover shadow-md"
             onError={(event) => {
               event.currentTarget.style.display = 'none'
             }}
           />
         ) : (
-          <span className="flex size-11 items-center justify-center rounded-full bg-charcoal text-sm font-semibold text-white">
+          <span className="flex size-12 items-center justify-center rounded-xl border border-line-strong bg-surface-muted text-base font-bold text-accent shadow-md">
             {context.teamName.slice(0, 2).toUpperCase()}
           </span>
         )}
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-lg font-semibold text-ink">{context.teamName}</h1>
-          <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
-            {context.eventName}
+          <div className="flex items-center gap-2">
+            <span className="h-4 w-1 rounded-full bg-accent shadow-[0_0_8px_rgba(230,0,110,0.6)]" aria-hidden />
+            <h1 className="truncate text-xl font-bold tracking-tight text-white">{context.teamName}</h1>
+          </div>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">
+            <span>{context.eventName}</span>
+            <span className="text-line-strong">•</span>
             {context.eventStatus === 'active' ? (
               <Pill tone="success">Auction live</Pill>
             ) : context.eventStatus === 'finalized' ? (
@@ -78,7 +82,7 @@ export function TeamPanelPage() {
             ) : (
               <Pill tone="success">Live</Pill>
             )}
-          </p>
+          </div>
         </div>
         <Button
           variant="secondary"
@@ -91,21 +95,28 @@ export function TeamPanelPage() {
       </header>
 
       {teamData ? (
-        <Card className="overflow-hidden">
-          <div className="bg-charcoal px-5 py-5 text-white">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-white/60">
-              Remaining purse
-            </p>
-            <p className="mt-1 text-4xl font-bold tabular-nums tracking-tight">
+        <div className="overflow-hidden rounded-2xl border border-line-strong bg-gradient-to-br from-[#181c26] via-[#12151f] to-[#1c101d] p-6 shadow-2xl">
+          <div>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-bold uppercase tracking-wider text-ink-muted">
+                Remaining purse
+              </p>
+              <span className="text-xs font-semibold text-accent-light">
+                {teamData.startingPurse > 0
+                  ? `${Math.round((teamData.remainingPurse / teamData.startingPurse) * 100)}% left`
+                  : '0%'}
+              </span>
+            </div>
+            <p className="mt-1 text-4xl font-extrabold tabular-nums tracking-tight text-white sm:text-5xl">
               {currency(teamData.remainingPurse, currencyLabel)}
             </p>
-            <p className="mt-1 text-xs text-white/60">
-              Started with {currency(teamData.startingPurse, currencyLabel)} · spent{' '}
-              {currency(teamData.totalSpent, currencyLabel)}
+            <p className="mt-1.5 text-xs text-ink-muted">
+              Started with <span className="text-ink font-medium">{currency(teamData.startingPurse, currencyLabel)}</span> · spent{' '}
+              <span className="text-ink font-medium">{currency(teamData.totalSpent, currencyLabel)}</span>
             </p>
-            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/15">
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-muted/80">
               <div
-                className="h-full rounded-full bg-accent"
+                className="h-full rounded-full bg-accent shadow-[0_0_12px_rgba(230,0,110,0.8)] transition-all duration-500"
                 style={{
                   width: `${
                     teamData.startingPurse > 0
@@ -116,25 +127,25 @@ export function TeamPanelPage() {
               />
             </div>
           </div>
-          <div className="grid grid-cols-3 divide-x divide-line border-t border-line">
-            <div className="px-4 py-3.5 text-center">
-              <p className="text-[11px] uppercase tracking-wide text-muted">Points</p>
-              <p className="mt-0.5 text-lg font-semibold tabular-nums text-ink">
+          <div className="mt-6 grid grid-cols-3 divide-x divide-line rounded-xl border border-line/60 bg-surface-muted/30">
+            <div className="px-3 py-3.5 text-center sm:px-4">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Points</p>
+              <p className="mt-0.5 text-xl font-bold tabular-nums text-white sm:text-2xl">
                 {formatPoints(teamData.totalPoints)}
               </p>
             </div>
-            <div className="px-4 py-3.5 text-center">
-              <p className="text-[11px] uppercase tracking-wide text-muted">Players</p>
-              <p className="mt-0.5 text-lg font-semibold tabular-nums text-ink">{teamData.playerCount}</p>
+            <div className="px-3 py-3.5 text-center sm:px-4">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Players</p>
+              <p className="mt-0.5 text-xl font-bold tabular-nums text-white sm:text-2xl">{teamData.playerCount}</p>
             </div>
-            <div className="px-4 py-3.5 text-center">
-              <p className="text-[11px] uppercase tracking-wide text-muted">Spent</p>
-              <p className="mt-0.5 text-lg font-semibold tabular-nums text-ink">
+            <div className="px-3 py-3.5 text-center sm:px-4">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Spent</p>
+              <p className="mt-0.5 text-xl font-bold tabular-nums text-white sm:text-2xl">
                 {currency(teamData.totalSpent, currencyLabel)}
               </p>
             </div>
           </div>
-        </Card>
+        </div>
       ) : (
         <Card>
           <CardBody>
@@ -143,13 +154,13 @@ export function TeamPanelPage() {
         </Card>
       )}
 
-      <Card className="mt-5">
+      <Card className="mt-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Users className="size-4 text-muted" aria-hidden />
+            <Users className="size-4 text-accent" aria-hidden />
             Your squad
           </CardTitle>
-          <span className="text-xs text-muted">{confirmed.length} confirmed</span>
+          <span className="text-xs font-semibold text-ink-muted">{confirmed.length} confirmed</span>
         </CardHeader>
         {purchases.loading ? (
           <CardBody>
@@ -157,35 +168,35 @@ export function TeamPanelPage() {
           </CardBody>
         ) : confirmed.length === 0 ? (
           <EmptyState
-            icon={<Trophy className="size-8" aria-hidden />}
+            icon={<Trophy className="size-8 text-accent/60" aria-hidden />}
             title="No players yet"
             description="When your team buys a player, they appear here instantly with the price you paid."
           />
         ) : (
           <ul className="divide-y divide-line">
             {confirmed.map((purchase) => (
-              <li key={purchase.id} className="flex items-center gap-3 px-4 py-3 sm:px-5">
+              <li key={purchase.id} className="flex items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-surface-muted/20 sm:px-5">
                 {purchase.playerPhotoUrlSnapshot ? (
                   <img
                     src={purchase.playerPhotoUrlSnapshot}
                     alt=""
-                    className="size-10 rounded-full border border-line object-cover"
+                    className="size-11 rounded-xl border border-line-strong object-cover shadow-sm"
                     onError={(event) => {
                       event.currentTarget.style.display = 'none'
                     }}
                   />
                 ) : (
-                  <span className="flex size-10 items-center justify-center rounded-full bg-info-soft text-sm font-semibold text-ink-soft">
+                  <span className="flex size-11 items-center justify-center rounded-xl border border-line bg-surface-muted text-sm font-bold text-accent">
                     {purchase.playerNameSnapshot.slice(0, 2).toUpperCase()}
                   </span>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-ink">{purchase.playerNameSnapshot}</p>
-                  <p className="text-xs text-muted">
-                    {formatPoints(purchase.playerPointsSnapshot)} points · {formatDateTime(purchase.createdAt)}
+                  <p className="truncate text-sm font-bold text-white">{purchase.playerNameSnapshot}</p>
+                  <p className="mt-0.5 text-xs text-ink-muted">
+                    <span className="font-semibold text-sky-400">{formatPoints(purchase.playerPointsSnapshot)} pts</span> · {formatDateTime(purchase.createdAt)}
                   </p>
                 </div>
-                <p className="text-sm font-semibold tabular-nums text-accent">
+                <p className="text-base font-extrabold tabular-nums text-accent">
                   {currency(purchase.finalPrice, currencyLabel)}
                 </p>
               </li>
@@ -194,7 +205,7 @@ export function TeamPanelPage() {
         )}
       </Card>
 
-      <p className="mt-5 text-center text-xs text-muted">
+      <p className="mt-6 text-center text-xs text-ink-muted">
         This page is private to your team. Only your purse, points and roster are visible — never
         other teams' data.
       </p>

@@ -168,12 +168,12 @@ export function Combobox({
             }
           }}
           className={cn(
-            'h-10 w-full rounded-control border border-line-strong bg-surface pl-9 pr-9 text-sm text-ink',
-            'placeholder:text-muted/70 focus:border-accent disabled:cursor-not-allowed disabled:bg-surface-muted',
+            'h-10 w-full rounded-xl border border-line bg-surface-muted/60 pl-9 pr-9 text-sm text-ink transition-all',
+            'placeholder:text-ink-muted/50 focus:border-accent focus:bg-surface focus:outline-none focus:ring-1 focus:ring-accent disabled:cursor-not-allowed disabled:opacity-50',
           )}
         />
         <ChevronDown
-          className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted"
+          className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-ink-muted"
           aria-hidden
         />
       </div>
@@ -183,10 +183,10 @@ export function Combobox({
           ref={listRef}
           id={listId}
           role="listbox"
-          className="absolute z-30 mt-1.5 max-h-72 w-full overflow-y-auto rounded-card border border-line bg-surface py-1 shadow-card"
+          className="absolute z-30 mt-1.5 max-h-72 w-full overflow-y-auto rounded-xl border border-line-strong bg-surface-elevated/95 p-1.5 shadow-2xl backdrop-blur-md"
         >
           {filtered.length === 0 ? (
-            <li className="px-3 py-2 text-xs text-muted">{emptyMessage}</li>
+            <li className="px-3 py-2 text-xs text-ink-muted">{emptyMessage}</li>
           ) : (
             filtered.map((item, index) => {
               const isSelected = item.id === value
@@ -204,9 +204,10 @@ export function Combobox({
                   }}
                   onMouseEnter={() => setHighlighted(index)}
                   className={cn(
-                    'flex cursor-pointer items-center gap-3 px-3 py-2 text-sm',
-                    item.disabled && 'cursor-not-allowed opacity-55',
-                    isHighlighted && !item.disabled && 'bg-accent-soft',
+                    'flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                    item.disabled && 'cursor-not-allowed opacity-45',
+                    isHighlighted && !item.disabled && 'bg-surface-muted text-ink',
+                    isSelected && 'bg-accent/10 text-accent-light',
                   )}
                 >
                   <div className="min-w-0 flex-1">

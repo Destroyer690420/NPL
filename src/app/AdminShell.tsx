@@ -28,8 +28,10 @@ const NAV_ITEMS = [
 
 function navClass({ isActive }: { isActive: boolean }): string {
   return cn(
-    'flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors',
-    isActive ? 'bg-charcoal text-white' : 'text-ink-soft hover:bg-line/50',
+    'relative flex shrink-0 items-center gap-2 px-3.5 py-2.5 text-xs font-semibold uppercase tracking-wider transition-all',
+    isActive
+      ? 'text-white after:absolute after:bottom-0 after:left-1 after:right-1 after:h-[2px] after:rounded-full after:bg-accent after:shadow-[0_0_10px_rgba(230,0,110,0.8)]'
+      : 'text-ink-muted hover:text-ink hover:bg-surface-muted/40 rounded-lg',
   )
 }
 
@@ -50,20 +52,23 @@ export function AdminShell() {
 
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-x-4 px-4 py-2 sm:px-6">
-          <div className="flex shrink-0 items-center gap-2.5">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-charcoal text-white">
-              <ShieldCheck className="size-4" aria-hidden />
-            </span>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="truncate text-sm font-semibold leading-tight text-ink">{event.name}</p>
-                <EventStatusPill status={event.status} />
+      <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-x-4 px-4 py-2.5 sm:px-6">
+          <div className="flex shrink-0 items-center gap-3">
+            <span className="h-5 w-1 rounded-full bg-accent shadow-[0_0_10px_rgba(230,0,110,0.6)]" aria-hidden />
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-line bg-surface-muted text-accent">
+                <ShieldCheck className="size-4" aria-hidden />
+              </span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <p className="truncate text-sm font-bold tracking-tight text-ink">{event.name}</p>
+                  <EventStatusPill status={event.status} />
+                </div>
+                {!event.purchasesEnabled && event.status === 'active' ? (
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-warn">purchases paused</p>
+                ) : null}
               </div>
-              {!event.purchasesEnabled && event.status === 'active' ? (
-                <p className="text-[10px] font-medium leading-none text-warn">purchases paused</p>
-              ) : null}
             </div>
           </div>
 
@@ -78,10 +83,10 @@ export function AdminShell() {
 
           <div className="flex shrink-0 items-center gap-3">
             <ConnectionBadge fromCache={fromCache} loading={loading} error={error} />
-            <div className="hidden items-center gap-2 text-xs text-muted sm:flex">
+            <div className="hidden items-center gap-2 text-xs text-ink-muted sm:flex">
               <span className="max-w-[140px] truncate">{auth.displayName}</span>
               {auth.role === 'superAdmin' ? (
-                <span className="rounded-full bg-charcoal px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                <span className="rounded-md border border-accent/30 bg-accent/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent-light">
                   super
                 </span>
               ) : null}
@@ -89,14 +94,14 @@ export function AdminShell() {
             <button
               type="button"
               onClick={() => void auth.signOut()}
-              className="text-xs font-medium text-muted underline-offset-2 hover:text-ink hover:underline"
+              className="text-xs font-semibold text-ink-muted transition-colors hover:text-white"
             >
               Sign out
             </button>
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-5 sm:px-6 sm:py-6">
+      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
         <Outlet context={{ eventId }} />
       </main>
     </div>
@@ -122,7 +127,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => void auth.signOut()}
-            className="mt-4 h-10 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent-strong"
+            className="mt-4 inline-flex h-10 items-center justify-center rounded-xl bg-accent px-5 text-sm font-bold text-white shadow-[0_0_15px_rgba(230,0,110,0.35)] transition-all hover:bg-accent-light active:scale-[0.98]"
           >
             Sign out
           </button>

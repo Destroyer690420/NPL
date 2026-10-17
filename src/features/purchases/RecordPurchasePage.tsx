@@ -270,46 +270,46 @@ export function RecordPurchasePage() {
       />
 
       {!eventActive || !purchasesEnabled ? (
-        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-card border border-warn/25 bg-warn-soft px-4 py-2.5 text-sm text-warn">
-          <AlertTriangle className="size-4 shrink-0" aria-hidden />
-          <span className="flex-1">
+        <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+          <AlertTriangle className="size-4 shrink-0 text-amber-400" aria-hidden />
+          <span className="flex-1 font-medium">
             {event?.status === 'finalized'
               ? 'The event is finalized — new purchases are disabled.'
               : event?.status === 'active'
                 ? 'Purchases are paused.'
                 : 'The auction has not started yet.'}
           </span>
-          <Link to="/admin/settings" className="text-xs font-semibold underline underline-offset-2">
+          <Link to="/admin/settings" className="text-xs font-bold uppercase tracking-wider text-amber-300 underline underline-offset-4 hover:text-white">
             Open settings →
           </Link>
         </div>
       ) : null}
 
       {submit.kind === 'success' ? (
-        <Card className="mb-5 border-accent/30">
-          <CardBody className="flex flex-wrap items-start gap-4">
-            <span className="flex size-10 items-center justify-center rounded-full bg-accent-soft text-accent">
+        <div className="mb-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 shadow-lg">
+          <div className="flex flex-wrap items-start gap-4">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-emerald-500/40 bg-emerald-500/20 text-emerald-400">
               <CheckCircle2 className="size-5" aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-ink">
+              <p className="text-base font-bold text-white">
                 {submit.result.playerName} sold to {submit.result.teamName}
               </p>
-              <p className="mt-0.5 text-sm text-ink-soft">
-                {currency(submit.result.finalPrice, currencyLabel)} ·{' '}
-                {formatPoints(submit.result.playerPoints)} points ·{' '}
-                {submit.result.teamName}'s remaining purse is now{' '}
-                <span className="font-semibold">
+              <p className="mt-1 text-sm text-ink-muted">
+                <span className="font-bold text-emerald-400">{currency(submit.result.finalPrice, currencyLabel)}</span> ·{' '}
+                <span className="text-sky-300">{formatPoints(submit.result.playerPoints)} pts</span> ·{' '}
+                {submit.result.teamName}'s purse is now{' '}
+                <span className="font-bold text-white">
                   {currency(submit.result.teamSummary.remainingPurse, currencyLabel)}
                 </span>
               </p>
               {submit.result.idempotentReplay ? (
-                <p className="mt-1 text-xs text-muted">
+                <p className="mt-1.5 text-xs text-ink-muted">
                   Recorded once — this retry did not charge the team twice.
                 </p>
               ) : null}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2.5">
               <Button variant="secondary" onClick={resetForm} icon={<RotateCcw className="size-4" aria-hidden />}>
                 Record another
               </Button>
@@ -317,8 +317,8 @@ export function RecordPurchasePage() {
                 <Button variant="ghost">Transactions</Button>
               </Link>
             </div>
-          </CardBody>
-        </Card>
+          </div>
+        </div>
       ) : null}
 
       <div className="grid gap-5 lg:grid-cols-5">
@@ -404,40 +404,40 @@ export function RecordPurchasePage() {
             />
 
             {selectedTeam && price !== null ? (
-              <div className="rounded-control border border-line bg-surface-muted px-4 py-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              <div className="rounded-xl border border-line-strong bg-surface-muted/50 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
                   Pre-confirmation summary
                 </p>
-                <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm sm:grid-cols-4">
+                <dl className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
                   <div>
-                    <dt className="text-xs text-muted">Remaining purse now</dt>
-                    <dd className="font-medium tabular-nums">{currency(selectedTeam.remainingPurse, currencyLabel)}</dd>
+                    <dt className="text-[11px] font-medium text-ink-muted">Remaining purse</dt>
+                    <dd className="mt-0.5 font-bold tabular-nums text-white">{currency(selectedTeam.remainingPurse, currencyLabel)}</dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-muted">After purchase</dt>
-                    <dd className="font-medium tabular-nums text-accent">
+                    <dt className="text-[11px] font-medium text-ink-muted">After purchase</dt>
+                    <dd className="mt-0.5 font-extrabold tabular-nums text-accent">
                       {projected ? currency(projected.remainingPurse, currencyLabel) : '—'}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-muted">Points after</dt>
-                    <dd className="font-medium tabular-nums">
+                    <dt className="text-[11px] font-medium text-ink-muted">Points after</dt>
+                    <dd className="mt-0.5 font-bold tabular-nums text-sky-400">
                       {projected ? formatPoints(projected.totalPoints) : '—'}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-xs text-muted">Squad after</dt>
-                    <dd className="font-medium tabular-nums">{projected ? projected.playerCount : '—'}</dd>
+                    <dt className="text-[11px] font-medium text-ink-muted">Squad after</dt>
+                    <dd className="mt-0.5 font-bold tabular-nums text-white">{projected ? projected.playerCount : '—'}</dd>
                   </div>
                 </dl>
               </div>
             ) : null}
 
             {blocking.length > 0 ? (
-              <ul className="space-y-1 rounded-control border border-danger/25 bg-danger-soft px-4 py-3">
+              <ul className="space-y-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4">
                 {blocking.map((message, index) => (
-                  <li key={index} className="flex items-start gap-2 text-sm text-danger">
-                    <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+                  <li key={index} className="flex items-start gap-2 text-sm font-medium text-rose-300">
+                    <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-rose-400" aria-hidden />
                     {message}
                   </li>
                 ))}
@@ -445,9 +445,9 @@ export function RecordPurchasePage() {
             ) : null}
 
             {submit.kind === 'failed' ? (
-              <div className="rounded-control border border-danger/25 bg-danger-soft px-4 py-3">
-                <p className="text-sm font-medium text-danger">{submit.error.message}</p>
-                {submit.error.hint ? <p className="mt-0.5 text-xs text-danger/90">{submit.error.hint}</p> : null}
+              <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4">
+                <p className="text-sm font-bold text-rose-300">{submit.error.message}</p>
+                {submit.error.hint ? <p className="mt-1 text-xs text-rose-400/90">{submit.error.hint}</p> : null}
                 {submit.error.retryable ? (
                   <div className="mt-2 flex flex-wrap gap-2">
                     <Button size="sm" variant="secondary" onClick={() => void submitPurchase(submit.attempt)}>

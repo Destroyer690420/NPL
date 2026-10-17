@@ -121,20 +121,20 @@ export function DashboardPage() {
       />
 
       {warnings.length > 0 ? (
-        <div className="mb-5 space-y-2">
+        <div className="mb-6 space-y-2.5">
           {warnings.map((warning, index) => (
             <div
               key={index}
               className={
                 warning.tone === 'danger'
-                  ? 'flex flex-wrap items-center gap-2 rounded-card border border-danger/25 bg-danger-soft px-4 py-2.5 text-sm text-danger'
-                  : 'flex flex-wrap items-center gap-2 rounded-card border border-warn/25 bg-warn-soft px-4 py-2.5 text-sm text-warn'
+                  ? 'flex flex-wrap items-center gap-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-medium text-rose-300'
+                  : 'flex flex-wrap items-center gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-300'
               }
             >
-              <AlertTriangle className="size-4 shrink-0" aria-hidden />
+              <AlertTriangle className="size-4 shrink-0 text-amber-400" aria-hidden />
               <span className="flex-1">{warning.text}</span>
               {warning.to ? (
-                <Link to={warning.to} className="text-xs font-semibold underline underline-offset-2">
+                <Link to={warning.to} className="text-xs font-bold uppercase tracking-wider text-amber-200 underline underline-offset-4 hover:text-white">
                   {warning.linkLabel ?? 'Open'} →
                 </Link>
               ) : null}
@@ -144,21 +144,21 @@ export function DashboardPage() {
       ) : null}
 
       {checkResult ? (
-        <div className="mb-5 rounded-card border border-line bg-surface px-4 py-3">
-          <div className="flex items-center gap-2">
+        <div className="mb-6 rounded-xl border border-line-strong bg-surface-elevated/95 p-4 shadow-xl backdrop-blur-md">
+          <div className="flex items-center gap-2.5">
             {checkResult.ok ? (
-              <CheckCircle2 className="size-4 text-accent" aria-hidden />
+              <CheckCircle2 className="size-4 text-emerald-400" aria-hidden />
             ) : (
-              <AlertTriangle className="size-4 text-danger" aria-hidden />
+              <AlertTriangle className="size-4 text-rose-400" aria-hidden />
             )}
-            <p className="text-sm font-medium text-ink">
+            <p className="text-sm font-bold text-white">
               {checkResult.ok
                 ? 'All stored totals reconcile with the purchase records.'
                 : `${checkResult.problems.length} problem${checkResult.problems.length === 1 ? '' : 's'} found:`}
             </p>
           </div>
           {!checkResult.ok ? (
-            <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-danger">
+            <ul className="mt-2.5 list-inside list-disc space-y-1 text-xs font-medium text-rose-300">
               {checkResult.problems.slice(0, 8).map((problem, index) => (
                 <li key={index}>{problem}</li>
               ))}
@@ -260,18 +260,19 @@ export function DashboardPage() {
       </div>
 
       <SectionTitle className="mt-8">Teams overview</SectionTitle>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-3 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
         {teams.data.map((team) => (
-          <Card key={team.id} className="px-4 py-3.5">
+          <Card key={team.id} className="p-4 transition-all hover:border-line-strong hover:bg-surface-elevated/70">
             <div className="flex items-center justify-between gap-2">
-              <p className="truncate text-sm font-semibold text-ink">{team.name}</p>
+              <p className="truncate text-sm font-bold text-white">{team.name}</p>
               {team.active ? null : <Pill tone="neutral">Inactive</Pill>}
             </div>
-            <p className="mt-1 text-lg font-semibold tabular-nums text-accent">
+            <p className="mt-1.5 text-xl font-extrabold tabular-nums text-accent">
               {currency(team.remainingPurse, currencyLabel)}
             </p>
-            <p className="text-xs text-muted">
-              spent {currency(team.totalSpent, currencyLabel)} · {formatPoints(team.totalPoints)} pts ·{' '}
+            <p className="mt-1 text-xs text-ink-muted">
+              spent <span className="text-ink font-medium">{currency(team.totalSpent, currencyLabel)}</span> ·{' '}
+              <span className="font-semibold text-sky-400">{formatPoints(team.totalPoints)} pts</span> ·{' '}
               {team.playerCount} player{team.playerCount === 1 ? '' : 's'}
             </p>
           </Card>

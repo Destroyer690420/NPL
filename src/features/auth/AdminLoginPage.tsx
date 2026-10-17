@@ -43,19 +43,22 @@ export function AdminLoginPage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-12">
       <div className="mb-6 text-center">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">
-          College IPL Auction Manager
-        </p>
-        <h1 className="mt-1 text-xl font-semibold text-ink">Admin sign in</h1>
-        <p className="mt-1 text-sm text-muted">Use the organizer credentials for this deployment.</p>
+        <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1">
+          <span className="size-1.5 rounded-full bg-accent shadow-[0_0_6px_rgba(230,0,110,0.8)]" />
+          <p className="text-[11px] font-bold uppercase tracking-wider text-accent-light">
+            Organizer Portal
+          </p>
+        </div>
+        <h1 className="mt-3 text-2xl font-black tracking-tight text-white">Admin sign in</h1>
+        <p className="mt-1 text-sm text-ink-muted">Enter organizer credentials to manage the live auction.</p>
       </div>
 
-      <Card>
+      <Card className="border-line-strong bg-surface-elevated/90 p-2 shadow-2xl backdrop-blur-md">
         <CardBody>
           {auth.status === 'notAuthorized' ? (
-            <div className="mb-4 rounded-control border border-warn/25 bg-warn-soft px-3 py-2.5 text-sm text-warn">
-              <p className="font-medium">This session does not have admin access.</p>
-              <p className="mt-0.5 text-xs">
+            <div className="mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-sm text-amber-300">
+              <p className="font-semibold">This session does not have admin access.</p>
+              <p className="mt-0.5 text-xs text-amber-200/80">
                 Sign out and try again with the organizer credentials.
               </p>
               <button

@@ -269,7 +269,7 @@ export function SettingsPage() {
                 onChange={setPurchasesEnabled}
               />
               {formError ? (
-                <p role="alert" className="rounded-control bg-danger-soft px-3 py-2 text-sm text-danger">
+                <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-2.5 text-sm font-semibold text-rose-300">
                   {formError}
                 </p>
               ) : null}
@@ -396,17 +396,17 @@ export function SettingsPage() {
             <CardBody className="space-y-3">
               {report ? (
                 report.ok ? (
-                  <p className="flex items-center gap-2 text-sm text-accent">
-                    <CheckCircle2 className="size-4" aria-hidden />
+                  <p className="flex items-center gap-2 text-sm font-bold text-emerald-400">
+                    <CheckCircle2 className="size-4 text-emerald-400" aria-hidden />
                     All totals reconcile with the purchase records.
                   </p>
                 ) : (
                   <div>
-                    <p className="flex items-center gap-2 text-sm font-medium text-danger">
-                      <AlertTriangle className="size-4" aria-hidden />
+                    <p className="flex items-center gap-2 text-sm font-bold text-rose-300">
+                      <AlertTriangle className="size-4 text-rose-400" aria-hidden />
                       {report.problems.length} problem{report.problems.length === 1 ? '' : 's'} found
                     </p>
-                    <ul className="mt-1.5 list-inside list-disc space-y-1 text-xs text-danger">
+                    <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-rose-300">
                       {report.problems.map((problem, index) => (
                         <li key={index}>{problem}</li>
                       ))}

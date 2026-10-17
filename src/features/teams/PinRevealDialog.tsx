@@ -50,31 +50,31 @@ export function PinRevealDialog({
         </Button>
       }
     >
-      <div className="flex flex-col items-center gap-3 py-2">
+      <div className="flex flex-col items-center gap-3.5 py-2">
         <div className="flex items-center gap-3">
-          <span className="select-all rounded-control border border-line bg-surface-muted px-5 py-3 text-3xl font-bold tracking-[0.35em] tabular-nums text-ink">
+          <span className="select-all rounded-xl border border-accent/40 bg-accent/10 px-6 py-3.5 text-3xl font-black tracking-[0.4em] tabular-nums text-accent shadow-[0_0_15px_rgba(230,0,110,0.3)]">
             {pin}
           </span>
           <Button variant="secondary" onClick={() => void copy()} icon={<Copy className="size-4" aria-hidden />}>
             Copy
           </Button>
         </div>
-        <div className="flex items-start gap-2 rounded-control bg-warn-soft px-3 py-2 text-xs text-warn">
-          <ShieldAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+        <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-300">
+          <ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-400" aria-hidden />
           <p>
             Anyone with this PIN can view {teamName}'s purse and roster. The team logs in at the{' '}
-            <code>/team</code> page. Resetting the PIN signs the team out everywhere.
+            <code className="rounded bg-black/40 px-1 py-0.5 font-mono text-amber-200">/team</code> page. Resetting the PIN signs the team out everywhere.
           </p>
         </div>
-        <label className="flex items-center gap-2 text-xs text-ink-soft">
+        <label className="flex items-center gap-2 text-xs font-medium text-ink-muted">
           <input
             type="checkbox"
             checked={acknowledged}
             onChange={(event) => setAcknowledged(event.target.checked)}
-            className="size-4 accent-[var(--color-accent)]"
+            className="size-4 rounded accent-accent"
           />
-          <span className="flex items-center gap-1">
-            <KeyRound className="size-3.5" aria-hidden />I understand this PIN will not be shown again
+          <span className="flex items-center gap-1.5 text-ink">
+            <KeyRound className="size-3.5 text-accent" aria-hidden />I understand this PIN will not be shown again
           </span>
         </label>
       </div>

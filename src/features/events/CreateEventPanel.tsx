@@ -76,14 +76,17 @@ export function CreateEventPanel() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-lg flex-col justify-center px-6 py-12">
-      <Card>
-        <CardBody className="space-y-4">
+      <Card className="border-line-strong bg-surface-elevated/90 p-2 shadow-2xl backdrop-blur-md">
+        <CardBody className="space-y-5">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">
-              {auth.displayName}
-            </p>
-            <h1 className="mt-1 text-xl font-semibold text-ink">Create your auction event</h1>
-            <p className="mt-1 text-sm text-ink-soft">
+            <div className="flex items-center gap-2">
+              <span className="h-4 w-1 rounded-full bg-accent shadow-[0_0_8px_rgba(230,0,110,0.6)]" aria-hidden />
+              <p className="text-[11px] font-bold uppercase tracking-wider text-accent-light">
+                {auth.displayName}
+              </p>
+            </div>
+            <h1 className="mt-2 text-2xl font-black tracking-tight text-white">Create your auction event</h1>
+            <p className="mt-1 text-sm text-ink-muted">
               One event holds the teams, the player pool and every purchase. You can edit all of
               this later in Settings.
             </p>
@@ -112,7 +115,7 @@ export function CreateEventPanel() {
             />
           </div>
           {error ? (
-            <p role="alert" className="rounded-control bg-danger-soft px-3 py-2 text-sm text-danger">
+            <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-2.5 text-sm font-semibold text-rose-300">
               {error}
             </p>
           ) : null}

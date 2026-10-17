@@ -39,16 +39,16 @@ export function useToast(): ToastContextValue {
 
 const KIND_STYLES: Record<ToastKind, { container: string; icon: ReactNode }> = {
   success: {
-    container: 'border-accent/30 bg-surface',
-    icon: <CheckCircle2 className="size-4 text-accent" aria-hidden />,
+    container: 'border-emerald-500/40 bg-surface-elevated/95 backdrop-blur-md shadow-2xl',
+    icon: <CheckCircle2 className="size-4 text-emerald-400" aria-hidden />,
   },
   error: {
-    container: 'border-danger/30 bg-surface',
-    icon: <AlertTriangle className="size-4 text-danger" aria-hidden />,
+    container: 'border-rose-500/40 bg-surface-elevated/95 backdrop-blur-md shadow-2xl',
+    icon: <AlertTriangle className="size-4 text-rose-400" aria-hidden />,
   },
   info: {
-    container: 'border-line-strong bg-surface',
-    icon: <Info className="size-4 text-muted" aria-hidden />,
+    container: 'border-line-strong bg-surface-elevated/95 backdrop-blur-md shadow-2xl',
+    icon: <Info className="size-4 text-accent" aria-hidden />,
   },
 }
 

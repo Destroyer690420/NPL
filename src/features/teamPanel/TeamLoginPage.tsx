@@ -78,22 +78,22 @@ export function TeamLoginPage() {
         <p className="mt-1 text-sm text-muted">Enter the four-digit PIN from your organizer.</p>
       </div>
 
-      <Card>
-        <CardBody className="space-y-4">
+      <Card className="border-line-strong bg-surface-elevated/90 p-2 shadow-2xl backdrop-blur-md">
+        <CardBody className="space-y-5">
           {auth.sessionMessage ? (
-            <p role="status" className="rounded-control border border-warn/25 bg-warn-soft px-3 py-2 text-xs text-warn">
+            <p role="status" className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs font-medium text-amber-300">
               {auth.sessionMessage}
             </p>
           ) : null}
 
-          <div className="flex justify-center gap-3" aria-hidden>
+          <div className="flex justify-center gap-3.5" aria-hidden>
             {[0, 1, 2, 3].map((index) => (
               <span
                 key={index}
                 className={
                   index < pin.length
-                    ? 'flex size-12 items-center justify-center rounded-control border-2 border-accent bg-accent-soft text-xl font-bold text-accent'
-                    : 'flex size-12 items-center justify-center rounded-control border-2 border-line bg-surface text-xl font-bold text-muted'
+                    ? 'flex size-12 items-center justify-center rounded-xl border-2 border-accent bg-accent/20 text-2xl font-black text-accent shadow-[0_0_15px_rgba(230,0,110,0.5)] transition-all'
+                    : 'flex size-12 items-center justify-center rounded-xl border border-line-strong bg-surface-muted/60 text-xl font-bold text-ink-muted/40 transition-all'
                 }
               >
                 {index < pin.length ? '•' : ''}
@@ -101,14 +101,14 @@ export function TeamLoginPage() {
             ))}
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-2.5">
             {KEYS.map((key) => (
               <button
                 key={key}
                 type="button"
                 disabled={submitting || cooldownRemaining > 0}
                 onClick={() => press(key)}
-                className="h-12 rounded-control border border-line bg-surface text-lg font-semibold text-ink transition-colors hover:bg-surface-muted active:bg-line/40 disabled:opacity-40"
+                className="h-13 rounded-xl border border-line bg-surface-muted/70 text-lg font-bold text-white transition-all hover:border-line-strong hover:bg-surface-muted active:scale-[0.97] active:bg-accent/20 active:border-accent disabled:opacity-30"
               >
                 {key}
               </button>
@@ -117,7 +117,7 @@ export function TeamLoginPage() {
               type="button"
               disabled={submitting || cooldownRemaining > 0}
               onClick={() => setPin('')}
-              className="h-12 rounded-control border border-line bg-surface text-sm font-medium text-muted transition-colors hover:bg-surface-muted active:bg-line/40 disabled:opacity-40"
+              className="h-13 rounded-xl border border-line bg-surface-muted/50 text-xs font-bold uppercase tracking-wider text-ink-muted transition-all hover:bg-surface-muted active:scale-[0.97] disabled:opacity-30"
             >
               Clear
             </button>
@@ -125,7 +125,7 @@ export function TeamLoginPage() {
               type="button"
               disabled={submitting || cooldownRemaining > 0}
               onClick={() => press('0')}
-              className="h-12 rounded-control border border-line bg-surface text-lg font-semibold text-ink transition-colors hover:bg-surface-muted active:bg-line/40 disabled:opacity-40"
+              className="h-13 rounded-xl border border-line bg-surface-muted/70 text-lg font-bold text-white transition-all hover:border-line-strong hover:bg-surface-muted active:scale-[0.97] active:bg-accent/20 active:border-accent disabled:opacity-30"
             >
               0
             </button>
@@ -134,32 +134,32 @@ export function TeamLoginPage() {
               disabled={submitting}
               onClick={backspace}
               aria-label="Delete last digit"
-              className="flex h-12 items-center justify-center rounded-control border border-line bg-surface text-muted transition-colors hover:bg-surface-muted active:bg-line/40 disabled:opacity-40"
+              className="flex h-13 items-center justify-center rounded-xl border border-line bg-surface-muted/50 text-ink-muted transition-all hover:text-white hover:bg-surface-muted active:scale-[0.97] disabled:opacity-30"
             >
               <Delete className="size-4" aria-hidden />
             </button>
           </div>
 
           {submitting ? (
-            <p className="text-center text-xs text-muted" role="status">
-              Checking…
+            <p className="text-center text-xs font-medium text-accent animate-pulse" role="status">
+              Authenticating team…
             </p>
           ) : null}
           {cooldownRemaining > 0 ? (
-            <p className="text-center text-xs text-warn" role="alert">
+            <p className="text-center text-xs font-semibold text-amber-400" role="alert">
               Too many attempts. Try again in {cooldownRemaining} second{cooldownRemaining === 1 ? '' : 's'}.
             </p>
           ) : null}
           {error && cooldownRemaining <= 0 ? (
-            <div className="rounded-control bg-danger-soft px-3 py-2 text-center" role="alert">
-              <p className="text-sm text-danger">{error}</p>
-              {hint ? <p className="mt-0.5 text-xs text-danger/90">{hint}</p> : null}
+            <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-2.5 text-center" role="alert">
+              <p className="text-sm font-semibold text-rose-300">{error}</p>
+              {hint ? <p className="mt-0.5 text-xs text-rose-400/90">{hint}</p> : null}
             </div>
           ) : null}
 
-          <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted">
-            <ShieldCheck className="size-3.5" aria-hidden />
-            Each PIN only opens one team's private page. Nothing else is visible.
+          <div className="flex items-center justify-center gap-1.5 text-[11px] text-ink-muted">
+            <ShieldCheck className="size-3.5 text-accent" aria-hidden />
+            Each PIN only opens one team's private page.
           </div>
         </CardBody>
       </Card>

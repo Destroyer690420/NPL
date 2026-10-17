@@ -232,7 +232,7 @@ export function PlayerFormDialog({
           />
         ) : null}
         {localError ?? error ? (
-          <p role="alert" className="rounded-control bg-danger-soft px-3 py-2 text-sm text-danger">
+          <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-2.5 text-sm font-semibold text-rose-300">
             {localError ?? error}
           </p>
         ) : null}

@@ -5,11 +5,11 @@ import type { EventStatus, PlayerStatus, PurchaseStatus } from '@shared/types'
 type Tone = 'success' | 'warning' | 'danger' | 'neutral' | 'info'
 
 const TONE_CLASSES: Record<Tone, string> = {
-  success: 'bg-accent-soft text-accent-strong border-accent/20',
-  warning: 'bg-warn-soft text-warn border-warn/20',
-  danger: 'bg-danger-soft text-danger border-danger/20',
-  neutral: 'border-line bg-surface-muted text-ink-soft',
-  info: 'bg-info-soft text-ink-soft border-line',
+  success: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+  warning: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+  danger: 'bg-rose-500/15 text-rose-400 border-rose-500/30',
+  neutral: 'border-line bg-surface-muted/80 text-ink-muted',
+  info: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
 }
 
 export function Pill({

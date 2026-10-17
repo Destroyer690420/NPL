@@ -14,16 +14,17 @@ import { cn } from '@/lib/cn'
  */
 
 const CONTROL_CLASSES =
-  'w-full rounded-control border bg-surface px-3 text-sm text-ink placeholder:text-muted/70 ' +
-  'disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-muted'
+  'w-full rounded-xl border bg-surface-muted/90 px-3.5 text-sm text-ink placeholder:text-muted/50 ' +
+  'transition-colors outline-none ' +
+  'disabled:cursor-not-allowed disabled:bg-surface-muted/30 disabled:text-muted'
 
 function controlClasses(invalid: boolean, size: 'md' | 'lg'): string {
   return cn(
     CONTROL_CLASSES,
     size === 'lg' ? 'h-12' : 'h-10',
     invalid
-      ? 'border-danger focus:border-danger'
-      : 'border-line-strong focus:border-accent',
+      ? 'border-danger focus:border-danger focus:ring-1 focus:ring-danger'
+      : 'border-line-strong focus:border-accent focus:ring-1 focus:ring-accent',
   )
 }
 

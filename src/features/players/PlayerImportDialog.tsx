@@ -121,12 +121,12 @@ export function PlayerImportDialog({
       }
     >
       <div className="space-y-4">
-        <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-card border border-dashed border-line-strong bg-surface-muted px-4 py-6 text-center transition-colors hover:border-accent">
-          <FileUp className="size-6 text-muted" aria-hidden />
-          <span className="text-sm font-medium text-ink">
+        <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong bg-surface-muted/50 px-4 py-8 text-center transition-all hover:border-accent hover:bg-surface-muted">
+          <FileUp className="size-7 text-accent" aria-hidden />
+          <span className="text-sm font-bold text-white">
             {fileName ?? 'Choose a CSV file'}
           </span>
-          <span className="text-xs text-muted">or drag it onto this area</span>
+          <span className="text-xs text-ink-muted">or drag and drop it here</span>
           <input
             type="file"
             accept=".csv,text/csv"
@@ -136,29 +136,29 @@ export function PlayerImportDialog({
         </label>
 
         {preview ? (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {preview.missingColumns.length > 0 ? (
-              <div className="flex items-start gap-2 rounded-control border border-danger/25 bg-danger-soft px-3 py-2.5 text-sm text-danger">
-                <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <div className="flex items-start gap-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-sm text-rose-300">
+                <AlertTriangle className="mt-0.5 size-4 shrink-0 text-rose-400" aria-hidden />
                 <p>
                   Missing required column{preview.missingColumns.length === 1 ? '' : 's'}:{' '}
-                  <span className="font-medium">{preview.missingColumns.join(', ')}</span>. Download the
+                  <span className="font-bold text-white">{preview.missingColumns.join(', ')}</span>. Download the
                   template to see the expected format.
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-control border border-line bg-surface px-3 py-2">
-                  <p className="text-lg font-semibold tabular-nums text-accent">{preview.validCount}</p>
-                  <p className="text-[11px] uppercase tracking-wide text-muted">Valid rows</p>
+              <div className="grid grid-cols-3 gap-2.5 text-center">
+                <div className="rounded-xl border border-line bg-surface-muted/40 p-3">
+                  <p className="text-xl font-bold tabular-nums text-emerald-400">{preview.validCount}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Valid rows</p>
                 </div>
-                <div className="rounded-control border border-line bg-surface px-3 py-2">
-                  <p className="text-lg font-semibold tabular-nums text-danger">{preview.invalidCount}</p>
-                  <p className="text-[11px] uppercase tracking-wide text-muted">Invalid rows</p>
+                <div className="rounded-xl border border-line bg-surface-muted/40 p-3">
+                  <p className="text-xl font-bold tabular-nums text-rose-400">{preview.invalidCount}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Invalid rows</p>
                 </div>
-                <div className="rounded-control border border-line bg-surface px-3 py-2">
-                  <p className="text-lg font-semibold tabular-nums text-warn">{preview.duplicateCount}</p>
-                  <p className="text-[11px] uppercase tracking-wide text-muted">Duplicates in file</p>
+                <div className="rounded-xl border border-line bg-surface-muted/40 p-3">
+                  <p className="text-xl font-bold tabular-nums text-amber-300">{preview.duplicateCount}</p>
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Duplicates in file</p>
                 </div>
               </div>
             )}
@@ -182,33 +182,33 @@ export function PlayerImportDialog({
               <option value="skip-duplicates">Skip existing players</option>
             </SelectField>
 
-            <div className="max-h-72 overflow-auto rounded-control border border-line">
+            <div className="max-h-72 overflow-auto rounded-xl border border-line-strong">
               <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-surface-muted">
-                  <tr className="text-left uppercase tracking-wide text-muted">
-                    <th className="px-2.5 py-2">Line</th>
-                    <th className="px-2.5 py-2">Player ID</th>
-                    <th className="px-2.5 py-2">Name</th>
-                    <th className="px-2.5 py-2 text-right">Points</th>
-                    <th className="px-2.5 py-2 text-right">Base ({currencyLabel})</th>
-                    <th className="px-2.5 py-2">Problems</th>
+                <thead className="sticky top-0 bg-surface-elevated text-ink-muted">
+                  <tr className="text-left uppercase tracking-wider text-[11px] font-bold">
+                    <th className="px-3 py-2.5">Line</th>
+                    <th className="px-3 py-2.5">Player ID</th>
+                    <th className="px-3 py-2.5">Name</th>
+                    <th className="px-3 py-2.5 text-right">Points</th>
+                    <th className="px-3 py-2.5 text-right">Base ({currencyLabel})</th>
+                    <th className="px-3 py-2.5">Problems</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
                   {previewRows.map((row) => (
-                    <tr key={row.line} className={row.errors.length > 0 ? 'bg-danger-soft/60' : undefined}>
-                      <td className="px-2.5 py-1.5 tabular-nums text-muted">{row.line}</td>
-                      <td className="px-2.5 py-1.5">{row.playerId ?? '—'}</td>
-                      <td className="px-2.5 py-1.5 font-medium">{row.name || '—'}</td>
-                      <td className="px-2.5 py-1.5 text-right tabular-nums">{row.points ?? '—'}</td>
-                      <td className="px-2.5 py-1.5 text-right tabular-nums">{row.basePrice ?? '—'}</td>
-                      <td className="px-2.5 py-1.5 text-danger">{row.errors.join(' ') || '—'}</td>
+                    <tr key={row.line} className={row.errors.length > 0 ? 'bg-rose-500/10' : undefined}>
+                      <td className="px-3 py-2 tabular-nums text-ink-muted">{row.line}</td>
+                      <td className="px-3 py-2">{row.playerId ?? '—'}</td>
+                      <td className="px-3 py-2 font-bold text-white">{row.name || '—'}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-sky-400">{row.points ?? '—'}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-ink">{row.basePrice ?? '—'}</td>
+                      <td className="px-3 py-2 text-rose-400 font-medium">{row.errors.join(' ') || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {preview.rows.length > previewRows.length ? (
-                <p className="border-t border-line bg-surface-muted px-2.5 py-1.5 text-[11px] text-muted">
+                <p className="border-t border-line bg-surface-muted px-3 py-2 text-[11px] text-ink-muted">
                   Showing the first {previewRows.length} of {preview.rows.length} rows. Use the error
                   report for the full list.
                 </p>
@@ -216,15 +216,15 @@ export function PlayerImportDialog({
             </div>
 
             {commitError ? (
-              <p role="alert" className="rounded-control bg-danger-soft px-3 py-2 text-sm text-danger">
+              <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-2.5 text-sm font-semibold text-rose-300">
                 {commitError}
               </p>
             ) : null}
 
-            <div className="flex items-center gap-2 text-[11px] text-muted">
+            <div className="flex items-center gap-2 text-[11px] text-ink-muted">
               {preview.canCommit ? (
                 <>
-                  <CheckCircle2 className="size-3.5 text-accent" aria-hidden />
+                  <CheckCircle2 className="size-3.5 text-emerald-400" aria-hidden />
                   Ready to import {preview.validCount} player{preview.validCount === 1 ? '' : 's'}.
                 </>
               ) : (

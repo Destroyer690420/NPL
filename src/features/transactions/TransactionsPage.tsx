@@ -327,14 +327,14 @@ export function TransactionsPage() {
       >
         {reversing ? (
           <div className="space-y-4">
-            <div className="rounded-control border border-warn/25 bg-warn-soft px-4 py-3 text-sm text-warn">
-              <p className="flex items-center gap-2 font-medium">
-                <AlertTriangle className="size-4" aria-hidden />
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-sm text-amber-300">
+              <p className="flex items-center gap-2 font-bold text-amber-200">
+                <AlertTriangle className="size-4 text-amber-400" aria-hidden />
                 What will happen
               </p>
-              <ul className="mt-1.5 list-inside list-disc space-y-0.5 text-xs">
+              <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-amber-200/90">
                 <li>
-                  {reversing.teamNameSnapshot} is refunded {currency(reversing.finalPrice, currencyLabel)}
+                  {reversing.teamNameSnapshot} is refunded <span className="font-bold text-white">{currency(reversing.finalPrice, currencyLabel)}</span>
                   {reversingTeam ? ` (remaining purse becomes ${currency(reversingTeam.remainingPurse + reversing.finalPrice, currencyLabel)})` : ''}.
                 </li>
                 <li>{formatPoints(reversing.playerPointsSnapshot)} points are removed from the team.</li>
@@ -351,7 +351,7 @@ export function TransactionsPage() {
               hint="Stored on the purchase record and in the audit log."
             />
             {reversalError ? (
-              <p role="alert" className="rounded-control bg-danger-soft px-3 py-2 text-sm text-danger">
+              <p role="alert" className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-2.5 text-sm font-semibold text-rose-300">
                 {reversalError}
               </p>
             ) : null}
