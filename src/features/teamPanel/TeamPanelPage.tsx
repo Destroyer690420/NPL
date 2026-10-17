@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { LogOut, RefreshCw, Trophy, Users } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { LogOut, Menu, RefreshCw, Trophy, Users, X } from 'lucide-react'
 import { useTeamAuth } from '@/auth/TeamAuthProvider'
 import { useTeamDoc, useTeamPurchases } from '@/data/hooks'
 import { currency, formatDateTime, points as formatPoints } from '@/lib/format'
@@ -7,6 +7,19 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card'
 import { EmptyState, LoadingBlock } from '@/components/ui/Feedback'
 import { Pill } from '@/components/ui/StatusPill'
+
+function getTeamInitials(name: string): string {
+  const trimmed = name.trim()
+  if (!trimmed) return 'TM'
+  const words = trimmed.split(/\s+/)
+  if (words.length >= 2) {
+    return words.slice(0, 3).map((w) => w[0]?.toUpperCase() ?? '').join('')
+  }
+  if (trimmed.length <= 4) {
+    return trimmed.toUpperCase()
+  }
+  return trimmed.slice(0, 3).toUpperCase()
+}
 
 /**
  * The private team panel: one team's purse, spend, points and roster, live.
@@ -19,6 +32,7 @@ export function TeamPanelPage() {
 
   const team = useTeamDoc(context?.eventId ?? null, context?.teamId ?? null)
   const purchases = useTeamPurchases(context?.eventId ?? null, context?.teamId ?? null, 200)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // A revoked/expired session (or a deactivated team) surfaces as a read
   // failure; end the local session so the PIN screen explains what happened.
@@ -35,64 +49,169 @@ export function TeamPanelPage() {
     }
   }, [team.error, purchases.error, auth])
 
+  useEffect(() => {
+    if (!sidebarOpen) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSidebarOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [sidebarOpen])
+
   if (!context) return <LoadingBlock label="Loading your team…" />
 
   const currencyLabel = context.currencyLabel
   const teamData = team.data
   const fromCache = team.fromCache || purchases.fromCache
   const confirmed = purchases.data.filter((purchase) => purchase.status === 'confirmed')
+  const teamInitials = getTeamInitials(context.teamName)
 
   return (
     <div className="mx-auto min-h-dvh w-full max-w-3xl px-4 py-6 sm:px-6">
-      <header className="mb-6 flex flex-wrap items-center gap-3.5">
-        {context.logoUrl ? (
-          <img
-            src={context.logoUrl}
-            alt=""
-            className="size-12 rounded-xl border border-line-strong object-cover shadow-md"
-            onError={(event) => {
-              event.currentTarget.style.display = 'none'
-            }}
-          />
-        ) : (
-          <span className="flex size-12 items-center justify-center rounded-xl border border-line-strong bg-surface-muted text-base font-bold text-accent shadow-md">
-            {context.teamName.slice(0, 2).toUpperCase()}
+      {/* Top Navbar */}
+      <header className="mb-6 flex items-center justify-between rounded-2xl border border-line-strong bg-surface-elevated/90 px-4 py-3 shadow-xl backdrop-blur-md sm:px-5">
+        <div className="flex items-center gap-2.5">
+          <span className="flex size-9 items-center justify-center rounded-xl border border-accent/40 bg-accent/15 text-xs font-black tracking-wider text-accent shadow-[0_0_10px_rgba(230,0,110,0.35)]">
+            {teamInitials}
           </span>
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="h-4 w-1 rounded-full bg-accent shadow-[0_0_8px_rgba(230,0,110,0.6)]" aria-hidden />
-            <h1 className="truncate text-xl font-bold tracking-tight text-white">{context.teamName}</h1>
-          </div>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-ink-muted">
-            <span>{context.eventName}</span>
-            <span className="text-line-strong">•</span>
-            {context.eventStatus === 'active' ? (
-              <Pill tone="success">Auction live</Pill>
-            ) : context.eventStatus === 'finalized' ? (
-              <Pill tone="neutral">Finalized</Pill>
-            ) : (
-              <Pill tone="warning">Not started</Pill>
-            )}
-            {fromCache ? (
-              <Pill tone="warning" className="gap-1">
-                <RefreshCw className="size-3 animate-spin" aria-hidden />
-                Updating…
-              </Pill>
-            ) : (
-              <Pill tone="success">Live</Pill>
-            )}
-          </div>
+          <span className="text-base font-black tracking-wider text-white">
+            {teamInitials}
+          </span>
         </div>
-        <Button
-          variant="secondary"
-          size="sm"
-          icon={<LogOut className="size-3.5" aria-hidden />}
-          onClick={() => void auth.signOut()}
+
+        <button
+          type="button"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Open menu"
+          className="flex size-9 items-center justify-center rounded-xl border border-line-strong bg-surface-muted/80 text-ink-muted transition-all hover:border-accent hover:bg-surface-muted hover:text-white active:scale-95"
         >
-          Sign out
-        </Button>
+          <Menu className="size-4.5" aria-hidden />
+        </button>
       </header>
+
+      {/* Sidebar Overlay and Drawer */}
+      {sidebarOpen ? (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/80 backdrop-blur-xs transition-opacity"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden
+          />
+
+          {/* Drawer Panel */}
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="Team menu"
+            className="relative z-10 flex h-full w-full max-w-xs flex-col border-l border-line-strong bg-[#0e121a] p-5 shadow-2xl sm:max-w-sm"
+          >
+            {/* Header: Auction name on top */}
+            <div className="flex items-start justify-between border-b border-line pb-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="h-4 w-1 rounded-full bg-accent shadow-[0_0_8px_rgba(230,0,110,0.6)]" aria-hidden />
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-accent-light">Auction</p>
+                </div>
+                <h2 className="mt-1 text-lg font-black tracking-tight text-white">{context.eventName}</h2>
+                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                  {context.eventStatus === 'active' ? (
+                    <Pill tone="success">Auction live</Pill>
+                  ) : context.eventStatus === 'finalized' ? (
+                    <Pill tone="neutral">Finalized</Pill>
+                  ) : (
+                    <Pill tone="warning">Not started</Pill>
+                  )}
+                  {fromCache ? (
+                    <Pill tone="warning" className="gap-1">
+                      <RefreshCw className="size-3 animate-spin" aria-hidden />
+                      Updating…
+                    </Pill>
+                  ) : (
+                    <Pill tone="success">Live</Pill>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(false)}
+                aria-label="Close menu"
+                className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-line bg-surface-muted text-ink-muted transition-colors hover:text-white"
+              >
+                <X className="size-4" aria-hidden />
+              </button>
+            </div>
+
+            {/* Content / Options */}
+            <div className="flex-1 space-y-4 overflow-y-auto py-5">
+              {/* Team Profile Tile */}
+              <div className="rounded-xl border border-line bg-surface-muted/40 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Team</p>
+                <div className="mt-2 flex items-center gap-3">
+                  {context.logoUrl ? (
+                    <img
+                      src={context.logoUrl}
+                      alt=""
+                      className="size-11 rounded-xl border border-line-strong object-cover shadow-sm"
+                      onError={(event) => {
+                        event.currentTarget.style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <span className="flex size-11 items-center justify-center rounded-xl border border-accent/30 bg-accent/15 text-sm font-black text-accent">
+                      {teamInitials}
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-base font-bold text-white">{context.teamName}</p>
+                    <p className="text-xs text-ink-muted">Private team session</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stats overview */}
+              {teamData ? (
+                <div className="rounded-xl border border-line bg-surface-muted/30 p-4 space-y-2.5">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Portfolio Summary</p>
+                  <div className="grid grid-cols-2 gap-2 text-center">
+                    <div className="rounded-lg border border-line/60 bg-surface-muted/40 p-2.5">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Points</p>
+                      <p className="mt-0.5 text-base font-bold text-sky-400 tabular-nums">{formatPoints(teamData.totalPoints)}</p>
+                    </div>
+                    <div className="rounded-lg border border-line/60 bg-surface-muted/40 p-2.5">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Players</p>
+                      <p className="mt-0.5 text-base font-bold text-white tabular-nums">{teamData.playerCount}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="rounded-xl border border-line/50 bg-surface-muted/20 p-3 text-xs text-ink-muted">
+                <p className="font-semibold text-white">Live Sync Active</p>
+                <p className="mt-1 text-[11px] leading-relaxed">
+                  Your purse balance and squad update in realtime as auction purchases are confirmed.
+                </p>
+              </div>
+            </div>
+
+            {/* Bottom: Sign out button */}
+            <div className="border-t border-line pt-4">
+              <Button
+                variant="secondary"
+                block
+                size="lg"
+                icon={<LogOut className="size-4" aria-hidden />}
+                onClick={() => {
+                  setSidebarOpen(false)
+                  void auth.signOut()
+                }}
+              >
+                Sign out
+              </Button>
+            </div>
+          </aside>
+        </div>
+      ) : null}
 
       {teamData ? (
         <div className="overflow-hidden rounded-2xl border border-line-strong bg-gradient-to-br from-[#181c26] via-[#12151f] to-[#1c101d] p-6 shadow-2xl">
