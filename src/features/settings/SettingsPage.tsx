@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router'
 import {
   AlertTriangle,
@@ -54,14 +54,20 @@ export function SettingsPage() {
   const [reopenReason, setReopenReason] = useState('')
   const [reopenBusy, setReopenBusy] = useState(false)
 
+  const loadedEventRef = useRef<string | null>(null)
+  const isDirtyRef = useRef(false)
+
   useEffect(() => {
     if (!event) return
-    setName(event.name)
-    setCurrencyLabel(event.currencyLabel)
-    setDefaultPurse(String(event.defaultStartingPurse))
-    setMaxRoster(event.maxRosterSize === null ? '' : String(event.maxRosterSize))
-    setPurchasesEnabled(event.purchasesEnabled)
-  }, [event])
+    if (loadedEventRef.current !== event.id || (!isDirtyRef.current && !saving)) {
+      loadedEventRef.current = event.id
+      setName(event.name)
+      setCurrencyLabel(event.currencyLabel)
+      setDefaultPurse(String(event.defaultStartingPurse))
+      setMaxRoster(event.maxRosterSize === null ? '' : String(event.maxRosterSize))
+      setPurchasesEnabled(event.purchasesEnabled)
+    }
+  }, [event, saving])
 
   const dirty = useMemo(() => {
     if (!event) return false
@@ -75,6 +81,8 @@ export function SettingsPage() {
       purchasesEnabled !== event.purchasesEnabled
     )
   }, [event, name, currencyLabel, defaultPurse, maxRoster, purchasesEnabled])
+
+  isDirtyRef.current = dirty
 
   async function save(): Promise<void> {
     if (!event) return
@@ -111,6 +119,7 @@ export function SettingsPage() {
         maxRosterSize: roster,
         purchasesEnabled,
       })
+      isDirtyRef.current = false
       toast.push({ kind: 'success', message: 'Settings saved.' })
     } catch (error) {
       setFormError(isCallError(error) ? error.message : errorMessage(error))
@@ -221,43 +230,80 @@ export function SettingsPage() {
             <CardTitle>Event details</CardTitle>
             <EventStatusPill status={event.status} />
           </CardHeader>
-          <CardBody className="space-y-4">
-            <InputField label="Event name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
-            <div className="grid gap-4 sm:grid-cols-2">
+          <CardBody>
+            <form onSubmit={(e) => { e.preventDefault(); void save(); }} className="space-y-4">
+              <InputField label="Event name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <InputField
+                  label="Currency label"
+                  value={currencyLabel}
+                  maxLength={12}
+                  onChange={(e) => setCurrencyLabel(e.target.value)}
+                  hint="e.g. ₹ or credits — shown everywhere amounts appear"
+                />
+                <InputField
+                  label="Default starting purse"
+                  value={defaultPurse}
+                  inputMode="numeric"
+                  onChange={(e) => setDefaultPurse(e.target.value)}
+                  hint="Pre-fills the add-team dialog"
+                />
+              </div>
               <InputField
-                label="Currency label"
-                value={currencyLabel}
-                maxLength={12}
-                onChange={(e) => setCurrencyLabel(e.target.value)}
-                hint="e.g. ₹ or credits — shown everywhere amounts appear"
-              />
-              <InputField
-                label="Default starting purse"
-                value={defaultPurse}
+                label="Maximum roster size per team"
+                optional
+                value={maxRoster}
                 inputMode="numeric"
-                onChange={(e) => setDefaultPurse(e.target.value)}
-                hint="Pre-fills the add-team dialog"
+                onChange={(e) => setMaxRoster(e.target.value)}
+                hint={`Leave empty for no limit (1–${MAX_ROSTER_SIZE_LIMIT}). Enforced on every purchase.`}
               />
-            </div>
-            <InputField
-              label="Maximum roster size per team"
-              optional
-              value={maxRoster}
-              inputMode="numeric"
-              onChange={(e) => setMaxRoster(e.target.value)}
-              hint={`Leave empty for no limit (1–${MAX_ROSTER_SIZE_LIMIT}). Enforced on every purchase.`}
-            />
-            <CheckboxField
-              label="Purchases enabled"
-              description="Turn off to pause all recording instantly — useful during breaks. Team panels keep updating."
-              checked={purchasesEnabled}
-              onChange={setPurchasesEnabled}
-            />
-            {formError ? (
-              <p role="alert" className="rounded-control bg-danger-soft px-3 py-2 text-sm text-danger">
-                {formError}
-              </p>
-            ) : null}
+              <CheckboxField
+                label="Purchases enabled"
+                description="Turn off to pause all recording instantly — useful during breaks. Team panels keep updating."
+                checked={purchasesEnabled}
+                onChange={setPurchasesEnabled}
+              />
+              {formError ? (
+                <p role="alert" className="rounded-control bg-danger-soft px-3 py-2 text-sm text-danger">
+                  {formError}
+                </p>
+              ) : null}
+
+              <div className="flex items-center justify-between border-t border-line/60 pt-4">
+                <span className="text-xs text-muted">
+                  {dirty ? 'You have unsaved changes' : 'All changes saved'}
+                </span>
+                <div className="flex items-center gap-2">
+                  {dirty ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={saving}
+                      onClick={() => {
+                        if (!event) return
+                        setName(event.name)
+                        setCurrencyLabel(event.currencyLabel)
+                        setDefaultPurse(String(event.defaultStartingPurse))
+                        setMaxRoster(event.maxRosterSize === null ? '' : String(event.maxRosterSize))
+                        setPurchasesEnabled(event.purchasesEnabled)
+                        setFormError(null)
+                      }}
+                    >
+                      Discard
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="submit"
+                    icon={<Save className="size-4" aria-hidden />}
+                    disabled={!dirty}
+                    loading={saving}
+                  >
+                    Save changes
+                  </Button>
+                </div>
+              </div>
+            </form>
           </CardBody>
         </Card>
 
