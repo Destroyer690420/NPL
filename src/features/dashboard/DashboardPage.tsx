@@ -1,32 +1,25 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link, useOutletContext } from 'react-router'
-import { AlertTriangle, ArrowRight, CheckCircle2, PlusCircle, ShoppingCart } from 'lucide-react'
+import { AlertTriangle, ArrowRight, PlusCircle } from 'lucide-react'
 import type { AdminOutletContext } from '@/app/outlet'
 import { useAdminEvent } from '@/app/AdminEventProvider'
 import { useAuditLogs, usePlayers, usePurchases, useTeams } from '@/data/hooks'
 import { currency, formatRelative, points as formatPoints } from '@/lib/format'
-import { PageHeader, SectionTitle } from '@/components/ui/PageHeader'
+import { SectionTitle } from '@/components/ui/PageHeader'
 import { Card, CardBody, CardHeader, CardTitle, StatCard } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { EmptyState, Skeleton } from '@/components/ui/Feedback'
 import { Pill, PurchaseStatusPill } from '@/components/ui/StatusPill'
-import { useToast } from '@/components/ui/Toast'
-import { checkEventConsistency } from '@/services/admin'
-import { errorMessage } from '@/lib/errors'
 import { AUDIT_ACTION_LABELS } from '@/lib/labels'
 
 export function DashboardPage() {
   const { eventId } = useOutletContext<AdminOutletContext>()
   const { event } = useAdminEvent()
-  const toast = useToast()
 
   const teams = useTeams(eventId)
   const players = usePlayers(eventId)
   const purchases = usePurchases(eventId, 8)
   const auditLogs = useAuditLogs(eventId, 8)
-
-  const [checking, setChecking] = useState(false)
-  const [checkResult, setCheckResult] = useState<{ ok: boolean; problems: string[] } | null>(null)
 
   // Totals are derived from the full team and player documents (purchase
   // listeners are intentionally capped, so they are not a totals source).
@@ -85,41 +78,10 @@ export function DashboardPage() {
     return list
   }, [event, teams.data, players.data])
 
-  async function runConsistencyCheck(): Promise<void> {
-    setChecking(true)
-    try {
-      const result = await checkEventConsistency(eventId)
-      setCheckResult({ ok: result.ok, problems: result.problems })
-      toast.push({
-        kind: result.ok ? 'success' : 'error',
-        message: result.ok ? 'Consistency check passed.' : 'Consistency check found problems.',
-      })
-    } catch (error) {
-      toast.push({ kind: 'error', message: errorMessage(error) })
-    } finally {
-      setChecking(false)
-    }
-  }
-
   const loading = teams.loading && players.loading && purchases.loading
 
   return (
     <div>
-      <PageHeader
-        title="Dashboard"
-        description="Live auction state. Everything updates in realtime as purchases are recorded."
-        actions={
-          <>
-            <Button variant="secondary" onClick={() => void runConsistencyCheck()} loading={checking}>
-              Run consistency check
-            </Button>
-            <Link to="/admin/purchases/new">
-              <Button icon={<ShoppingCart className="size-4" aria-hidden />}>Record purchase</Button>
-            </Link>
-          </>
-        }
-      />
-
       {warnings.length > 0 ? (
         <div className="mb-6 space-y-2.5">
           {warnings.map((warning, index) => (
@@ -140,30 +102,6 @@ export function DashboardPage() {
               ) : null}
             </div>
           ))}
-        </div>
-      ) : null}
-
-      {checkResult ? (
-        <div className="mb-6 rounded-xl border border-line-strong bg-surface-elevated/95 p-4 shadow-xl backdrop-blur-md">
-          <div className="flex items-center gap-2.5">
-            {checkResult.ok ? (
-              <CheckCircle2 className="size-4 text-emerald-400" aria-hidden />
-            ) : (
-              <AlertTriangle className="size-4 text-rose-400" aria-hidden />
-            )}
-            <p className="text-sm font-bold text-white">
-              {checkResult.ok
-                ? 'All stored totals reconcile with the purchase records.'
-                : `${checkResult.problems.length} problem${checkResult.problems.length === 1 ? '' : 's'} found:`}
-            </p>
-          </div>
-          {!checkResult.ok ? (
-            <ul className="mt-2.5 list-inside list-disc space-y-1 text-xs font-medium text-rose-300">
-              {checkResult.problems.slice(0, 8).map((problem, index) => (
-                <li key={index}>{problem}</li>
-              ))}
-            </ul>
-          ) : null}
         </div>
       ) : null}
 

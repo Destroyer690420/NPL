@@ -5,7 +5,6 @@ import type { AdminOutletContext } from '@/app/outlet'
 import { useAdminEvent } from '@/app/AdminEventProvider'
 import { useTeams } from '@/data/hooks'
 import { currency, points as formatPoints } from '@/lib/format'
-import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody } from '@/components/ui/Card'
 import { InputField } from '@/components/ui/Field'
@@ -62,15 +61,11 @@ export function TeamsPage() {
 
   return (
     <div>
-      <PageHeader
-        title="Teams"
-        description="Each team gets a private PIN login where members can follow their purse and roster live."
-        actions={
-          <Button icon={<Plus className="size-4" aria-hidden />} onClick={() => setFormOpen(true)}>
-            Add team
-          </Button>
-        }
-      />
+      <div className="mb-4 flex items-center justify-end">
+        <Button icon={<Plus className="size-4" aria-hidden />} onClick={() => setFormOpen(true)}>
+          Add team
+        </Button>
+      </div>
 
       <Card>
         <CardBody className="pb-3">

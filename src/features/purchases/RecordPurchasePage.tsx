@@ -19,7 +19,7 @@ import { newRequestId } from '@/lib/ids'
 import { errorMessage, toFriendlyError, type FriendlyError } from '@/lib/errors'
 import { currency, formatRelative, points as formatPoints } from '@/lib/format'
 import { parseAmountInput, subtractInts, addInts } from '@shared/money'
-import { PageHeader, SectionTitle } from '@/components/ui/PageHeader'
+import { SectionTitle } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Dialog } from '@/components/ui/Dialog'
@@ -264,10 +264,6 @@ export function RecordPurchasePage() {
 
   return (
     <div>
-      <PageHeader
-        title="Record purchase"
-        description="Sell one player to one team. The purchase is validated and written atomically on the server."
-      />
 
       {!eventActive || !purchasesEnabled ? (
         <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">

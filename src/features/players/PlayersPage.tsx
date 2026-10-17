@@ -1,13 +1,12 @@
 import { useMemo, useState } from 'react'
-import { useOutletContext } from 'react-router'
-import { Ban, Download, FileUp, PlusCircle, Search, UserRound } from 'lucide-react'
+import { Link, useOutletContext } from 'react-router'
+import { Ban, PlusCircle, Search, UserRound } from 'lucide-react'
 import type { AdminOutletContext } from '@/app/outlet'
 import { useAdminEvent } from '@/app/AdminEventProvider'
 import { usePlayers, useTeams } from '@/data/hooks'
 import { currency, points as formatPoints } from '@/lib/format'
 import { normalizeName } from '@shared/text'
 import type { PlayerDoc, PlayerStatus } from '@shared/types'
-import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody } from '@/components/ui/Card'
 import { InputField, SelectField } from '@/components/ui/Field'
@@ -17,9 +16,7 @@ import { useToast } from '@/components/ui/Toast'
 import { createPlayer, setPlayerStatus, updatePlayer } from '@/services/admin'
 import { isCallError } from '@/services/callables'
 import { errorMessage } from '@/lib/errors'
-import { downloadCsv } from '@/lib/csv'
 import { PlayerFormDialog, type PlayerFormValues } from './PlayerFormDialog'
-import { PlayerImportDialog } from './PlayerImportDialog'
 
 type StatusFilter = 'all' | PlayerStatus
 type SortKey = 'name' | 'points' | 'basePrice' | 'status'
@@ -43,7 +40,6 @@ export function PlayersPage() {
   const [editing, setEditing] = useState<PlayerDoc | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
-  const [importOpen, setImportOpen] = useState(false)
   const [actionBusyId, setActionBusyId] = useState<string | null>(null)
 
   const currencyLabel = event?.currencyLabel ?? '₹'
@@ -66,11 +62,6 @@ export function PlayersPage() {
 
   const shown = filtered.slice(0, visible)
 
-  function openCreate(): void {
-    setEditing(null)
-    setFormError(null)
-    setFormOpen(true)
-  }
 
   function openEdit(player: PlayerDoc): void {
     setEditing(player)
@@ -137,40 +128,8 @@ export function PlayersPage() {
     }
   }
 
-  function exportCsv(): void {
-    const rows: Array<Array<string | number>> = [
-      ['player_id', 'name', 'points', 'base_price', 'status', 'sold_to'],
-      ...filtered.map((player) => [
-        player.externalReference ?? '',
-        player.name,
-        player.points,
-        player.basePrice,
-        player.status,
-        player.soldToTeamId ? (teamNames.get(player.soldToTeamId) ?? player.soldToTeamId) : '',
-      ]),
-    ]
-    downloadCsv(`players-${new Date().toISOString().slice(0, 10)}.csv`, rows)
-  }
-
   return (
     <div>
-      <PageHeader
-        title="Players"
-        description="The auction pool. Sold players are locked until their purchase is reversed."
-        actions={
-          <>
-            <Button variant="secondary" icon={<FileUp className="size-4" aria-hidden />} onClick={() => setImportOpen(true)}>
-              Import CSV
-            </Button>
-            <Button variant="secondary" icon={<Download className="size-4" aria-hidden />} onClick={exportCsv} disabled={filtered.length === 0}>
-              Export CSV
-            </Button>
-            <Button icon={<PlusCircle className="size-4" aria-hidden />} onClick={openCreate}>
-              Add player
-            </Button>
-          </>
-        }
-      />
 
       <Card>
         <CardBody className="grid gap-3 pb-3 sm:grid-cols-[1fr_170px_170px]">
@@ -217,14 +176,9 @@ export function PlayersPage() {
             }
             action={
               players.data.length === 0 ? (
-                <div className="flex gap-2">
-                  <Button size="sm" onClick={openCreate}>
-                    Add player
-                  </Button>
-                  <Button size="sm" variant="secondary" onClick={() => setImportOpen(true)}>
-                    Import CSV
-                  </Button>
-                </div>
+                <Link to="/admin/settings">
+                  <Button size="sm">Go to Settings to import or add players</Button>
+                </Link>
               ) : undefined
             }
           />
@@ -320,19 +274,6 @@ export function PlayersPage() {
         error={formError}
       />
 
-      <PlayerImportDialog
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        eventId={eventId}
-        currencyLabel={currencyLabel}
-        onImported={(imported, skipped) => {
-          toast.push({
-            kind: 'success',
-            message: `${imported} player${imported === 1 ? '' : 's'} imported.`,
-            detail: skipped.length > 0 ? `${skipped.length} existing player id(s) skipped.` : undefined,
-          })
-        }}
-      />
     </div>
   )
 }

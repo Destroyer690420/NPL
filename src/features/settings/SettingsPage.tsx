@@ -3,9 +3,12 @@ import { useOutletContext } from 'react-router'
 import {
   AlertTriangle,
   CheckCircle2,
+  Download,
+  FileUp,
   Flag,
   PauseCircle,
   PlayCircle,
+  PlusCircle,
   RefreshCw,
   Save,
   ShieldAlert,
@@ -22,9 +25,12 @@ import { Dialog } from '@/components/ui/Dialog'
 import { CheckboxField, InputField, TextareaField } from '@/components/ui/Field'
 import { EventStatusPill, Pill } from '@/components/ui/StatusPill'
 import { useToast } from '@/components/ui/Toast'
-import { checkEventConsistency, setDefaultEvent, updateEvent } from '@/services/admin'
+import { checkEventConsistency, createPlayer, setDefaultEvent, updateEvent } from '@/services/admin'
 import { isCallError } from '@/services/callables'
 import { errorMessage } from '@/lib/errors'
+import { downloadCsv } from '@/lib/csv'
+import { PlayerFormDialog, type PlayerFormValues } from '@/features/players/PlayerFormDialog'
+import { PlayerImportDialog } from '@/features/players/PlayerImportDialog'
 import { formatAmount, parseAmountInput, parseIntegerInput } from '@shared/money'
 import { MAX_ROSTER_SIZE_LIMIT, MAX_AMOUNT } from '@shared/constants'
 import { formatRelative, points as formatPoints } from '@/lib/format'
@@ -53,6 +59,11 @@ export function SettingsPage() {
   const [reopenOpen, setReopenOpen] = useState(false)
   const [reopenReason, setReopenReason] = useState('')
   const [reopenBusy, setReopenBusy] = useState(false)
+
+  const [playerImportOpen, setPlayerImportOpen] = useState(false)
+  const [playerFormOpen, setPlayerFormOpen] = useState(false)
+  const [playerSubmitting, setPlayerSubmitting] = useState(false)
+  const [playerFormError, setPlayerFormError] = useState<string | null>(null)
 
   const loadedEventRef = useRef<string | null>(null)
   const isDirtyRef = useRef(false)
@@ -197,6 +208,45 @@ export function SettingsPage() {
     }
   }
 
+  async function submitPlayer(values: PlayerFormValues): Promise<void> {
+    setPlayerSubmitting(true)
+    setPlayerFormError(null)
+    try {
+      await createPlayer({
+        eventId,
+        name: values.name,
+        points: values.points,
+        basePrice: values.basePrice,
+        photoUrl: values.photoUrl,
+        externalReference: values.externalReference,
+        notes: values.notes,
+        status: values.status ?? 'available',
+      })
+      toast.push({ kind: 'success', message: `${values.name} added to the pool.` })
+      setPlayerFormOpen(false)
+    } catch (error) {
+      setPlayerFormError(isCallError(error) ? error.message : errorMessage(error))
+    } finally {
+      setPlayerSubmitting(false)
+    }
+  }
+
+  function exportCsv(): void {
+    const teamNames = new Map(teams.data.map((team) => [team.id, team.name]))
+    const rows: Array<Array<string | number>> = [
+      ['player_id', 'name', 'points', 'base_price', 'status', 'sold_to'],
+      ...players.data.map((player) => [
+        player.externalReference ?? '',
+        player.name,
+        player.points,
+        player.basePrice,
+        player.status,
+        player.soldToTeamId ? (teamNames.get(player.soldToTeamId) ?? player.soldToTeamId) : '',
+      ]),
+    ]
+    downloadCsv(`players-${new Date().toISOString().slice(0, 10)}.csv`, rows)
+  }
+
   if (!event) return null
 
   const isDefault = config.data?.defaultEventId === eventId
@@ -215,7 +265,7 @@ export function SettingsPage() {
               loading={checkRunning}
               onClick={() => void runCheck()}
             >
-              Consistency check
+              Run consistency check
             </Button>
             <Button
               icon={<Save className="size-4" aria-hidden />}
@@ -471,6 +521,46 @@ export function SettingsPage() {
               </div>
             </CardBody>
           </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Player pool</CardTitle>
+            </CardHeader>
+            <CardBody className="space-y-3">
+              <p className="text-xs text-muted">
+                Import, create, or export player entries for the auction pool.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<FileUp className="size-3.5" aria-hidden />}
+                  onClick={() => setPlayerImportOpen(true)}
+                >
+                  Import CSV
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<Download className="size-3.5" aria-hidden />}
+                  onClick={exportCsv}
+                  disabled={players.data.length === 0}
+                >
+                  Export CSV
+                </Button>
+                <Button
+                  size="sm"
+                  icon={<PlusCircle className="size-3.5" aria-hidden />}
+                  onClick={() => {
+                    setPlayerFormError(null)
+                    setPlayerFormOpen(true)
+                  }}
+                >
+                  Add player
+                </Button>
+              </div>
+            </CardBody>
+          </Card>
         </div>
       </div>
 
@@ -508,6 +598,29 @@ export function SettingsPage() {
           hint="Stored in the audit log."
         />
       </Dialog>
+
+      <PlayerImportDialog
+        open={playerImportOpen}
+        onClose={() => setPlayerImportOpen(false)}
+        eventId={eventId}
+        currencyLabel={currencyLabel}
+        onImported={(imported, skipped) => {
+          toast.push({
+            kind: 'success',
+            message: `${imported} player${imported === 1 ? '' : 's'} imported.`,
+            detail: skipped.length > 0 ? `${skipped.length} existing player id(s) skipped.` : undefined,
+          })
+        }}
+      />
+
+      <PlayerFormDialog
+        open={playerFormOpen}
+        onClose={() => setPlayerFormOpen(false)}
+        onSubmit={(values) => void submitPlayer(values)}
+        currencyLabel={currencyLabel}
+        submitting={playerSubmitting}
+        error={playerFormError}
+      />
     </div>
   )
 }
