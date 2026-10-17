@@ -101,7 +101,7 @@ export function CreateEventPanel() {
               value={currencyLabel}
               maxLength={12}
               onChange={(event) => setCurrencyLabel(event.target.value)}
-              hint="e.g. ₹ or credits"
+              hint="e.g. ₹"
             />
             <InputField
               label="Default starting purse"

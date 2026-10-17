@@ -71,7 +71,7 @@ export function RecordPurchasePage() {
     [teams.data, teamId],
   )
   const price = parseAmountInput(priceText, false)
-  const currencyLabel = event?.currencyLabel ?? 'credits'
+  const currencyLabel = event?.currencyLabel ?? '₹'
   const eventActive = event?.status === 'active'
   const purchasesEnabled = event?.purchasesEnabled !== false
 

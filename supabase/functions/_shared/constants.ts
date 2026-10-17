@@ -15,7 +15,7 @@ export const MAX_ROSTER_SIZE_LIMIT = 200
 
 export const MIN_REASON_LENGTH = 3
 
-export const DEFAULT_CURRENCY_LABEL = 'credits'
+export const DEFAULT_CURRENCY_LABEL = '₹'
 export const DEFAULT_STARTING_PURSE = 100000
 export const DEFAULT_EVENT_NAME = 'College Auction'
 

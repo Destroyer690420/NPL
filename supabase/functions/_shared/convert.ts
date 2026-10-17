@@ -10,6 +10,7 @@ import type {
   TeamSessionDoc,
   TimestampValue,
 } from './types.ts'
+import { DEFAULT_CURRENCY_LABEL } from './constants.ts'
 
 /**
  * Document converters shared by the Cloud Functions (Admin SDK) and the web
@@ -78,7 +79,7 @@ export function toEventDoc(id: string, data: Data): EventDoc | null {
   return {
     id,
     name: asString(data.name),
-    currencyLabel: asString(data.currencyLabel, 'credits'),
+    currencyLabel: asString(data.currencyLabel, DEFAULT_CURRENCY_LABEL),
     status: data.status === 'active' || data.status === 'finalized' ? data.status : 'setup',
     maxRosterSize:
       typeof data.maxRosterSize === 'number' && Number.isSafeInteger(data.maxRosterSize)
@@ -200,7 +201,7 @@ export function toPublicConfigDoc(data: Data): PublicConfigDoc | null {
   return {
     defaultEventId: asNullableString(data.defaultEventId),
     eventName: asString(data.eventName),
-    currencyLabel: asString(data.currencyLabel, 'credits'),
+    currencyLabel: asString(data.currencyLabel, DEFAULT_CURRENCY_LABEL),
     eventStatus: data.eventStatus === 'active' || data.eventStatus === 'finalized' ? data.eventStatus : null,
     updatedAt: toTimestampValue(data.updatedAt),
   }

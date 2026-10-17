@@ -35,6 +35,7 @@ import type {
   TeamSecretDoc,
   TeamSessionDoc,
 } from '../../_shared/types.ts'
+import { DEFAULT_CURRENCY_LABEL } from '../../_shared/constants.ts'
 
 /**
  * Supabase adapter: all reads happen before all writes inside a plan
@@ -162,7 +163,7 @@ export async function getConfig(): Promise<PublicConfigDoc | null> {
   return {
     defaultEventId: typeof data.defaultEventId === 'string' ? data.defaultEventId : null,
     eventName: typeof data.eventName === 'string' ? data.eventName : '',
-    currencyLabel: typeof data.currencyLabel === 'string' ? data.currencyLabel : 'credits',
+    currencyLabel: typeof data.currencyLabel === 'string' ? data.currencyLabel : DEFAULT_CURRENCY_LABEL,
     eventStatus:
       data.eventStatus === 'active' || data.eventStatus === 'finalized' ? data.eventStatus : null,
     updatedAt: (data.updatedAt as PublicConfigDoc['updatedAt']) ?? null,

@@ -31,7 +31,7 @@ export function TeamsPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [reveal, setReveal] = useState<{ teamName: string; pin: string } | null>(null)
 
-  const currencyLabel = event?.currencyLabel ?? 'credits'
+  const currencyLabel = event?.currencyLabel ?? '₹'
 
   const filtered = useMemo(() => {
     const term = normalizeName(search)

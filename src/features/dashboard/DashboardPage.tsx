@@ -43,7 +43,7 @@ export function DashboardPage() {
     }
   }, [teams.data, players.data])
 
-  const currencyLabel = event?.currencyLabel ?? 'credits'
+  const currencyLabel = event?.currencyLabel ?? '₹'
 
   const warnings = useMemo(() => {
     const list: Array<{ tone: 'warn' | 'danger'; text: string; to?: string; linkLabel?: string }> = []

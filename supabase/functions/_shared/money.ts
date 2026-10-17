@@ -61,24 +61,60 @@ export function parsePointsInput(raw: unknown): number | null {
   return isValidPoints(value) ? value : null
 }
 
-/** Indian digit grouping for ₹, otherwise plain thousands separators. */
-function localeFor(currencyLabel: string | undefined): string {
-  return currencyLabel && currencyLabel.includes('₹') ? 'en-IN' : 'en-US'
-}
-
-export function formatNumber(value: number, locale = 'en-US'): string {
+export function formatNumber(value: number, locale = 'en-IN'): string {
   if (!Number.isFinite(value)) return '—'
   return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value)
 }
 
-export function formatAmount(value: number, currencyLabel = 'credits'): string {
-  const locale = localeFor(currencyLabel)
-  const formatted = formatNumber(value, locale)
+/** Formats an amount with ₹ in front and Indian units (crores, lakh, thousand). */
+export function formatAmount(value: number, currencyLabel = '₹'): string {
+  if (!Number.isFinite(value)) return '—'
+
+  const isNegative = value < 0
+  const abs = Math.abs(value)
+
+  let symbol = '₹'
   const label = (currencyLabel ?? '').trim()
-  if (label === '') return formatted
-  // Symbol-like labels (₹, $, €) are prefixed without a space: ₹1,200
-  const symbolLike = /^[^\p{L}\p{N}]/u.test(label)
-  return symbolLike ? `${label}${formatted}` : `${formatted} ${label}`
+  const lower = label.toLowerCase()
+  if (
+    lower !== 'credits' &&
+    lower !== 'credit' &&
+    lower !== 'rupees' &&
+    lower !== 'rupee' &&
+    lower !== 'inr' &&
+    label !== ''
+  ) {
+    symbol = label
+  }
+
+  const CRORE = 10_000_000
+  const LAKH = 100_000
+  const THOUSAND = 1_000
+
+  let formattedNum = ''
+  if (abs >= CRORE) {
+    const val = abs / CRORE
+    const rounded = Math.round((val + Number.EPSILON) * 100) / 100
+    const numStr = rounded.toLocaleString('en-IN', { maximumFractionDigits: 2 })
+    const unit = rounded === 1 ? 'crore' : 'crores'
+    formattedNum = `${numStr} ${unit}`
+  } else if (abs >= LAKH) {
+    const val = abs / LAKH
+    const rounded = Math.round((val + Number.EPSILON) * 100) / 100
+    const numStr = rounded.toLocaleString('en-IN', { maximumFractionDigits: 2 })
+    formattedNum = `${numStr} lakh`
+  } else if (abs >= THOUSAND) {
+    const val = abs / THOUSAND
+    const rounded = Math.round((val + Number.EPSILON) * 100) / 100
+    const numStr = rounded.toLocaleString('en-IN', { maximumFractionDigits: 2 })
+    formattedNum = `${numStr} thousand`
+  } else {
+    formattedNum = abs.toLocaleString('en-IN', { maximumFractionDigits: 0 })
+  }
+
+  const symbolLike = /^[^\p{L}\p{N}]/u.test(symbol)
+  const result = symbolLike ? `${symbol}${formattedNum}` : `${symbol} ${formattedNum}`
+  return isNegative ? `-${result}` : result
 }
 
 /** Adds two safe integers, throwing on overflow (defensive; never expected). */

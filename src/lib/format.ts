@@ -66,8 +66,8 @@ export function shortId(value: string | null | undefined, length = 6): string {
 
 export { formatAmount, formatNumber }
 
-/** "₹1,20,000" / "12,000 credits" using the event currency label. */
-export function currency(value: number | null | undefined, label: string): string {
+/** Formats currency like "₹125 crores", "₹30 lakh", "₹50 thousand", "₹0". */
+export function currency(value: number | null | undefined, label = '₹'): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return '—'
   return formatAmount(value, label)
 }

@@ -62,7 +62,7 @@ export function SettingsPage() {
     if (loadedEventRef.current !== event.id || (!isDirtyRef.current && !saving)) {
       loadedEventRef.current = event.id
       setName(event.name)
-      setCurrencyLabel(event.currencyLabel)
+      setCurrencyLabel(event.currencyLabel === 'credits' ? '₹' : event.currencyLabel)
       setDefaultPurse(String(event.defaultStartingPurse))
       setMaxRoster(event.maxRosterSize === null ? '' : String(event.maxRosterSize))
       setPurchasesEnabled(event.purchasesEnabled)
@@ -244,7 +244,7 @@ export function SettingsPage() {
                   value={currencyLabel}
                   maxLength={12}
                   onChange={(e) => setCurrencyLabel(e.target.value)}
-                  hint="e.g. ₹ or credits — shown everywhere amounts appear"
+                  hint="e.g. ₹ — shown in front of all amounts"
                 />
                 <InputField
                   label="Default starting purse"

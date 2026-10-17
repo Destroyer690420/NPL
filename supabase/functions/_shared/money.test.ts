@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { parseAmountInput, parseIntegerInput, parsePointsInput } from './money.ts'
+import { formatAmount, parseAmountInput, parseIntegerInput, parsePointsInput } from './money.ts'
 import { isValidRequestId, normalizeName, cleanDisplayName, isValidHttpUrl } from './text.ts'
 import { MAX_AMOUNT } from './constants.ts'
 
@@ -39,6 +39,29 @@ describe('parseAmountInput / parsePointsInput', () => {
   it('accepts zero points but not negative', () => {
     expect(parsePointsInput('0')).toBe(0)
     expect(parsePointsInput('-5')).toBeNull()
+  })
+})
+
+describe('formatAmount', () => {
+  it('formats large numbers in Indian denominations with ₹ in front', () => {
+    expect(formatAmount(1250000000)).toBe('₹125 crores')
+    expect(formatAmount(3000000)).toBe('₹30 lakh')
+    expect(formatAmount(50000)).toBe('₹50 thousand')
+    expect(formatAmount(10000000)).toBe('₹1 crore')
+    expect(formatAmount(100000)).toBe('₹1 lakh')
+    expect(formatAmount(1000)).toBe('₹1 thousand')
+    expect(formatAmount(500)).toBe('₹500')
+    expect(formatAmount(0)).toBe('₹0')
+    expect(formatAmount(15000000)).toBe('₹1.5 crores')
+    expect(formatAmount(12500000)).toBe('₹1.25 crores')
+    expect(formatAmount(-3000000)).toBe('-₹30 lakh')
+  })
+
+  it('normalizes legacy labels like credits, rupees, or empty to ₹ in front', () => {
+    expect(formatAmount(1250000000, 'credits')).toBe('₹125 crores')
+    expect(formatAmount(3000000, 'Rupees')).toBe('₹30 lakh')
+    expect(formatAmount(0, 'credits')).toBe('₹0')
+    expect(formatAmount(1000, '')).toBe('₹1 thousand')
   })
 })
 

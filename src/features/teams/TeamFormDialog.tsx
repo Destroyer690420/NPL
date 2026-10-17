@@ -4,6 +4,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { InputField, TextareaField } from '@/components/ui/Field'
 import { formatAmount, parseAmountInput, parseIntegerInput } from '@shared/money'
 import { MAX_AMOUNT } from '@shared/constants'
+import { currency } from '@/lib/format'
 import type { TeamDoc } from '@shared/types'
 
 export interface TeamFormValues {
@@ -114,7 +115,7 @@ export function TeamFormDialog({
       description={
         editing
           ? 'Changing the starting purse rebuilds the remaining purse from what the team has already spent.'
-          : `New teams get a four-digit PIN. The default starting purse is ${defaultStartingPurse} ${currencyLabel}.`
+          : `New teams get a four-digit PIN. The default starting purse is ${currency(defaultStartingPurse, currencyLabel)}.`
       }
       size="sm"
       footer={
@@ -144,7 +145,7 @@ export function TeamFormDialog({
           onChange={(event) => setPurse(event.target.value)}
           hint={
             editing
-              ? `Currently spent: ${team?.totalSpent ?? 0}. Cannot be lower than that.`
+              ? `Currently spent: ${currency(team?.totalSpent ?? 0, currencyLabel)}. Cannot be lower than that.`
               : 'Whole numbers only.'
           }
         />

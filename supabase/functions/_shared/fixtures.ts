@@ -6,7 +6,7 @@ export function makeEvent(overrides: Partial<EventDoc> = {}): EventDoc {
   return {
     id: 'default',
     name: 'Test Event',
-    currencyLabel: 'credits',
+    currencyLabel: '₹',
     status: 'active',
     maxRosterSize: null,
     defaultStartingPurse: 100_000,

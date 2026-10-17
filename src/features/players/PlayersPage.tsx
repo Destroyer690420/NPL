@@ -46,7 +46,7 @@ export function PlayersPage() {
   const [importOpen, setImportOpen] = useState(false)
   const [actionBusyId, setActionBusyId] = useState<string | null>(null)
 
-  const currencyLabel = event?.currencyLabel ?? 'credits'
+  const currencyLabel = event?.currencyLabel ?? '₹'
   const teamNames = useMemo(() => new Map(teams.data.map((team) => [team.id, team.name])), [teams.data])
 
   const filtered = useMemo(() => {

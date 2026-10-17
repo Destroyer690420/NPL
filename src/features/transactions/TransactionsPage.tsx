@@ -44,7 +44,7 @@ export function TransactionsPage() {
   const [reversalBusy, setReversalBusy] = useState(false)
   const [reversalError, setReversalError] = useState<string | null>(null)
 
-  const currencyLabel = event?.currencyLabel ?? 'credits'
+  const currencyLabel = event?.currencyLabel ?? '₹'
 
   // Operator labels come from the audit log (admin-only reads); the purchase
   // document itself deliberately stores no admin identity.

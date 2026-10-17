@@ -47,7 +47,7 @@ export function TeamDetailPage() {
   const [revokeBusy, setRevokeBusy] = useState(false)
   const [activeBusy, setActiveBusy] = useState(false)
 
-  const currencyLabel = event?.currencyLabel ?? 'credits'
+  const currencyLabel = event?.currencyLabel ?? '₹'
 
   const teamAudits = useMemo(
     () => auditLogs.data.filter((log) => log.targetType === 'team' && log.targetId === teamId).slice(0, 12),
