@@ -9,6 +9,7 @@ export interface SpotlightPlayerCardProps {
   spotlight: SpotlightPlayer | null
   currencyLabel?: string
   isAdmin?: boolean
+  hideModal?: boolean
   onAdminClose?: () => Promise<void> | void
   onSell?: (playerId: string) => void
 }
@@ -25,6 +26,7 @@ export function SpotlightPlayerCard({
   spotlight,
   currencyLabel = '₹',
   isAdmin = false,
+  hideModal = false,
   onAdminClose,
   onSell,
 }: SpotlightPlayerCardProps) {
@@ -41,7 +43,7 @@ export function SpotlightPlayerCard({
 
   if (!spotlight) return null
 
-  const isDismissed = Boolean(dismissedId && dismissedId === spotlight.spotlightId)
+  const isDismissed = Boolean(hideModal || (dismissedId && dismissedId === spotlight.spotlightId))
 
   async function handleAdminClose() {
     if (!onAdminClose) return
@@ -53,8 +55,9 @@ export function SpotlightPlayerCard({
     }
   }
 
-  // If dismissed locally, render the compact floating bar
+  // If dismissed locally, render the compact floating bar (or hide if admin is recording purchase)
   if (isDismissed) {
+    if (hideModal && isAdmin) return null
     return (
       <aside
         aria-label="Current auction player"
@@ -169,7 +172,10 @@ export function SpotlightPlayerCard({
               variant="primary"
               size="md"
               icon={<ShoppingCart className="size-4" aria-hidden />}
-              onClick={() => onSell?.(spotlight.playerId)}
+              onClick={() => {
+                setDismissedId(spotlight.spotlightId)
+                onSell?.(spotlight.playerId)
+              }}
               className="w-full sm:w-auto"
             >
               Sell player
@@ -185,9 +191,6 @@ export function SpotlightPlayerCard({
             >
               Dismiss card
             </Button>
-            <p className="text-[11px] text-muted">
-              Card closes automatically once the player is sold or bidding ends.
-            </p>
           </div>
         )}
       </div>

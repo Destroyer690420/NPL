@@ -1,4 +1,4 @@
-import { NavLink, Navigate, Outlet, useNavigate } from 'react-router'
+import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-router'
 import { useEffect, type ReactNode } from 'react'
 import {
   LayoutDashboard,
@@ -40,8 +40,11 @@ function navClass({ isActive }: { isActive: boolean }): string {
 export function AdminShell() {
   const auth = useAdminAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const toast = useToast()
   const { event, eventId, loading, error, fromCache } = useAdminEvent()
+
+  const isRecordPurchase = location.pathname.startsWith('/admin/purchases')
 
   useEffect(() => {
     if (!eventId) return
@@ -80,6 +83,7 @@ export function AdminShell() {
         spotlight={event.spotlightPlayer ?? null}
         currencyLabel={event.currencyLabel}
         isAdmin={true}
+        hideModal={isRecordPurchase}
         onAdminClose={handleAdminCloseSpotlight}
         onSell={handleSellSpotlight}
       />
