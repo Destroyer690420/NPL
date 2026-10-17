@@ -28,7 +28,7 @@ function navClass({ isActive }: { isActive: boolean }): string {
   return cn(
     'relative flex shrink-0 items-center gap-2 px-3.5 py-2.5 text-xs font-semibold uppercase tracking-wider transition-all',
     isActive
-      ? 'text-white after:absolute after:bottom-0 after:left-1 after:right-1 after:h-[2px] after:rounded-full after:bg-accent after:shadow-[0_0_10px_rgba(230,0,110,0.8)]'
+      ? 'text-white after:absolute after:bottom-0 after:left-1 after:right-1 after:h-[2px] after:rounded-full after:bg-accent after:shadow-[0_0_10px_rgba(245,175,25,0.8)]'
       : 'text-ink-muted hover:text-ink hover:bg-surface-muted/40 rounded-lg',
   )
 }
@@ -107,7 +107,7 @@ export function RequireAdmin({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => void auth.signOut()}
-            className="mt-4 inline-flex h-10 items-center justify-center rounded-xl bg-accent px-5 text-sm font-bold text-white shadow-[0_0_15px_rgba(230,0,110,0.35)] transition-all hover:bg-accent-light active:scale-[0.98]"
+            className="mt-4 inline-flex h-10 items-center justify-center rounded-xl bg-accent px-5 text-sm font-bold text-slate-950 shadow-[0_0_15px_rgba(245,175,25,0.35)] transition-all hover:bg-accent-light active:scale-[0.98]"
           >
             Sign out
           </button>

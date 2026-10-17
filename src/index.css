@@ -22,10 +22,13 @@
   --color-charcoal: #151a26;
   --color-charcoal-soft: #1d2536;
 
-  /* Primary Accent: Vibrant Hot Pink/Magenta from reference screenshot */
-  --color-accent: #e6006e;
-  --color-accent-strong: #cf0063;
-  --color-accent-soft: rgba(230, 0, 110, 0.14);
+  /* Golden Accents, Light Yellow & Light Golden Palette */
+  --color-accent: #f5af19;
+  --color-accent-strong: #d97706;
+  --color-accent-light: #fde047;
+  --color-accent-soft: rgba(245, 175, 25, 0.16);
+  --color-gold-light: #fef08a;
+  --color-gold-bright: #fde047;
 
   --color-warn: #f59e0b;
   --color-warn-soft: rgba(245, 158, 11, 0.14);
@@ -70,12 +73,12 @@
         -32deg,
         #080a0f 0px,
         #080a0f 160px,
-        #150916 160px,
-        #150916 320px,
+        #1c1709 160px,
+        #1c1709 320px,
         #080a0f 320px,
         #080a0f 480px,
-        #1a0a19 480px,
-        #1a0a19 640px
+        #241d0b 480px,
+        #241d0b 640px
       );
     filter: blur(55px);
     opacity: 0.65;
@@ -88,12 +91,12 @@
     inset: 0;
     z-index: -1;
     pointer-events: none;
-    background: radial-gradient(ellipse 90% 80% at 50% 20%, rgba(8, 10, 15, 0.4) 0%, rgba(8, 10, 15, 0.85) 100%);
+    background: radial-gradient(ellipse 90% 80% at 50% 20%, rgba(245, 175, 25, 0.05) 0%, rgba(8, 10, 15, 0.85) 100%);
   }
 
   ::selection {
     background-color: var(--color-accent);
-    color: #ffffff;
+    color: #080a0f;
   }
 
   ::-webkit-scrollbar {

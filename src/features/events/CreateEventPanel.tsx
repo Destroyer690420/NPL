@@ -80,7 +80,7 @@ export function CreateEventPanel() {
         <CardBody className="space-y-5">
           <div>
             <div className="flex items-center gap-2">
-              <span className="h-4 w-1 rounded-full bg-accent shadow-[0_0_8px_rgba(230,0,110,0.6)]" aria-hidden />
+              <span className="h-4 w-1 rounded-full bg-accent shadow-[0_0_8px_rgba(245,175,25,0.6)]" aria-hidden />
               <p className="text-[11px] font-bold uppercase tracking-wider text-accent-light">
                 {auth.displayName}
               </p>

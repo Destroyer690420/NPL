@@ -44,7 +44,7 @@ export function AdminLoginPage() {
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6 py-12">
       <div className="mb-6 text-center">
         <div className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent/10 px-3 py-1">
-          <span className="size-1.5 rounded-full bg-accent shadow-[0_0_6px_rgba(230,0,110,0.8)]" />
+          <span className="size-1.5 rounded-full bg-accent shadow-[0_0_6px_rgba(245,175,25,0.8)]" />
           <p className="text-[11px] font-bold uppercase tracking-wider text-accent-light">
             Organizer Portal
           </p>

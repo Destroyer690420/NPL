@@ -92,7 +92,7 @@ export function TeamLoginPage() {
                 key={index}
                 className={
                   index < pin.length
-                    ? 'flex size-12 items-center justify-center rounded-xl border-2 border-accent bg-accent/20 text-2xl font-black text-accent shadow-[0_0_15px_rgba(230,0,110,0.5)] transition-all'
+                    ? 'flex size-12 items-center justify-center rounded-xl border-2 border-accent bg-accent/20 text-2xl font-black text-accent shadow-[0_0_15px_rgba(245,175,25,0.5)] transition-all'
                     : 'flex size-12 items-center justify-center rounded-xl border border-line-strong bg-surface-muted/60 text-xl font-bold text-ink-muted/40 transition-all'
                 }
               >

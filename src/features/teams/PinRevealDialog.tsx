@@ -52,7 +52,7 @@ export function PinRevealDialog({
     >
       <div className="flex flex-col items-center gap-3.5 py-2">
         <div className="flex items-center gap-3">
-          <span className="select-all rounded-xl border border-accent/40 bg-accent/10 px-6 py-3.5 text-3xl font-black tracking-[0.4em] tabular-nums text-accent shadow-[0_0_15px_rgba(230,0,110,0.3)]">
+          <span className="select-all rounded-xl border border-accent/40 bg-accent/10 px-6 py-3.5 text-3xl font-black tracking-[0.4em] tabular-nums text-accent shadow-[0_0_15px_rgba(245,175,25,0.4)]">
             {pin}
           </span>
           <Button variant="secondary" onClick={() => void copy()} icon={<Copy className="size-4" aria-hidden />}>

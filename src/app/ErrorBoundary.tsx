@@ -32,7 +32,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, ErrorBound
             <button
               type="button"
               onClick={() => this.setState({ error: null })}
-              className="mt-4 h-10 rounded-control bg-accent px-4 text-sm font-medium text-white hover:bg-accent-strong"
+              className="mt-4 h-10 rounded-control bg-accent px-4 text-sm font-bold text-slate-950 hover:bg-accent-strong"
             >
               Try again
             </button>

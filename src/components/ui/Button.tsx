@@ -7,7 +7,7 @@ type ButtonSize = 'sm' | 'md' | 'lg'
 
 const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   primary:
-    'bg-accent text-white font-semibold hover:bg-accent-strong active:bg-accent-strong shadow-sm hover:shadow-accent/25 active:scale-[0.99] transition-all disabled:hover:shadow-none disabled:active:scale-100',
+    'bg-accent text-slate-950 font-bold hover:bg-accent-strong active:bg-accent-strong shadow-sm hover:shadow-accent/30 active:scale-[0.99] transition-all disabled:hover:shadow-none disabled:active:scale-100',
   secondary:
     'border border-line-strong bg-surface text-ink font-medium hover:bg-line/25 hover:border-muted/50 active:bg-line/40 transition-colors',
   ghost: 'text-ink-soft hover:text-ink hover:bg-surface-muted active:bg-line/30 transition-colors',

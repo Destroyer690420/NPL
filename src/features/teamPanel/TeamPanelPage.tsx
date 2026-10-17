@@ -108,7 +108,7 @@ export function TeamPanelPage() {
             <div className="flex items-start justify-between border-b border-line pb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="h-4 w-1 rounded-full bg-accent shadow-[0_0_8px_rgba(230,0,110,0.6)]" aria-hidden />
+                  <span className="h-4 w-1 rounded-full bg-accent shadow-[0_0_8px_rgba(245,175,25,0.6)]" aria-hidden />
                   <p className="text-[11px] font-bold uppercase tracking-wider text-accent-light">Auction</p>
                 </div>
                 <h2 className="mt-1 text-lg font-black tracking-tight text-white">{context.eventName}</h2>
@@ -217,7 +217,7 @@ export function TeamPanelPage() {
             </p>
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-surface-muted/80">
               <div
-                className="h-full rounded-full bg-accent shadow-[0_0_12px_rgba(230,0,110,0.8)] transition-all duration-500"
+                className="h-full rounded-full bg-accent shadow-[0_0_12px_rgba(245,175,25,0.8)] transition-all duration-500"
                 style={{
                   width: `${
                     teamData.startingPurse > 0

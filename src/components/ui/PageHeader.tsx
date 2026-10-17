@@ -16,7 +16,7 @@ export function PageHeader({
     <div className={cn('mb-6 flex flex-wrap items-start justify-between gap-4', className)}>
       <div>
         <div className="flex items-center gap-2.5">
-          <span className="h-5 w-1 rounded-full bg-accent shadow-[0_0_8px_rgba(230,0,110,0.5)]" aria-hidden />
+          <span className="h-5 w-1 rounded-full bg-accent shadow-[0_0_8px_rgba(245,175,25,0.6)]" aria-hidden />
           <h1 className="text-xl font-bold tracking-tight text-ink sm:text-2xl">{title}</h1>
         </div>
         {description ? <p className="mt-1 text-sm text-ink-muted">{description}</p> : null}
