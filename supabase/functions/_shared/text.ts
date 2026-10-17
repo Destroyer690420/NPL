@@ -42,11 +42,17 @@ export function isValidRequestId(raw: unknown): raw is string {
   return typeof raw === 'string' && REQUEST_ID_PATTERN.test(raw)
 }
 
-/** Basic http(s) URL check for optional logo/photo links. */
+/** Basic http(s) URL check for optional logo/photo links. Also supports web-root paths (/...) and data URLs. */
 export function isValidHttpUrl(raw: unknown): boolean {
-  if (typeof raw !== 'string' || raw.trim() === '') return false
+  if (typeof raw !== 'string') return false
+  const trimmed = raw.trim()
+  if (trimmed === '') return false
+  if (/javascript:/i.test(trimmed)) return false
+  if (trimmed.startsWith('/') || trimmed.startsWith('./') || /^data:image\/[a-zA-Z0-9.+_-]+;base64,/i.test(trimmed)) {
+    return true
+  }
   try {
-    const url = new URL(raw.trim())
+    const url = new URL(trimmed)
     return url.protocol === 'http:' || url.protocol === 'https:'
   } catch {
     return false

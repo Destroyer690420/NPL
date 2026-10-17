@@ -90,8 +90,11 @@ describe('isValidRequestId', () => {
 })
 
 describe('isValidHttpUrl', () => {
-  it('only accepts http(s)', () => {
+  it('only accepts http(s), root paths, and safe data URLs', () => {
     expect(isValidHttpUrl('https://example.com/logo.png')).toBe(true)
+    expect(isValidHttpUrl('http://example.com/logo.png')).toBe(true)
+    expect(isValidHttpUrl('/player-images/rohit.png')).toBe(true)
+    expect(isValidHttpUrl('./player-images/rohit.png')).toBe(true)
     expect(isValidHttpUrl('javascript:alert(1)')).toBe(false)
     expect(isValidHttpUrl('not a url')).toBe(false)
   })

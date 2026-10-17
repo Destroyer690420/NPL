@@ -152,7 +152,16 @@ export const importPlayers = adminCallable({
       )
 
       const mode = input.mode ?? 'fail'
-      const rows: Array<{ playerId: string; input: { name: string; points: number; basePrice: number; externalReference: string | null } }> = []
+      const rows: Array<{
+        playerId: string
+        input: {
+          name: string
+          points: number
+          basePrice: number
+          photoUrl?: string | null
+          externalReference: string | null
+        }
+      }> = []
       const skipped: string[] = []
 
       for (const row of input.players) {
@@ -171,6 +180,7 @@ export const importPlayers = adminCallable({
             name: row.name,
             points: row.points,
             basePrice: row.basePrice,
+            photoUrl: row.photoUrl ?? null,
             externalReference: reference,
           },
         })

@@ -12,6 +12,7 @@ import { Card, CardBody } from '@/components/ui/Card'
 import { InputField, SelectField } from '@/components/ui/Field'
 import { EmptyState, LoadingBlock } from '@/components/ui/Feedback'
 import { PlayerStatusPill } from '@/components/ui/StatusPill'
+import { PlayerAvatar } from '@/components/ui/PlayerAvatar'
 import { useToast } from '@/components/ui/Toast'
 import { createPlayer, setPlayerStatus, updatePlayer } from '@/services/admin'
 import { isCallError } from '@/services/callables'
@@ -200,16 +201,21 @@ export function PlayersPage() {
                   {shown.map((player) => (
                     <tr key={player.id} className="hover:bg-surface-muted/60">
                       <td className="px-4 py-3 sm:px-5">
-                        <button
-                          type="button"
-                          onClick={() => openEdit(player)}
-                          className="text-left font-medium text-ink hover:text-accent hover:underline"
-                        >
-                          {player.name}
-                        </button>
-                        {player.externalReference ? (
-                          <span className="block text-[11px] text-muted">{player.externalReference}</span>
-                        ) : null}
+                        <div className="flex items-center gap-3">
+                          <PlayerAvatar name={player.name} photoUrl={player.photoUrl} size="sm" />
+                          <div className="min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => openEdit(player)}
+                              className="text-left font-medium text-ink hover:text-accent hover:underline block truncate"
+                            >
+                              {player.name}
+                            </button>
+                            {player.externalReference ? (
+                              <span className="block text-[11px] text-muted">{player.externalReference}</span>
+                            ) : null}
+                          </div>
+                        </div>
                       </td>
                       <td className="px-3 py-3 text-right tabular-nums">{formatPoints(player.points)}</td>
                       <td className="px-3 py-3 text-right tabular-nums">{currency(player.basePrice, currencyLabel)}</td>

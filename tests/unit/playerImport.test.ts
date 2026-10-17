@@ -1,3 +1,5 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   buildErrorReportCsv,
@@ -64,6 +66,44 @@ describe('buildPlayerImportPreview', () => {
     expect(preview.invalidCount).toBe(1)
     expect(preview.rows[1]!.errors.join(' ')).toContain('Duplicate name')
   })
+
+  it('parses, normalizes, and validates image_url column', () => {
+    const preview = buildPlayerImportPreview(
+      [
+        'player_id,name,points,base_price,image_url',
+        'P001,Rohit Sharma,250,20000,player-images/rohit.jpg',
+        'P002,Ishan Kishan,180,15000,https://example.com/ishan.png',
+        'P003,Surya,200,18000,javascript:alert(1)',
+      ].join('\n'),
+    )
+    expect(preview.validCount).toBe(2)
+    expect(preview.invalidCount).toBe(1)
+    expect(preview.rows[0]!.photoUrl).toBe('/player-images/rohit.jpg')
+    expect(preview.rows[1]!.photoUrl).toBe('https://example.com/ishan.png')
+    expect(preview.rows[2]!.errors.join(' ')).toContain('Image URL must be a valid')
+
+    const payload = toImportPayload(preview.rows, 'all-valid-rows')
+    expect(payload).toHaveLength(2)
+    expect(payload[0]!.photoUrl).toBe('/player-images/rohit.jpg')
+    expect(payload[1]!.photoUrl).toBe('https://example.com/ishan.png')
+  })
+
+  it('successfully validates workspace players.csv', () => {
+    const csvPath = path.resolve(__dirname, '../../players.csv')
+    if (fs.existsSync(csvPath)) {
+      const content = fs.readFileSync(csvPath, 'utf8')
+      const preview = buildPlayerImportPreview(content)
+      expect(preview.missingColumns).toEqual([])
+      expect(preview.validCount).toBeGreaterThan(200)
+      expect(preview.invalidCount).toBe(0)
+      expect(preview.canCommit).toBe(true)
+      // Check that Rohit Sharma and Naman Dhir have their photoUrls parsed
+      const rohit = preview.rows.find((r) => r.name.toLowerCase().includes('rohit sharma'))
+      expect(rohit?.photoUrl).toBe('https://documents.iplt20.com/ipl/IPLHeadshot2026/6.png')
+      const naman = preview.rows.find((r) => r.name.toLowerCase().includes('naman dhir'))
+      expect(naman?.photoUrl).toBe('https://documents.iplt20.com/ipl/IPLHeadshot2026/3107.png')
+    }
+  })
 })
 
 describe('toImportPayload', () => {
@@ -85,8 +125,8 @@ describe('buildErrorReportCsv', () => {
     )
     const report = buildErrorReportCsv(preview.rows)
     expect(report).toHaveLength(2)
-    expect(report[0]).toEqual(['line', 'player_id', 'name', 'points', 'base_price', 'errors'])
+    expect(report[0]).toEqual(['line', 'player_id', 'name', 'points', 'base_price', 'image_url', 'errors'])
     expect(report[1]![0]).toBe(3)
-    expect(String(report[1]![5])).toContain('Points')
+    expect(String(report[1]![6])).toContain('Points')
   })
 })

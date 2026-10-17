@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Combobox, type ComboboxItem } from '@/components/ui/Combobox'
 import { Dialog } from '@/components/ui/Dialog'
+import { PlayerAvatar } from '@/components/ui/PlayerAvatar'
 import { SetupScreen } from '@/app/SetupScreen'
 
 // Deterministic regardless of the local .env.local (which may be configured).
@@ -93,3 +94,31 @@ describe('SetupScreen', () => {
     expect(screen.getAllByText('VITE_SUPABASE_ANON_KEY').length).toBeGreaterThan(0)
   })
 })
+
+describe('PlayerAvatar', () => {
+  it('renders initials badge when photoUrl is absent', () => {
+    const { rerender } = render(<PlayerAvatar name="Rohit Sharma" />)
+    expect(screen.getByText('RO')).toBeInTheDocument()
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
+
+    rerender(<PlayerAvatar name="Naman Dhir" />)
+    expect(screen.getByText('NA')).toBeInTheDocument()
+  })
+
+  it('renders image when photoUrl is provided', () => {
+    render(<PlayerAvatar name="Rohit Sharma" photoUrl="https://example.com/rohit.jpg" />)
+    const img = screen.getByRole('img', { name: 'Rohit Sharma' })
+    expect(img).toBeInTheDocument()
+    expect(img).toHaveAttribute('src', 'https://example.com/rohit.jpg')
+    expect(screen.queryByText('RO')).not.toBeInTheDocument()
+  })
+
+  it('falls back cleanly to initials if image fails to load', () => {
+    render(<PlayerAvatar name="Rohit Sharma" photoUrl="https://example.com/broken.jpg" />)
+    const img = screen.getByRole('img', { name: 'Rohit Sharma' })
+    fireEvent.error(img)
+    expect(screen.getByText('RO')).toBeInTheDocument()
+    expect(screen.queryByRole('img')).not.toBeInTheDocument()
+  })
+})
+

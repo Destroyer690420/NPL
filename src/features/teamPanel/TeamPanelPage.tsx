@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card'
 import { EmptyState, LoadingBlock } from '@/components/ui/Feedback'
 import { Pill } from '@/components/ui/StatusPill'
+import { PlayerAvatar } from '@/components/ui/PlayerAvatar'
 
 function getTeamInitials(name: string): string {
   const trimmed = name.trim()
@@ -276,20 +277,11 @@ export function TeamPanelPage() {
           <ul className="divide-y divide-line">
             {confirmed.map((purchase) => (
               <li key={purchase.id} className="flex items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-surface-muted/20 sm:px-5">
-                {purchase.playerPhotoUrlSnapshot ? (
-                  <img
-                    src={purchase.playerPhotoUrlSnapshot}
-                    alt=""
-                    className="size-11 rounded-xl border border-line-strong object-cover shadow-sm"
-                    onError={(event) => {
-                      event.currentTarget.style.display = 'none'
-                    }}
-                  />
-                ) : (
-                  <span className="flex size-11 items-center justify-center rounded-xl border border-line bg-surface-muted text-sm font-bold text-accent">
-                    {purchase.playerNameSnapshot.slice(0, 2).toUpperCase()}
-                  </span>
-                )}
+                <PlayerAvatar
+                  name={purchase.playerNameSnapshot}
+                  photoUrl={purchase.playerPhotoUrlSnapshot}
+                  size="md"
+                />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold text-white">{purchase.playerNameSnapshot}</p>
                   <p className="mt-0.5 text-xs text-ink-muted">

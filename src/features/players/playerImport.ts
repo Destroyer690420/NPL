@@ -1,11 +1,11 @@
 import { MAX_POINTS } from '@shared/constants'
 import { isNonNegativeInteger } from '@shared/money'
-import { normalizeName } from '@shared/text'
+import { isValidHttpUrl, normalizeName } from '@shared/text'
 import { parseCsv } from '@/lib/csv'
 
 /**
  * Player CSV import:
- *   player_id,name,points,base_price
+ *   player_id,name,points,base_price,image_url
  *
  * The whole file is validated up front; invalid rows are reported with their
  * line number and nothing is written until the admin explicitly commits.
@@ -17,6 +17,7 @@ export interface PlayerImportRow {
   name: string
   points: number | null
   basePrice: number | null
+  photoUrl: string | null
   errors: string[]
   duplicateOfLine: number | null
 }
@@ -31,12 +32,12 @@ export interface PlayerImportPreview {
   canCommit: boolean
 }
 
-export const PLAYER_CSV_TEMPLATE_HEADERS = ['player_id', 'name', 'points', 'base_price'] as const
+export const PLAYER_CSV_TEMPLATE_HEADERS = ['player_id', 'name', 'points', 'base_price', 'image_url'] as const
 
 export const PLAYER_CSV_TEMPLATE = [
   PLAYER_CSV_TEMPLATE_HEADERS.join(','),
-  'P001,Rohit Sharma,250,20000',
-  'P002,Ishan Kishan,180,15000',
+  'P001,Rohit Sharma,250,20000,/player-images/rohit.jpg',
+  'P002,Ishan Kishan,180,15000,/player-images/ishan.jpg',
 ].join('\r\n')
 
 const HEADER_ALIASES: Record<string, string[]> = {
@@ -44,6 +45,21 @@ const HEADER_ALIASES: Record<string, string[]> = {
   name: ['name', 'player', 'player_name', 'playername', 'player name', 'full name'],
   points: ['points', 'pts', 'point', 'score', 'marks'],
   basePrice: ['base_price', 'baseprice', 'base price', 'price', 'reference price', 'base'],
+  photoUrl: [
+    'image_url',
+    'imageurl',
+    'image url',
+    'image',
+    'photo_url',
+    'photourl',
+    'photo url',
+    'photo',
+    'picture',
+    'picture_url',
+    'avatar',
+    'img',
+    'img_url',
+  ],
 }
 
 function findColumn(headers: string[], aliases: string[]): number {
@@ -62,6 +78,18 @@ function toIntegerField(raw: string): number | null {
   if (cleaned === '' || !/^[+-]?\d+$/.test(cleaned)) return null
   const value = Number(cleaned.replace(/^\+/, ''))
   return Number.isSafeInteger(value) ? value : null
+}
+
+export function normalizePhotoUrl(raw: string): string | null {
+  const trimmed = raw.trim()
+  if (trimmed === '') return null
+  if (/^[a-zA-Z][a-zA-Z0-9+.-]*:/i.test(trimmed) || trimmed.startsWith('/') || trimmed.startsWith('./')) {
+    return trimmed
+  }
+  if (!/\s/.test(trimmed) && (trimmed.includes('/') || /\.(jpe?g|png|webp|gif|svg|avif)$/i.test(trimmed))) {
+    return `/${trimmed}`
+  }
+  return trimmed
 }
 
 export function buildPlayerImportPreview(text: string): PlayerImportPreview {
@@ -84,6 +112,7 @@ export function buildPlayerImportPreview(text: string): PlayerImportPreview {
     name: findColumn(headers, HEADER_ALIASES.name!),
     points: findColumn(headers, HEADER_ALIASES.points!),
     basePrice: findColumn(headers, HEADER_ALIASES.basePrice!),
+    photoUrl: findColumn(headers, HEADER_ALIASES.photoUrl!),
   }
 
   const missingColumns: string[] = []
@@ -102,6 +131,7 @@ export function buildPlayerImportPreview(text: string): PlayerImportPreview {
     const rawId = columns.playerId >= 0 ? (cells[columns.playerId] ?? '').trim() : ''
     const rawPoints = columns.points >= 0 ? (cells[columns.points] ?? '').trim() : ''
     const rawPrice = columns.basePrice >= 0 ? (cells[columns.basePrice] ?? '').trim() : ''
+    const rawPhoto = columns.photoUrl >= 0 ? (cells[columns.photoUrl] ?? '').trim() : ''
 
     const errors: string[] = []
     if (rawName === '') errors.push('Name is required.')
@@ -114,6 +144,11 @@ export function buildPlayerImportPreview(text: string): PlayerImportPreview {
     const basePrice = rawPrice === '' ? null : toIntegerField(rawPrice)
     if (basePrice === null) errors.push('Base price must be a whole number (0 or more).')
     else if (!isNonNegativeInteger(basePrice)) errors.push('Base price must not be negative.')
+
+    const photoUrl = rawPhoto === '' ? null : normalizePhotoUrl(rawPhoto)
+    if (photoUrl !== null && !isValidHttpUrl(photoUrl)) {
+      errors.push('Image URL must be a valid http(s) link or file path.')
+    }
 
     let duplicateOfLine: number | null = null
     if (rawId !== '') {
@@ -143,6 +178,7 @@ export function buildPlayerImportPreview(text: string): PlayerImportPreview {
       name: rawName,
       points,
       basePrice,
+      photoUrl,
       errors,
       duplicateOfLine,
     })
@@ -167,6 +203,7 @@ export interface ImportPayloadRow {
   name: string
   points: number
   basePrice: number
+  photoUrl?: string | null
   externalReference: string | null
 }
 
@@ -181,12 +218,13 @@ export function toImportPayload(
       name: row.name,
       points: row.points as number,
       basePrice: row.basePrice as number,
+      photoUrl: row.photoUrl ?? null,
       externalReference: row.playerId,
     }))
 }
 
 export function buildErrorReportCsv(rows: PlayerImportRow[]): Array<Array<string | number>> {
-  const header = ['line', 'player_id', 'name', 'points', 'base_price', 'errors']
+  const header = ['line', 'player_id', 'name', 'points', 'base_price', 'image_url', 'errors']
   return [
     header,
     ...rows
@@ -197,6 +235,7 @@ export function buildErrorReportCsv(rows: PlayerImportRow[]): Array<Array<string
         row.name,
         row.points ?? '',
         row.basePrice ?? '',
+        row.photoUrl ?? '',
         row.errors.join(' '),
       ]),
   ]

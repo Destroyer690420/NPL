@@ -13,6 +13,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { TextareaField } from '@/components/ui/Field'
 import { EmptyState, LoadingBlock } from '@/components/ui/Feedback'
 import { Pill, PurchaseStatusPill } from '@/components/ui/StatusPill'
+import { PlayerAvatar } from '@/components/ui/PlayerAvatar'
 import { useToast } from '@/components/ui/Toast'
 import {
   getTeamPinStatus,
@@ -224,6 +225,11 @@ export function TeamDetailPage() {
             <ul className="divide-y divide-line">
               {purchases.data.map((purchase) => (
                 <li key={purchase.id} className="flex items-center gap-3 px-4 py-2.5 sm:px-5">
+                  <PlayerAvatar
+                    name={purchase.playerNameSnapshot}
+                    photoUrl={purchase.playerPhotoUrlSnapshot}
+                    size="sm"
+                  />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-ink">{purchase.playerNameSnapshot}</p>
                     <p className="text-xs text-muted">

@@ -207,6 +207,7 @@ export interface ImportPlayerRow {
   name: string
   points: number
   basePrice: number
+  photoUrl?: string | null
   externalReference?: string | null
 }
 

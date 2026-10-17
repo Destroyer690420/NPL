@@ -3,6 +3,7 @@ import { AlertTriangle, CheckCircle2, Download, FileUp, Upload } from 'lucide-re
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { CheckboxField, SelectField } from '@/components/ui/Field'
+import { PlayerAvatar } from '@/components/ui/PlayerAvatar'
 import { useToast } from '@/components/ui/Toast'
 import { downloadCsv, downloadText, readFileAsText } from '@/lib/csv'
 import {
@@ -98,7 +99,7 @@ export function PlayerImportDialog({
         onClose()
       }}
       title="Import players from CSV"
-      description="Columns: player_id, name, points, base_price. The whole file is validated before anything is written."
+      description="Columns: player_id, name, points, base_price, image_url. The whole file is validated before anything is written."
       size="lg"
       footer={
         <>
@@ -188,6 +189,7 @@ export function PlayerImportDialog({
                   <tr className="text-left uppercase tracking-wider text-[11px] font-bold">
                     <th className="px-3 py-2.5">Line</th>
                     <th className="px-3 py-2.5">Player ID</th>
+                    <th className="px-3 py-2.5">Photo</th>
                     <th className="px-3 py-2.5">Name</th>
                     <th className="px-3 py-2.5 text-right">Points</th>
                     <th className="px-3 py-2.5 text-right">Base ({currencyLabel})</th>
@@ -199,6 +201,9 @@ export function PlayerImportDialog({
                     <tr key={row.line} className={row.errors.length > 0 ? 'bg-rose-500/10' : undefined}>
                       <td className="px-3 py-2 tabular-nums text-ink-muted">{row.line}</td>
                       <td className="px-3 py-2">{row.playerId ?? '—'}</td>
+                      <td className="px-3 py-2">
+                        <PlayerAvatar name={row.name || '?'} photoUrl={row.photoUrl} size="sm" />
+                      </td>
                       <td className="px-3 py-2 font-bold text-white">{row.name || '—'}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-sky-400">{row.points ?? '—'}</td>
                       <td className="px-3 py-2 text-right tabular-nums text-ink">{row.basePrice ?? '—'}</td>

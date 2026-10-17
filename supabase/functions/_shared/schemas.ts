@@ -149,6 +149,7 @@ export const importPlayersSchema = z.object({
         name: eventNameSchema,
         points: pointsValue,
         basePrice: nonNegativeAmount,
+        photoUrl: optionalUrl,
         externalReference: optionalText(120),
       }),
     )
