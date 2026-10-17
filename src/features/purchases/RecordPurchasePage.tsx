@@ -58,7 +58,6 @@ export function RecordPurchasePage() {
   const [playerId, setPlayerId] = useState<string | null>(null)
   const [teamId, setTeamId] = useState<string | null>(null)
   const [priceText, setPriceText] = useState('')
-  const [priceAutoFilled, setPriceAutoFilled] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [submit, setSubmit] = useState<SubmitState>({ kind: 'idle' })
   const lastAttempt = useRef<Attempt | null>(null)
@@ -76,13 +75,19 @@ export function RecordPurchasePage() {
   const eventActive = event?.status === 'active'
   const purchasesEnabled = event?.purchasesEnabled !== false
 
+  const lastPrefilledPlayerIdRef = useRef<string | null>(null)
+
   // Prefill the price with the base price when a player is chosen; typing wins.
   useEffect(() => {
-    if (selectedPlayer && (priceText === '' || priceAutoFilled)) {
-      setPriceText(String(selectedPlayer.basePrice))
-      setPriceAutoFilled(true)
+    if (selectedPlayer) {
+      if (lastPrefilledPlayerIdRef.current !== selectedPlayer.id) {
+        lastPrefilledPlayerIdRef.current = selectedPlayer.id
+        setPriceText(String(selectedPlayer.basePrice))
+      }
+    } else {
+      lastPrefilledPlayerIdRef.current = null
     }
-  }, [selectedPlayer, priceText, priceAutoFilled])
+  }, [selectedPlayer])
 
   const blocking: string[] = []
   if (!eventActive) {
@@ -133,7 +138,7 @@ export function RecordPurchasePage() {
     setPlayerId(null)
     setTeamId(null)
     setPriceText('')
-    setPriceAutoFilled(false)
+    lastPrefilledPlayerIdRef.current = null
     lastAttempt.current = null
     setSubmit({ kind: 'idle' })
   }
@@ -178,7 +183,7 @@ export function RecordPurchasePage() {
         // Another operator sold the player: drop the selection and refresh.
         setPlayerId(null)
         setPriceText('')
-        setPriceAutoFilled(false)
+        lastPrefilledPlayerIdRef.current = null
       }
       toast.push({ kind: 'error', message: friendly.message, detail: friendly.hint })
     }
@@ -372,7 +377,6 @@ export function RecordPurchasePage() {
               placeholder="e.g. 20000"
               onChange={(event) => {
                 setPriceText(event.target.value)
-                setPriceAutoFilled(false)
                 setSubmit((current) => (current.kind === 'failed' ? { kind: 'idle' } : current))
               }}
               onKeyDown={(event) => {
@@ -388,7 +392,6 @@ export function RecordPurchasePage() {
                     className="underline underline-offset-2 hover:text-ink"
                     onClick={() => {
                       setPriceText(String(selectedPlayer.basePrice))
-                      setPriceAutoFilled(false)
                     }}
                   >
                     Use base price {currency(selectedPlayer.basePrice, currencyLabel)}

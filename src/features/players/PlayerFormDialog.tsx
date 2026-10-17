@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { CheckboxField, InputField, SelectField, TextareaField } from '@/components/ui/Field'
@@ -57,26 +57,38 @@ export function PlayerFormDialog({
   const [reason, setReason] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
 
+  const wasOpenRef = useRef(false)
+  const lastPlayerIdRef = useRef<string | null>(null)
+
   useEffect(() => {
-    if (!open) return
-    setLocalError(null)
-    setReason('')
-    if (player) {
-      setName(player.name)
-      setPoints(String(player.points))
-      setBasePrice(String(player.basePrice))
-      setPhotoUrl(player.photoUrl ?? '')
-      setExternalReference(player.externalReference ?? '')
-      setNotes(player.notes ?? '')
-      setWithdrawn(player.status === 'withdrawn')
-    } else {
-      setName('')
-      setPoints('')
-      setBasePrice('')
-      setPhotoUrl('')
-      setExternalReference('')
-      setNotes('')
-      setWithdrawn(false)
+    if (!open) {
+      wasOpenRef.current = false
+      lastPlayerIdRef.current = null
+      return
+    }
+    const currentPlayerId = player ? player.id : '__new__'
+    if (!wasOpenRef.current || lastPlayerIdRef.current !== currentPlayerId) {
+      wasOpenRef.current = true
+      lastPlayerIdRef.current = currentPlayerId
+      setLocalError(null)
+      setReason('')
+      if (player) {
+        setName(player.name)
+        setPoints(String(player.points))
+        setBasePrice(String(player.basePrice))
+        setPhotoUrl(player.photoUrl ?? '')
+        setExternalReference(player.externalReference ?? '')
+        setNotes(player.notes ?? '')
+        setWithdrawn(player.status === 'withdrawn')
+      } else {
+        setName('')
+        setPoints('')
+        setBasePrice('')
+        setPhotoUrl('')
+        setExternalReference('')
+        setNotes('')
+        setWithdrawn(false)
+      }
     }
   }, [open, player])
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { InputField, TextareaField } from '@/components/ui/Field'
@@ -43,18 +43,30 @@ export function TeamFormDialog({
   const [reason, setReason] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
 
+  const wasOpenRef = useRef(false)
+  const lastTeamIdRef = useRef<string | null>(null)
+
   useEffect(() => {
-    if (!open) return
-    setLocalError(null)
-    setReason('')
-    if (team) {
-      setName(team.name)
-      setPurse(String(team.startingPurse))
-      setLogoUrl(team.logoUrl ?? '')
-    } else {
-      setName('')
-      setPurse(String(defaultStartingPurse))
-      setLogoUrl('')
+    if (!open) {
+      wasOpenRef.current = false
+      lastTeamIdRef.current = null
+      return
+    }
+    const currentTeamId = team ? team.id : '__new__'
+    if (!wasOpenRef.current || lastTeamIdRef.current !== currentTeamId) {
+      wasOpenRef.current = true
+      lastTeamIdRef.current = currentTeamId
+      setLocalError(null)
+      setReason('')
+      if (team) {
+        setName(team.name)
+        setPurse(String(team.startingPurse))
+        setLogoUrl(team.logoUrl ?? '')
+      } else {
+        setName('')
+        setPurse(String(defaultStartingPurse))
+        setLogoUrl('')
+      }
     }
   }, [open, team, defaultStartingPurse])
 

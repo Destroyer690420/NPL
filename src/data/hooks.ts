@@ -55,6 +55,15 @@ function rowsOf(value: unknown): Row[] {
   return Array.isArray(value) ? (value as Row[]) : []
 }
 
+function isEqualData<T>(a: T, b: T): boolean {
+  if (Object.is(a, b)) return true
+  try {
+    return JSON.stringify(a) === JSON.stringify(b)
+  } catch {
+    return false
+  }
+}
+
 /** TimestampValue ({seconds,nanoseconds}) -> epoch ms for client-side sorting. */
 function timestampKey(value: unknown): number {
   if (value && typeof value === 'object') {
@@ -133,7 +142,17 @@ function usePolled<T>(key: string | null, initial: T, fetcher: () => Promise<T>)
         const value = await fetcherRef.current()
         if (!active) return
         haveData = true
-        setState({ data: value, loading: false, error: null, fromCache: false })
+        setState((previous) => {
+          if (
+            !previous.loading &&
+            !previous.error &&
+            !previous.fromCache &&
+            isEqualData(previous.data, value)
+          ) {
+            return previous
+          }
+          return { data: value, loading: false, error: null, fromCache: false }
+        })
       } catch (error) {
         if (!active) return
         if (haveData) {
