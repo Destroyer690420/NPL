@@ -1,10 +1,9 @@
-import { Link, NavLink, Navigate, Outlet } from 'react-router'
+import { NavLink, Navigate, Outlet } from 'react-router'
 import type { ReactNode } from 'react'
 import {
   LayoutDashboard,
   ReceiptText,
   Settings,
-  ShieldCheck,
   ShoppingCart,
   Users,
   UsersRound,
@@ -54,14 +53,6 @@ export function AdminShell() {
       <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-x-4 px-4 py-2.5 sm:px-6">
           <div className="flex shrink-0 items-center gap-2.5">
-            <span className="h-5 w-1 rounded-full bg-accent shadow-[0_0_10px_rgba(230,0,110,0.6)]" aria-hidden />
-            <Link
-              to="/admin"
-              className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-line bg-surface-muted text-accent transition-colors hover:border-accent hover:text-white"
-              title="Dashboard"
-            >
-              <ShieldCheck className="size-4" aria-hidden />
-            </Link>
             {!event.purchasesEnabled && event.status === 'active' ? (
               <span className="rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-300">
                 paused

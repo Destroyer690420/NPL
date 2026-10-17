@@ -179,14 +179,7 @@ export function TeamDetailPage() {
     <div>
       <PageHeader
         title={data.name}
-        description={
-          <span className="flex items-center gap-2">
-            {data.active ? <Pill tone="success">Active</Pill> : <Pill tone="neutral">Inactive</Pill>}
-            {team.data.logoUrl ? (
-              <span className="truncate text-xs text-muted">{team.data.logoUrl}</span>
-            ) : null}
-          </span>
-        }
+        description={data.active ? <Pill tone="success">Active</Pill> : <Pill tone="neutral">Inactive</Pill>}
         actions={
           <>
             <Link to="/admin/teams">

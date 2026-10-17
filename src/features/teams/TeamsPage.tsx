@@ -123,25 +123,9 @@ export function TeamsPage() {
                 {filtered.map((team) => (
                   <tr key={team.id} className="hover:bg-surface-muted/60">
                     <td className="px-4 py-3 sm:px-5">
-                      <div className="flex items-center gap-2.5">
-                        {team.logoUrl ? (
-                          <img
-                            src={team.logoUrl}
-                            alt=""
-                            className="size-8 rounded-full border border-line object-cover"
-                            onError={(event) => {
-                              event.currentTarget.style.display = 'none'
-                            }}
-                          />
-                        ) : (
-                          <span className="flex size-8 items-center justify-center rounded-full bg-info-soft text-xs font-semibold text-ink-soft">
-                            {team.name.slice(0, 2).toUpperCase()}
-                          </span>
-                        )}
-                        <Link to={`/admin/teams/${team.id}`} className="font-medium text-ink hover:text-accent hover:underline">
-                          {team.name}
-                        </Link>
-                      </div>
+                      <Link to={`/admin/teams/${team.id}`} className="font-semibold text-ink hover:text-accent hover:underline">
+                        {team.name}
+                      </Link>
                     </td>
                     <td className="px-3 py-3 text-right font-semibold tabular-nums text-accent">
                       {currency(team.remainingPurse, currencyLabel)}

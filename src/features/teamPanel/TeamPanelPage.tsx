@@ -70,11 +70,8 @@ export function TeamPanelPage() {
     <div className="mx-auto min-h-dvh w-full max-w-3xl px-4 py-6 sm:px-6">
       {/* Top Navbar */}
       <header className="mb-6 flex items-center justify-between rounded-2xl border border-line-strong bg-surface-elevated/90 px-4 py-3 shadow-xl backdrop-blur-md sm:px-5">
-        <div className="flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-xl border border-accent/40 bg-accent/15 text-xs font-black tracking-wider text-accent shadow-[0_0_10px_rgba(230,0,110,0.35)]">
-            {teamInitials}
-          </span>
-          <span className="text-base font-black tracking-wider text-white">
+        <div className="flex items-center">
+          <span className="text-lg font-black tracking-wider text-white uppercase">
             {teamInitials}
           </span>
         </div>
@@ -147,25 +144,9 @@ export function TeamPanelPage() {
               {/* Team Profile Tile */}
               <div className="rounded-xl border border-line bg-surface-muted/40 p-4">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Team</p>
-                <div className="mt-2 flex items-center gap-3">
-                  {context.logoUrl ? (
-                    <img
-                      src={context.logoUrl}
-                      alt=""
-                      className="size-11 rounded-xl border border-line-strong object-cover shadow-sm"
-                      onError={(event) => {
-                        event.currentTarget.style.display = 'none'
-                      }}
-                    />
-                  ) : (
-                    <span className="flex size-11 items-center justify-center rounded-xl border border-accent/30 bg-accent/15 text-sm font-black text-accent">
-                      {teamInitials}
-                    </span>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-base font-bold text-white">{context.teamName}</p>
-                    <p className="text-xs text-ink-muted">Private team session</p>
-                  </div>
+                <div className="mt-1.5">
+                  <p className="truncate text-base font-bold text-white">{context.teamName}</p>
+                  <p className="text-xs text-ink-muted">Private team session</p>
                 </div>
               </div>
 

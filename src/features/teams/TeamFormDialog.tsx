@@ -40,7 +40,6 @@ export function TeamFormDialog({
   const editing = Boolean(team)
   const [name, setName] = useState('')
   const [purse, setPurse] = useState('')
-  const [logoUrl, setLogoUrl] = useState('')
   const [reason, setReason] = useState('')
   const [localError, setLocalError] = useState<string | null>(null)
 
@@ -62,11 +61,9 @@ export function TeamFormDialog({
       if (team) {
         setName(team.name)
         setPurse(String(team.startingPurse))
-        setLogoUrl(team.logoUrl ?? '')
       } else {
         setName('')
         setPurse(String(defaultStartingPurse))
-        setLogoUrl('')
       }
     }
   }, [open, team, defaultStartingPurse])
@@ -94,15 +91,10 @@ export function TeamFormDialog({
       setLocalError('Enter a reason (at least 3 characters) for changing the starting purse.')
       return
     }
-    const trimmedLogo = logoUrl.trim()
-    if (trimmedLogo !== '' && !/^https?:\/\//i.test(trimmedLogo)) {
-      setLocalError('Logo URL must start with http:// or https://.')
-      return
-    }
     onSubmit({
       name: trimmed,
       startingPurse: amount,
-      logoUrl: trimmedLogo === '' ? null : trimmedLogo,
+      logoUrl: null,
       reason: needsReason ? reason.trim() : null,
     })
   }
@@ -148,13 +140,6 @@ export function TeamFormDialog({
               ? `Currently spent: ${currency(team?.totalSpent ?? 0, currencyLabel)}. Cannot be lower than that.`
               : 'Whole numbers only.'
           }
-        />
-        <InputField
-          label="Logo URL"
-          optional
-          value={logoUrl}
-          onChange={(event) => setLogoUrl(event.target.value)}
-          placeholder="https://…"
         />
         {needsReason ? (
           <TextareaField
