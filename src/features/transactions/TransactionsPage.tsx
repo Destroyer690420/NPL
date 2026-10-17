@@ -1,13 +1,12 @@
 import { useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router'
-import { AlertTriangle, Download, History, RotateCcw, Search } from 'lucide-react'
+import { AlertTriangle, History, RotateCcw, Search } from 'lucide-react'
 import type { AdminOutletContext } from '@/app/outlet'
 import { useAdminEvent } from '@/app/AdminEventProvider'
 import { useAuditLogs, usePurchases, useTeams } from '@/data/hooks'
 import { currency, formatDateTime, formatRelative, points as formatPoints, shortId } from '@/lib/format'
 import { normalizeName } from '@shared/text'
 import type { PurchaseDoc } from '@shared/types'
-import { PageHeader } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody } from '@/components/ui/Card'
 import { Dialog } from '@/components/ui/Dialog'
@@ -18,7 +17,6 @@ import { useToast } from '@/components/ui/Toast'
 import { reversePurchase } from '@/services/admin'
 import { isCallError } from '@/services/callables'
 import { errorMessage } from '@/lib/errors'
-import { downloadCsv } from '@/lib/csv'
 
 type StatusFilter = 'all' | 'confirmed' | 'reversed'
 
@@ -104,37 +102,10 @@ export function TransactionsPage() {
     }
   }
 
-  function exportCsv(): void {
-    const rows: Array<Array<string | number>> = [
-      ['purchase_id', 'time', 'player', 'points', 'team', 'final_price', 'status', 'operator', 'reversal_reason'],
-      ...filtered.map((purchase) => [
-        purchase.id,
-        formatDateTime(purchase.createdAt),
-        purchase.playerNameSnapshot,
-        purchase.playerPointsSnapshot,
-        purchase.teamNameSnapshot,
-        purchase.finalPrice,
-        purchase.status,
-        operators.get(purchase.id) ?? '',
-        purchase.reversalReason ?? '',
-      ]),
-    ]
-    downloadCsv(`transactions-${new Date().toISOString().slice(0, 10)}.csv`, rows)
-  }
-
   const reversingTeam = reversing ? teams.data.find((team) => team.id === reversing.teamId) : null
 
   return (
     <div>
-      <PageHeader
-        title="Transactions"
-        description="Every purchase ever recorded, newest first. Reversals refund the team and return the player to the pool."
-        actions={
-          <Button variant="secondary" icon={<Download className="size-4" aria-hidden />} onClick={exportCsv} disabled={filtered.length === 0}>
-            Export CSV
-          </Button>
-        }
-      />
 
       <Card>
         <CardBody className="grid gap-3 pb-3 sm:grid-cols-[1fr_150px_180px]">

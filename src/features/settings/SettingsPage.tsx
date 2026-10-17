@@ -17,7 +17,7 @@ import {
 import type { AdminOutletContext } from '@/app/outlet'
 import { useAdminAuth } from '@/auth/AdminAuthProvider'
 import { useAdminEvent } from '@/app/AdminEventProvider'
-import { usePlayers, usePublicConfig, useTeams } from '@/data/hooks'
+import { usePlayers, usePublicConfig, usePurchases, useTeams } from '@/data/hooks'
 import { PageHeader, SectionTitle } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -33,7 +33,7 @@ import { PlayerFormDialog, type PlayerFormValues } from '@/features/players/Play
 import { PlayerImportDialog } from '@/features/players/PlayerImportDialog'
 import { formatAmount, parseAmountInput, parseIntegerInput } from '@shared/money'
 import { MAX_ROSTER_SIZE_LIMIT, MAX_AMOUNT } from '@shared/constants'
-import { formatRelative, points as formatPoints } from '@/lib/format'
+import { formatDateTime, formatRelative, points as formatPoints } from '@/lib/format'
 
 export function SettingsPage() {
   const { eventId } = useOutletContext<AdminOutletContext>()
@@ -42,6 +42,7 @@ export function SettingsPage() {
   const toast = useToast()
   const teams = useTeams(eventId)
   const players = usePlayers(eventId)
+  const purchases = usePurchases(eventId, 500)
   const config = usePublicConfig()
 
   const [name, setName] = useState('')
@@ -245,6 +246,23 @@ export function SettingsPage() {
       ]),
     ]
     downloadCsv(`players-${new Date().toISOString().slice(0, 10)}.csv`, rows)
+  }
+
+  function exportTransactionsCsv(): void {
+    const rows: Array<Array<string | number>> = [
+      ['purchase_id', 'time', 'player', 'points', 'team', 'final_price', 'status', 'reversal_reason'],
+      ...purchases.data.map((purchase) => [
+        purchase.id,
+        formatDateTime(purchase.createdAt),
+        purchase.playerNameSnapshot,
+        purchase.playerPointsSnapshot,
+        purchase.teamNameSnapshot,
+        purchase.finalPrice,
+        purchase.status,
+        purchase.reversalReason ?? '',
+      ]),
+    ]
+    downloadCsv(`transactions-${new Date().toISOString().slice(0, 10)}.csv`, rows)
   }
 
   if (!event) return null
@@ -559,6 +577,26 @@ export function SettingsPage() {
                   Add player
                 </Button>
               </div>
+            </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Transactions history</CardTitle>
+            </CardHeader>
+            <CardBody className="space-y-3">
+              <p className="text-xs text-muted">
+                Export all purchase and reversal records for audit or accounting.
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Download className="size-3.5" aria-hidden />}
+                onClick={exportTransactionsCsv}
+                disabled={purchases.data.length === 0}
+              >
+                Export transactions CSV
+              </Button>
             </CardBody>
           </Card>
         </div>

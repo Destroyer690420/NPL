@@ -3,14 +3,12 @@ import { Link, useOutletContext } from 'react-router'
 import { AlertTriangle, ArrowRight, PlusCircle } from 'lucide-react'
 import type { AdminOutletContext } from '@/app/outlet'
 import { useAdminEvent } from '@/app/AdminEventProvider'
-import { useAuditLogs, usePlayers, usePurchases, useTeams } from '@/data/hooks'
+import { usePlayers, usePurchases, useTeams } from '@/data/hooks'
 import { currency, formatRelative, points as formatPoints } from '@/lib/format'
-import { SectionTitle } from '@/components/ui/PageHeader'
 import { Card, CardBody, CardHeader, CardTitle, StatCard } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { EmptyState, Skeleton } from '@/components/ui/Feedback'
 import { Pill, PurchaseStatusPill } from '@/components/ui/StatusPill'
-import { AUDIT_ACTION_LABELS } from '@/lib/labels'
 
 export function DashboardPage() {
   const { eventId } = useOutletContext<AdminOutletContext>()
@@ -19,7 +17,6 @@ export function DashboardPage() {
   const teams = useTeams(eventId)
   const players = usePlayers(eventId)
   const purchases = usePurchases(eventId, 8)
-  const auditLogs = useAuditLogs(eventId, 8)
 
   // Totals are derived from the full team and player documents (purchase
   // listeners are intentionally capped, so they are not a totals source).
@@ -167,54 +164,56 @@ export function DashboardPage() {
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Activity</CardTitle>
+            <CardTitle>Teams overview</CardTitle>
+            <Link to="/admin/teams" className="text-xs font-semibold text-ink-muted transition-colors hover:text-accent">
+              View all →
+            </Link>
           </CardHeader>
-          {auditLogs.loading ? (
+          {teams.loading ? (
             <CardBody className="space-y-2">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
             </CardBody>
-          ) : auditLogs.data.length === 0 ? (
-            <EmptyState title="No activity yet" description="Admin actions appear here for the audit trail." />
+          ) : teams.data.length === 0 ? (
+            <EmptyState
+              title="No teams yet"
+              description="Add teams before recording purchases."
+              action={
+                <Link to="/admin/teams">
+                  <Button size="sm">Add team</Button>
+                </Link>
+              }
+            />
           ) : (
             <ul className="divide-y divide-line">
-              {auditLogs.data.map((log) => (
-                <li key={log.id} className="px-4 py-2.5 sm:px-5">
-                  <p className="text-[13px] text-ink">
-                    {AUDIT_ACTION_LABELS[log.action] ?? log.action}
-                  </p>
-                  <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
-                    <Pill tone={log.actorRole === 'system' ? 'neutral' : 'info'}>
-                      {log.actorEmail ?? (log.actorRole === 'system' ? 'system' : log.actorUid.slice(0, 8))}
-                    </Pill>
-                    {formatRelative(log.createdAt)}
-                  </p>
+              {teams.data.map((team) => (
+                <li key={team.id} className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <Link to={`/admin/teams/${team.id}`} className="truncate text-sm font-bold text-white hover:text-accent hover:underline">
+                        {team.name}
+                      </Link>
+                      {!team.active ? <Pill tone="neutral">Inactive</Pill> : null}
+                    </div>
+                    <p className="mt-0.5 text-xs text-ink-muted">
+                      {team.playerCount} player{team.playerCount === 1 ? '' : 's'} ·{' '}
+                      <span className="font-semibold text-sky-400">{formatPoints(team.totalPoints)} pts</span>
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-extrabold tabular-nums text-accent">
+                      {currency(team.remainingPurse, currencyLabel)}
+                    </p>
+                    <p className="text-[11px] text-muted">
+                      spent {currency(team.totalSpent, currencyLabel)}
+                    </p>
+                  </div>
                 </li>
               ))}
             </ul>
           )}
         </Card>
-      </div>
-
-      <SectionTitle className="mt-8">Teams overview</SectionTitle>
-      <div className="mt-3 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
-        {teams.data.map((team) => (
-          <Card key={team.id} className="p-4 transition-all hover:border-line-strong hover:bg-surface-elevated/70">
-            <div className="flex items-center justify-between gap-2">
-              <p className="truncate text-sm font-bold text-white">{team.name}</p>
-              {team.active ? null : <Pill tone="neutral">Inactive</Pill>}
-            </div>
-            <p className="mt-1.5 text-xl font-extrabold tabular-nums text-accent">
-              {currency(team.remainingPurse, currencyLabel)}
-            </p>
-            <p className="mt-1 text-xs text-ink-muted">
-              spent <span className="text-ink font-medium">{currency(team.totalSpent, currencyLabel)}</span> ·{' '}
-              <span className="font-semibold text-sky-400">{formatPoints(team.totalPoints)} pts</span> ·{' '}
-              {team.playerCount} player{team.playerCount === 1 ? '' : 's'}
-            </p>
-          </Card>
-        ))}
       </div>
     </div>
   )
