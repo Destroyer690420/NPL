@@ -13,6 +13,7 @@ import {
   Save,
   ShieldAlert,
   Star,
+  Trash2,
 } from 'lucide-react'
 import type { AdminOutletContext } from '@/app/outlet'
 import { useAdminAuth } from '@/auth/AdminAuthProvider'
@@ -25,7 +26,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { CheckboxField, InputField, TextareaField } from '@/components/ui/Field'
 import { EventStatusPill, Pill } from '@/components/ui/StatusPill'
 import { useToast } from '@/components/ui/Toast'
-import { checkEventConsistency, createPlayer, setDefaultEvent, updateEvent } from '@/services/admin'
+import { checkEventConsistency, createPlayer, resetEventData, setDefaultEvent, updateEvent } from '@/services/admin'
 import { isCallError } from '@/services/callables'
 import { errorMessage } from '@/lib/errors'
 import { downloadCsv } from '@/lib/csv'
@@ -65,6 +66,10 @@ export function SettingsPage() {
   const [playerFormOpen, setPlayerFormOpen] = useState(false)
   const [playerSubmitting, setPlayerSubmitting] = useState(false)
   const [playerFormError, setPlayerFormError] = useState<string | null>(null)
+
+  const [resetOpen, setResetOpen] = useState(false)
+  const [resetConfirmText, setResetConfirmText] = useState('')
+  const [resetBusy, setResetBusy] = useState(false)
 
   const loadedEventRef = useRef<string | null>(null)
   const isDirtyRef = useRef(false)
@@ -263,6 +268,29 @@ export function SettingsPage() {
       ]),
     ]
     downloadCsv(`transactions-${new Date().toISOString().slice(0, 10)}.csv`, rows)
+  }
+
+  async function handleResetEvent(): Promise<void> {
+    if (!eventId || resetConfirmText.trim() !== 'DELETE') return
+    try {
+      setResetBusy(true)
+      await resetEventData(eventId)
+      toast.push({
+        kind: 'success',
+        message: 'All event data has been reset.',
+        detail: 'Teams, players, purchases, and audit logs have been wiped. Event status reset to draft.',
+      })
+      setResetOpen(false)
+      setResetConfirmText('')
+    } catch (err) {
+      toast.push({
+        kind: 'error',
+        message: 'Failed to reset event data.',
+        detail: errorMessage(err),
+      })
+    } finally {
+      setResetBusy(false)
+    }
   }
 
   if (!event) return null
@@ -599,6 +627,31 @@ export function SettingsPage() {
               </Button>
             </CardBody>
           </Card>
+
+          <Card className="border-danger/30 bg-danger/5">
+            <CardHeader>
+              <CardTitle className="text-danger flex items-center gap-2">
+                <AlertTriangle className="size-4" aria-hidden />
+                Danger zone
+              </CardTitle>
+            </CardHeader>
+            <CardBody className="space-y-3">
+              <p className="text-xs text-muted">
+                Permanently delete all teams, players, transactions, and audit records for this event. This action is irreversible.
+              </p>
+              <Button
+                variant="danger"
+                size="sm"
+                icon={<Trash2 className="size-3.5" aria-hidden />}
+                onClick={() => {
+                  setResetConfirmText('')
+                  setResetOpen(true)
+                }}
+              >
+                Delete all event data
+              </Button>
+            </CardBody>
+          </Card>
         </div>
       </div>
 
@@ -659,6 +712,46 @@ export function SettingsPage() {
         submitting={playerSubmitting}
         error={playerFormError}
       />
+
+      <Dialog
+        open={resetOpen}
+        onClose={() => !resetBusy && setResetOpen(false)}
+        title="Delete all event data"
+        description="This will permanently delete all teams, players, purchases, PINs, and audit logs for this event. There is no recovery."
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" disabled={resetBusy} onClick={() => setResetOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              loading={resetBusy}
+              disabled={resetConfirmText.trim() !== 'DELETE'}
+              onClick={() => void handleResetEvent()}
+            >
+              Permanently delete everything
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-xs text-danger">
+            <p className="font-semibold">Warning: This action cannot be undone.</p>
+            <p className="mt-1 text-ink-soft">
+              All rosters, sold player records, team balances, and PINs will be permanently wiped. The event will be reset to draft state.
+            </p>
+          </div>
+          <InputField
+            label="Type DELETE to confirm"
+            placeholder="DELETE"
+            value={resetConfirmText}
+            autoFocus
+            onChange={(e) => setResetConfirmText(e.target.value)}
+            hint="Case-sensitive confirmation required."
+          />
+        </div>
+      </Dialog>
     </div>
   )
 }

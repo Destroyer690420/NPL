@@ -269,3 +269,14 @@ export function reversePurchase(
 ): Promise<ReversePurchaseResult> {
   return callFunction('reversePurchase', { eventId, purchaseId, reason })
 }
+
+/* ----------------------------- reset event data --------------------------- */
+
+export interface ResetEventDataResult {
+  ok: boolean
+  eventId: string
+}
+
+export function resetEventData(eventId: string): Promise<ResetEventDataResult> {
+  return callFunction('resetEventData', { eventId })
+}

@@ -10,6 +10,7 @@ import {
 import { adminCallable } from '../lib/callables.ts'
 import { unwrapPlan } from '../lib/errors.ts'
 import { auditRef, configRef, db } from '../lib/refs.ts'
+import { supabase } from '../lib/supabase.ts'
 import {
   applyWrites,
   readEventTx,
@@ -154,3 +155,37 @@ export const setDefaultEvent = adminCallable({
     })
   },
 })
+
+/**
+ * Deletes all players, teams, purchases, audit logs and secrets for an event,
+ * resetting the event to draft state with a fresh slate.
+ */
+export const resetEventData = adminCallable({
+  schema: eventIdSchema,
+  handler: async (input) => {
+    const { eventId } = input
+
+    await supabase.from('purchases').delete().eq('event_id', eventId)
+    await supabase.from('players').delete().eq('event_id', eventId)
+    await supabase.from('team_secrets').delete().eq('event_id', eventId)
+    await supabase.from('pin_index').delete().eq('event_id', eventId)
+    await supabase.from('sessions').delete().eq('event_id', eventId)
+    await supabase.from('teams').delete().eq('event_id', eventId)
+    await supabase.from('audit_logs').delete().eq('event_id', eventId)
+
+    const { data: eventRow } = await supabase.from('events').select('data').eq('id', eventId).maybeSingle()
+    if (eventRow) {
+      await supabase.from('events').update({
+        data: {
+          ...(eventRow.data as Record<string, unknown>),
+          status: 'draft',
+          purchasesEnabled: true,
+          updatedAt: new Date().toISOString(),
+        },
+      }).eq('id', eventId)
+    }
+
+    return { ok: true, eventId }
+  },
+})
+

@@ -215,38 +215,34 @@ async function main() {
       return { row: [playerId, playerName, points, basePrice, ''], localUrl: '', supabaseUrl: '' }
     }
 
-    // If already a local path, keep as-is
-    if (rawUrl.startsWith('/player-images/')) {
-      downloadedCount++
-      return {
-        row: [playerId, playerName, points, basePrice, rawUrl],
-        localUrl: rawUrl,
-        supabaseUrl: supabaseStorageReady ? `${supabaseUrl}/storage/v1/object/public/player-images/${playerId}.png` : rawUrl,
-      }
-    }
-
-    // Fetch image
-    const fetchResult = await fetchImageBuffer(rawUrl)
-    if (!fetchResult.ok) {
-      failedCount++
-      process.stdout.write(`  ✖ [${playerId}] ${playerName.padEnd(20)}: ${fetchResult.status}\n`)
-      // Clean up broken link to empty string so initials display cleanly
-      return { row: [playerId, playerName, points, basePrice, ''], localUrl: '', supabaseUrl: '' }
-    }
-
-    const { buffer, contentType } = fetchResult
-    downloadedCount++
-
-    // Save locally
+    let buffer = null
     const filename = `${playerId}.png`
     const localFilePath = path.join(publicImagesDir, filename)
-    writeFileSync(localFilePath, buffer)
+
+    if (rawUrl.startsWith('/player-images/') && existsSync(localFilePath)) {
+      buffer = readFileSync(localFilePath)
+      downloadedCount++
+    } else if (rawUrl.startsWith('/player-images/')) {
+      return { row: [playerId, playerName, points, basePrice, rawUrl], localUrl: rawUrl, supabaseUrl: '' }
+    } else {
+      // Fetch image
+      const fetchResult = await fetchImageBuffer(rawUrl)
+      if (!fetchResult.ok) {
+        failedCount++
+        process.stdout.write(`  ✖ [${playerId}] ${playerName.padEnd(20)}: ${fetchResult.status}\n`)
+        // Clean up broken link to empty string so initials display cleanly
+        return { row: [playerId, playerName, points, basePrice, ''], localUrl: '', supabaseUrl: '' }
+      }
+      buffer = fetchResult.buffer
+      downloadedCount++
+      writeFileSync(localFilePath, buffer)
+    }
 
     let finalUrl = `/player-images/${filename}`
     let supabasePublicUrl = ''
 
     // Upload to Supabase Storage if available
-    if (supabase && supabaseStorageReady) {
+    if (supabase && supabaseStorageReady && buffer) {
       try {
         const { error: uploadErr } = await supabase.storage
           .from('player-images')
@@ -259,12 +255,12 @@ async function main() {
           uploadedCount++
           supabasePublicUrl = `${supabaseUrl}/storage/v1/object/public/player-images/${filename}`
           finalUrl = supabasePublicUrl
-          process.stdout.write(`  ✔ [${playerId}] ${playerName.padEnd(20)}: saved locally + uploaded to Supabase Storage\n`)
+          process.stdout.write(`  ✔ [${playerId}] ${playerName.padEnd(20)}: uploaded to Supabase Storage\n`)
         } else {
-          process.stdout.write(`  ✔ [${playerId}] ${playerName.padEnd(20)}: saved locally (${uploadErr.message})\n`)
+          process.stdout.write(`  ⚠ [${playerId}] ${playerName.padEnd(20)}: upload error (${uploadErr.message})\n`)
         }
       } catch (err) {
-        process.stdout.write(`  ✔ [${playerId}] ${playerName.padEnd(20)}: saved locally (upload error: ${err.message})\n`)
+        process.stdout.write(`  ⚠ [${playerId}] ${playerName.padEnd(20)}: upload error (${err.message})\n`)
       }
     } else {
       process.stdout.write(`  ✔ [${playerId}] ${playerName.padEnd(20)}: saved to /player-images/${filename}\n`)
