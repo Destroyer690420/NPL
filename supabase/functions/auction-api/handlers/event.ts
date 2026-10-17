@@ -70,11 +70,13 @@ export const updateEvent = adminCallable({
       if (needsFullRead && event) {
         const teams = await readTeamsTx(tx, input.eventId)
         teamCount = teams.length
-        if (input.status === 'finalized') {
+        if (input.status === 'active' || input.status === 'finalized') {
           const players = await readPlayersTx(tx, input.eventId)
-          const purchases = await readPurchasesTx(tx, input.eventId)
           playerCount = players.length
-          consistency = validateEventConsistency({ event, teams, players, purchases })
+          if (input.status === 'finalized') {
+            const purchases = await readPurchasesTx(tx, input.eventId)
+            consistency = validateEventConsistency({ event, teams, players, purchases })
+          }
         }
       }
 
