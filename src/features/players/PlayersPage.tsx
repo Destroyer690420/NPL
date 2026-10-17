@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Link, useOutletContext } from 'react-router'
-import { Ban, PlusCircle, Search, UserRound } from 'lucide-react'
+import { Ban, PlusCircle, Radio, Search, UserRound } from 'lucide-react'
 import type { AdminOutletContext } from '@/app/outlet'
 import { useAdminEvent } from '@/app/AdminEventProvider'
 import { usePlayers, useTeams } from '@/data/hooks'
@@ -14,9 +14,10 @@ import { EmptyState, LoadingBlock } from '@/components/ui/Feedback'
 import { PlayerStatusPill } from '@/components/ui/StatusPill'
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar'
 import { useToast } from '@/components/ui/Toast'
-import { createPlayer, setPlayerStatus, updatePlayer } from '@/services/admin'
+import { createPlayer, setPlayerStatus, updatePlayer, setSpotlightPlayer, clearSpotlightPlayer } from '@/services/admin'
 import { isCallError } from '@/services/callables'
 import { errorMessage } from '@/lib/errors'
+import { cn } from '@/lib/cn'
 import { PlayerFormDialog, type PlayerFormValues } from './PlayerFormDialog'
 
 type StatusFilter = 'all' | PlayerStatus
@@ -129,6 +130,29 @@ export function PlayersPage() {
     }
   }
 
+  async function handleToggleSpotlight(player: PlayerDoc): Promise<void> {
+    setActionBusyId(`spotlight-${player.id}`)
+    try {
+      if (event?.spotlightPlayer?.playerId === player.id) {
+        await clearSpotlightPlayer(eventId)
+        toast.push({
+          kind: 'info',
+          message: `${player.name} removed from live auction card.`,
+        })
+      } else {
+        await setSpotlightPlayer(eventId, player.id)
+        toast.push({
+          kind: 'success',
+          message: `${player.name} is now LIVE on everyone's screen!`,
+        })
+      }
+    } catch (error) {
+      toast.push({ kind: 'error', message: isCallError(error) ? error.message : errorMessage(error) })
+    } finally {
+      setActionBusyId(null)
+    }
+  }
+
   return (
     <div>
 
@@ -198,59 +222,97 @@ export function PlayersPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
-                  {shown.map((player) => (
-                    <tr key={player.id} className="hover:bg-surface-muted/60">
-                      <td className="px-4 py-3 sm:px-5">
-                        <div className="flex items-center gap-3">
-                          <PlayerAvatar name={player.name} photoUrl={player.photoUrl} size="sm" />
-                          <div className="min-w-0">
-                            <button
-                              type="button"
-                              onClick={() => openEdit(player)}
-                              className="text-left font-medium text-ink hover:text-accent hover:underline block truncate"
-                            >
-                              {player.name}
-                            </button>
-                            {player.externalReference ? (
-                              <span className="block text-[11px] text-muted">{player.externalReference}</span>
+                  {shown.map((player) => {
+                    const isSpotlighted = event?.spotlightPlayer?.playerId === player.id
+                    return (
+                      <tr
+                        key={player.id}
+                        className={cn(
+                          'transition-colors',
+                          isSpotlighted
+                            ? 'bg-accent/15 border-l-4 border-l-accent'
+                            : 'hover:bg-surface-muted/60',
+                        )}
+                      >
+                        <td className="px-4 py-3 sm:px-5">
+                          <div className="flex items-center gap-3">
+                            <PlayerAvatar name={player.name} photoUrl={player.photoUrl} size="sm" />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => openEdit(player)}
+                                  className="text-left font-medium text-ink hover:text-accent hover:underline block truncate"
+                                >
+                                  {player.name}
+                                </button>
+                                {isSpotlighted ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-accent/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent border border-accent/40 animate-pulse">
+                                    <Radio className="size-2.5" />
+                                    Live
+                                  </span>
+                                ) : null}
+                              </div>
+                              {player.externalReference ? (
+                                <span className="block text-[11px] text-muted">{player.externalReference}</span>
+                              ) : null}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-right tabular-nums">{formatPoints(player.points)}</td>
+                        <td className="px-3 py-3 text-right tabular-nums">{currency(player.basePrice, currencyLabel)}</td>
+                        <td className="px-3 py-3">
+                          <PlayerStatusPill status={player.status} />
+                        </td>
+                        <td className="hidden px-3 py-3 text-muted md:table-cell">
+                          {player.soldToTeamId ? (teamNames.get(player.soldToTeamId) ?? '—') : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right sm:px-5">
+                          <div className="flex justify-end items-center gap-2">
+                            {player.status === 'available' ? (
+                              <Button
+                                variant={isSpotlighted ? 'primary' : 'secondary'}
+                                size="sm"
+                                loading={actionBusyId === `spotlight-${player.id}`}
+                                icon={
+                                  <Radio
+                                    className={cn(
+                                      'size-3.5',
+                                      isSpotlighted ? 'animate-pulse text-amber-950' : 'text-accent',
+                                    )}
+                                    aria-hidden
+                                  />
+                                }
+                                onClick={() => void handleToggleSpotlight(player)}
+                              >
+                                {isSpotlighted ? 'In Auction' : 'Auction'}
+                              </Button>
+                            ) : null}
+                            <Button variant="ghost" size="sm" onClick={() => openEdit(player)}>
+                              Edit
+                            </Button>
+                            {player.status !== 'sold' ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                loading={actionBusyId === player.id}
+                                icon={
+                                  player.status === 'withdrawn' ? (
+                                    <PlusCircle className="size-3.5" aria-hidden />
+                                  ) : (
+                                    <Ban className="size-3.5" aria-hidden />
+                                  )
+                                }
+                                onClick={() => void toggleStatus(player)}
+                              >
+                                {player.status === 'withdrawn' ? 'Reactivate' : 'Withdraw'}
+                              </Button>
                             ) : null}
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3 text-right tabular-nums">{formatPoints(player.points)}</td>
-                      <td className="px-3 py-3 text-right tabular-nums">{currency(player.basePrice, currencyLabel)}</td>
-                      <td className="px-3 py-3">
-                        <PlayerStatusPill status={player.status} />
-                      </td>
-                      <td className="hidden px-3 py-3 text-muted md:table-cell">
-                        {player.soldToTeamId ? (teamNames.get(player.soldToTeamId) ?? '—') : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-right sm:px-5">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => openEdit(player)}>
-                            Edit
-                          </Button>
-                          {player.status !== 'sold' ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              loading={actionBusyId === player.id}
-                              icon={
-                                player.status === 'withdrawn' ? (
-                                  <PlusCircle className="size-3.5" aria-hidden />
-                                ) : (
-                                  <Ban className="size-3.5" aria-hidden />
-                                )
-                              }
-                              onClick={() => void toggleStatus(player)}
-                            >
-                              {player.status === 'withdrawn' ? 'Reactivate' : 'Withdraw'}
-                            </Button>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

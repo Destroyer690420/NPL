@@ -279,3 +279,18 @@ export function useTeamPurchases(
     },
   )
 }
+
+/**
+ * Event document for a team session. Read from `api_team_read('state')`,
+ * which returns the event alongside the team's private state without revealing
+ * other teams' data.
+ */
+export function useTeamEvent(eventId: string | null): LiveResult<EventDoc | null> {
+  return usePolled(eventId ? `teamEvent:${eventId}` : null, null, async () => {
+    if (!eventId) return null
+    const state = await readTeamResource<{ event?: unknown }>('state')
+    const row = state.event as Row | undefined
+    if (!row || !rowId(row)) return null
+    return toEventDoc(rowId(row), row)
+  })
+}

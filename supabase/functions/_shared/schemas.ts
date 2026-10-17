@@ -204,6 +204,12 @@ export const updateEventSchema = z.object({
 
 export const eventIdSchema = z.object({ eventId: idSchema })
 
+export const setSpotlightPlayerSchema = z.object({
+  eventId: idSchema,
+  playerId: z.union([idSchema, z.null()]),
+})
+export type SetSpotlightPlayerInput = z.infer<typeof setSpotlightPlayerSchema>
+
 export interface SchemaIssue {
   message: string
   path: Array<string | number | symbol>

@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { LogOut, Menu, RefreshCw, Trophy, Users, X } from 'lucide-react'
 import { useTeamAuth } from '@/auth/TeamAuthProvider'
-import { useTeamDoc, useTeamPurchases } from '@/data/hooks'
+import { useTeamDoc, useTeamEvent, useTeamPurchases } from '@/data/hooks'
 import { currency, points as formatPoints } from '@/lib/format'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card'
 import { EmptyState, LoadingBlock } from '@/components/ui/Feedback'
 import { Pill } from '@/components/ui/StatusPill'
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar'
+import { SpotlightPlayerCard } from '@/features/auction/SpotlightPlayerCard'
 
 function getTeamInitials(name: string): string {
   const trimmed = name.trim()
@@ -32,6 +33,7 @@ export function TeamPanelPage() {
   const context = auth.context
 
   const team = useTeamDoc(context?.eventId ?? null, context?.teamId ?? null)
+  const eventLive = useTeamEvent(context?.eventId ?? null)
   const purchases = useTeamPurchases(context?.eventId ?? null, context?.teamId ?? null, 200)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -296,6 +298,11 @@ export function TeamPanelPage() {
           </ul>
         )}
       </Card>
+
+      <SpotlightPlayerCard
+        spotlight={eventLive.data?.spotlightPlayer ?? null}
+        currencyLabel={currencyLabel}
+      />
     </div>
   )
 }

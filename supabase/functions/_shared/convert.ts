@@ -74,6 +74,21 @@ function asBool(value: unknown, fallback = false): boolean {
   return typeof value === 'boolean' ? value : fallback
 }
 
+function toSpotlightPlayer(data: unknown): import('./types.ts').SpotlightPlayer | null {
+  if (!data || typeof data !== 'object') return null
+  const d = data as Record<string, unknown>
+  if (typeof d.playerId !== 'string' || !d.playerId) return null
+  return {
+    playerId: d.playerId,
+    name: asString(d.name),
+    points: asInt(d.points),
+    basePrice: asInt(d.basePrice),
+    photoUrl: asNullableString(d.photoUrl),
+    spotlightId: asString(d.spotlightId, d.playerId),
+    updatedAt: typeof d.updatedAt === 'number' ? d.updatedAt : undefined,
+  }
+}
+
 export function toEventDoc(id: string, data: Data): EventDoc | null {
   if (!data) return null
   return {
@@ -90,6 +105,7 @@ export function toEventDoc(id: string, data: Data): EventDoc | null {
     createdBy: asString(data.createdBy),
     createdAt: toTimestampValue(data.createdAt),
     updatedAt: toTimestampValue(data.updatedAt),
+    spotlightPlayer: toSpotlightPlayer(data.spotlightPlayer),
   }
 }
 

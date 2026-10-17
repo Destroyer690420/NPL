@@ -20,6 +20,16 @@ export type TimestampValue =
   | number
   | null
 
+export interface SpotlightPlayer {
+  playerId: string
+  name: string
+  points: number
+  basePrice: number
+  photoUrl: string | null
+  spotlightId: string
+  updatedAt?: number
+}
+
 export interface EventDoc {
   id: string
   name: string
@@ -34,6 +44,8 @@ export interface EventDoc {
   createdBy: string
   createdAt: TimestampValue
   updatedAt: TimestampValue
+  /** Player currently on the auction block, if any. */
+  spotlightPlayer: SpotlightPlayer | null
 }
 
 export interface TeamDoc {

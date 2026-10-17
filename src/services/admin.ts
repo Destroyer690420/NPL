@@ -280,3 +280,22 @@ export interface ResetEventDataResult {
 export function resetEventData(eventId: string): Promise<ResetEventDataResult> {
   return callFunction('resetEventData', { eventId })
 }
+
+/* ---------------------------- spotlight player ---------------------------- */
+
+export interface SetSpotlightPlayerResult {
+  ok: boolean
+  eventId: string
+  spotlightPlayer: import('@shared/types').SpotlightPlayer | null
+}
+
+export function setSpotlightPlayer(
+  eventId: string,
+  playerId: string | null,
+): Promise<SetSpotlightPlayerResult> {
+  return callFunction('setSpotlightPlayer', { eventId, playerId })
+}
+
+export function clearSpotlightPlayer(eventId: string): Promise<SetSpotlightPlayerResult> {
+  return callFunction('setSpotlightPlayer', { eventId, playerId: null })
+}

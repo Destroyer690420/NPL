@@ -7,7 +7,7 @@ import { getTeamContext, logoutTeamSession, verifyTeamPin } from './handlers/tea
 import { createTeam, getTeamPinStatus, resetTeamPin, revokeSessions, updateTeam } from './handlers/teams.ts'
 import { createPlayer, importPlayers, setPlayerStatus, updatePlayer } from './handlers/players.ts'
 import { recordPurchase, reversePurchase } from './handlers/purchases.ts'
-import { checkEventConsistency, createEvent, resetEventData, setDefaultEvent, updateEvent } from './handlers/event.ts'
+import { checkEventConsistency, createEvent, resetEventData, setDefaultEvent, setSpotlightPlayer, updateEvent } from './handlers/event.ts'
 
 /**
  * Auction API Edge Function.
@@ -45,6 +45,7 @@ const registry: Record<string, Descriptor> = {
   checkEventConsistency,
   setDefaultEvent,
   resetEventData,
+  setSpotlightPlayer,
 }
 
 function buildCorsHeaders(request: Request): Record<string, string> {

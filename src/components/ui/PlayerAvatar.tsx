@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 export interface PlayerAvatarProps {
   name: string
   photoUrl?: string | null
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
   className?: string
 }
 
@@ -11,6 +11,8 @@ const SIZE_CLASSES = {
   sm: 'size-8 text-xs rounded-lg',
   md: 'size-11 text-sm rounded-xl',
   lg: 'size-14 text-base rounded-2xl',
+  xl: 'size-20 text-xl rounded-2xl',
+  '2xl': 'size-32 sm:size-40 text-3xl sm:text-4xl rounded-3xl',
 }
 
 export function PlayerAvatar({

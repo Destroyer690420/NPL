@@ -14,6 +14,7 @@ export function makeEvent(overrides: Partial<EventDoc> = {}): EventDoc {
     createdBy: 'admin-1',
     createdAt: null,
     updatedAt: null,
+    spotlightPlayer: null,
     ...overrides,
   }
 }

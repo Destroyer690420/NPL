@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useOutletContext } from 'react-router'
+import { Link, useOutletContext, useSearchParams } from 'react-router'
 import {
   AlertTriangle,
   BadgeCheck,
   Ban,
   CheckCircle2,
+  Radio,
   RotateCcw,
   Search,
   ShoppingCart,
@@ -13,7 +14,7 @@ import type { AdminOutletContext } from '@/app/outlet'
 import { useAdminEvent } from '@/app/AdminEventProvider'
 import { usePlayers, usePurchases, useTeams } from '@/data/hooks'
 import { isCallError } from '@/services/callables'
-import { recordPurchase, type RecordPurchaseResult } from '@/services/admin'
+import { recordPurchase, clearSpotlightPlayer, type RecordPurchaseResult } from '@/services/admin'
 import { fetchPurchaseFromServer } from '@/services/reads'
 import { newRequestId } from '@/lib/ids'
 import { errorMessage, toFriendlyError, type FriendlyError } from '@/lib/errors'
@@ -27,6 +28,7 @@ import { InputField } from '@/components/ui/Field'
 import { Combobox, type ComboboxItem } from '@/components/ui/Combobox'
 import { EmptyState, Skeleton } from '@/components/ui/Feedback'
 import { Pill, PurchaseStatusPill } from '@/components/ui/StatusPill'
+import { PlayerAvatar } from '@/components/ui/PlayerAvatar'
 import { useToast } from '@/components/ui/Toast'
 
 interface Attempt {
@@ -55,12 +57,37 @@ export function RecordPurchasePage() {
   const teams = useTeams(eventId)
   const purchases = usePurchases(eventId, 10)
 
+  const [searchParams] = useSearchParams()
+  const queryPlayerId = searchParams.get('playerId')
+  const [closingSpotlight, setClosingSpotlight] = useState(false)
+
   const [playerId, setPlayerId] = useState<string | null>(null)
   const [teamId, setTeamId] = useState<string | null>(null)
   const [priceText, setPriceText] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [submit, setSubmit] = useState<SubmitState>({ kind: 'idle' })
   const lastAttempt = useRef<Attempt | null>(null)
+
+  // Auto-fill player from query parameter or live spotlight player if unselected
+  useEffect(() => {
+    if (queryPlayerId) {
+      setPlayerId(queryPlayerId)
+    } else if (event?.spotlightPlayer?.playerId && !playerId) {
+      setPlayerId(event.spotlightPlayer.playerId)
+    }
+  }, [queryPlayerId, event?.spotlightPlayer?.playerId])
+
+  async function handleCloseSpotlight() {
+    try {
+      setClosingSpotlight(true)
+      await clearSpotlightPlayer(eventId)
+      toast.push({ kind: 'info', message: 'Live auction card closed.' })
+    } catch {
+      toast.push({ kind: 'error', message: 'Failed to close auction card.' })
+    } finally {
+      setClosingSpotlight(false)
+    }
+  }
 
   const selectedPlayer = useMemo(
     () => players.data.find((player) => player.id === playerId) ?? null,
@@ -264,6 +291,50 @@ export function RecordPurchasePage() {
 
   return (
     <div>
+      {event?.spotlightPlayer ? (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3 shadow-[0_0_20px_rgba(245,175,25,0.15)] animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <span className="relative flex size-3">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75"></span>
+              <span className="relative inline-flex size-3 rounded-full bg-accent"></span>
+            </span>
+            <Radio className="size-4 text-accent animate-pulse" aria-hidden />
+            <PlayerAvatar
+              name={event.spotlightPlayer.name}
+              photoUrl={event.spotlightPlayer.photoUrl}
+              size="sm"
+            />
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-accent">Live in Auction:</span>
+                <span className="text-sm font-bold text-white">{event.spotlightPlayer.name}</span>
+              </div>
+              <p className="text-xs text-ink-muted">
+                Base price: <span className="font-semibold text-accent">{currency(event.spotlightPlayer.basePrice, currencyLabel)}</span> · Points: <span className="font-semibold text-sky-400">{formatPoints(event.spotlightPlayer.points)}</span>
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {playerId !== event.spotlightPlayer.playerId ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setPlayerId(event.spotlightPlayer!.playerId)}
+              >
+                Select player
+              </Button>
+            ) : null}
+            <Button
+              size="sm"
+              variant="dangerOutline"
+              loading={closingSpotlight}
+              onClick={() => void handleCloseSpotlight()}
+            >
+              Close card (Unsold)
+            </Button>
+          </div>
+        </div>
+      ) : null}
 
       {!eventActive || !purchasesEnabled ? (
         <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">

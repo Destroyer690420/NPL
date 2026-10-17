@@ -2,7 +2,7 @@ import { recordPurchaseSchema, reversePurchaseSchema } from '../../_shared/schem
 import { planPurchase, planReversal } from '../../_shared/purchases.ts'
 import { adminCallable } from '../lib/callables.ts'
 import { unwrapPlan } from '../lib/errors.ts'
-import { auditRef, db } from '../lib/refs.ts'
+import { auditRef, db, eventRef } from '../lib/refs.ts'
 import {
   applyWrites,
   readEventTx,
@@ -52,6 +52,7 @@ export const recordPurchase = adminCallable({
 
       const { result, writes } = unwrapPlan(plan)
       applyWrites(tx, input.eventId, writes, { actorEmail: context.email })
+      tx.set(eventRef(input.eventId), { spotlightPlayer: null }, { merge: true })
       return result
     })
   },

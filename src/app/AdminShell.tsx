@@ -1,4 +1,4 @@
-import { NavLink, Navigate, Outlet } from 'react-router'
+import { NavLink, Navigate, Outlet, useNavigate } from 'react-router'
 import type { ReactNode } from 'react'
 import {
   LayoutDashboard,
@@ -13,6 +13,9 @@ import { useAdminEvent } from '@/app/AdminEventProvider'
 import { ConnectionBadge } from '@/app/ConnectionBadge'
 import { CreateEventPanel } from '@/features/events/CreateEventPanel'
 import { LoadingBlock } from '@/components/ui/Feedback'
+import { SpotlightPlayerCard } from '@/features/auction/SpotlightPlayerCard'
+import { clearSpotlightPlayer } from '@/services/admin'
+import { useToast } from '@/components/ui/Toast'
 import { cn } from '@/lib/cn'
 
 const NAV_ITEMS = [
@@ -35,6 +38,8 @@ function navClass({ isActive }: { isActive: boolean }): string {
 
 export function AdminShell() {
   const auth = useAdminAuth()
+  const navigate = useNavigate()
+  const toast = useToast()
   const { event, eventId, loading, error, fromCache } = useAdminEvent()
 
   if (loading && !event && !error) {
@@ -48,8 +53,29 @@ export function AdminShell() {
     return <CreateEventPanel />
   }
 
+  async function handleAdminCloseSpotlight() {
+    if (!eventId) return
+    try {
+      await clearSpotlightPlayer(eventId)
+      toast.push({ kind: 'info', message: 'Live auction card closed.' })
+    } catch {
+      toast.push({ kind: 'error', message: 'Failed to close auction card.' })
+    }
+  }
+
+  function handleSellSpotlight(playerId: string) {
+    navigate(`/admin/purchases/new?playerId=${encodeURIComponent(playerId)}`)
+  }
+
   return (
     <div className="min-h-dvh">
+      <SpotlightPlayerCard
+        spotlight={event.spotlightPlayer ?? null}
+        currencyLabel={event.currencyLabel}
+        isAdmin={true}
+        onAdminClose={handleAdminCloseSpotlight}
+        onSell={handleSellSpotlight}
+      />
       <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-x-4 px-4 py-2.5 sm:px-6">
           <div className="flex shrink-0 items-center gap-2.5">

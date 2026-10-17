@@ -1,4 +1,4 @@
-import { createEventSchema, eventIdSchema, updateEventSchema } from '../../_shared/schemas.ts'
+import { createEventSchema, eventIdSchema, setSpotlightPlayerSchema, updateEventSchema } from '../../_shared/schemas.ts'
 import { DEFAULT_EVENT_ID } from '../../_shared/constants.ts'
 import { computeEventTotals, validateEventConsistency } from '../../_shared/calculations.ts'
 import {
@@ -8,9 +8,10 @@ import {
   planUpdateEvent,
 } from '../../_shared/mutations.ts'
 import { adminCallable } from '../lib/callables.ts'
-import { unwrapPlan } from '../lib/errors.ts'
+import { fail, unwrapPlan } from '../lib/errors.ts'
 import { auditRef, configRef, db } from '../lib/refs.ts'
 import { supabase } from '../lib/supabase.ts'
+import type { SpotlightPlayer } from '../../_shared/types.ts'
 import {
   applyWrites,
   readEventTx,
@@ -180,12 +181,71 @@ export const resetEventData = adminCallable({
           ...(eventRow.data as Record<string, unknown>),
           status: 'draft',
           purchasesEnabled: true,
+          spotlightPlayer: null,
           updatedAt: new Date().toISOString(),
         },
       }).eq('id', eventId)
     }
 
     return { ok: true, eventId }
+  },
+})
+
+/**
+ * Sets or clears the player currently on the auction block.
+ * When a player is set, it updates spotlightPlayer on the event,
+ * making it visible to everyone.
+ * When playerId is null, it closes the spotlight card for everyone.
+ */
+export const setSpotlightPlayer = adminCallable({
+  schema: setSpotlightPlayerSchema,
+  handler: async (input) => {
+    const { eventId, playerId } = input
+
+    let spotlightPlayer: SpotlightPlayer | null = null
+
+    if (playerId) {
+      const { data: playerRow } = await supabase
+        .from('players')
+        .select('id, data')
+        .eq('event_id', eventId)
+        .eq('id', playerId)
+        .maybeSingle()
+
+      if (!playerRow) {
+        fail('not-found', 'Player not found')
+      }
+
+      const pData = (playerRow.data ?? {}) as Record<string, unknown>
+      spotlightPlayer = {
+        playerId,
+        name: String(pData.name ?? ''),
+        points: Number(pData.points ?? 0),
+        basePrice: Number(pData.basePrice ?? 0),
+        photoUrl: typeof pData.photoUrl === 'string' ? pData.photoUrl : null,
+        spotlightId: `${playerId}-${Date.now()}`,
+        updatedAt: Date.now(),
+      }
+    }
+
+    const { data: eventRow } = await supabase
+      .from('events')
+      .select('data')
+      .eq('id', eventId)
+      .maybeSingle()
+
+    if (eventRow) {
+      const currentData = (eventRow.data ?? {}) as Record<string, unknown>
+      await supabase.from('events').update({
+        data: {
+          ...currentData,
+          spotlightPlayer,
+          updatedAt: new Date().toISOString(),
+        },
+      }).eq('id', eventId)
+    }
+
+    return { ok: true, eventId, spotlightPlayer }
   },
 })
 
