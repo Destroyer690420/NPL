@@ -49,25 +49,46 @@
   }
 
   body {
-    background-color: #090b10;
-    background-image: 
-      repeating-linear-gradient(
-        -32deg,
-        #080a0f 0px,
-        #080a0f 160px,
-        #140b15 160px,
-        #140b15 300px,
-        #090b10 300px,
-        #090b10 480px,
-        #190b19 480px,
-        #190b19 640px
-      );
-    background-attachment: fixed;
+    background-color: #080a0f;
     color: var(--color-ink);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     margin: 0;
     min-height: 100dvh;
+    position: relative;
+    isolation: isolate;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: -60px;
+    z-index: -2;
+    pointer-events: none;
+    background-image: 
+      repeating-linear-gradient(
+        -32deg,
+        #080a0f 0px,
+        #080a0f 160px,
+        #150916 160px,
+        #150916 320px,
+        #080a0f 320px,
+        #080a0f 480px,
+        #1a0a19 480px,
+        #1a0a19 640px
+      );
+    filter: blur(55px);
+    opacity: 0.65;
+    transform: scale(1.08);
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(ellipse 90% 80% at 50% 20%, rgba(8, 10, 15, 0.4) 0%, rgba(8, 10, 15, 0.85) 100%);
   }
 
   ::selection {
