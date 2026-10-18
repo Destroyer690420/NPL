@@ -17,19 +17,6 @@ import { AuctionBreakScreen } from '@/features/auction/AuctionBreakScreen'
 import { TeamLineupView } from './TeamLineupView'
 import { subscribeToAuctionRealtime } from '@/lib/realtime'
 
-function getTeamInitials(name: string): string {
-  const trimmed = name.trim()
-  if (!trimmed) return 'TM'
-  const words = trimmed.split(/\s+/)
-  if (words.length >= 2) {
-    return words.slice(0, 3).map((w) => w[0]?.toUpperCase() ?? '').join('')
-  }
-  if (trimmed.length <= 4) {
-    return trimmed.toUpperCase()
-  }
-  return trimmed.slice(0, 3).toUpperCase()
-}
-
 /**
  * The private team panel: one team's purse, spend, points and roster, live.
  * Reads are limited server-side to this team's own documents and are
@@ -95,18 +82,18 @@ export function TeamPanelPage() {
   const teamData = team.data
   const fromCache = team.fromCache || purchases.fromCache
   const confirmed = purchases.data.filter((purchase) => purchase.status === 'confirmed')
-  const teamInitials = getTeamInitials(context.teamName)
+  const teamDisplayName = teamData?.name || context.teamName
 
   return (
     <div className="mx-auto min-h-dvh w-full max-w-3xl px-4 py-6 sm:px-6">
       {/* Top Navbar */}
-      <header className="mb-6 flex items-center justify-between rounded-2xl border border-line-strong bg-surface-elevated/90 px-4 py-3 shadow-xl backdrop-blur-md sm:px-5">
-        <div className="flex items-center gap-3">
-          <span className="font-['Outfit',sans-serif] text-lg font-black tracking-wider text-white uppercase">
-            {teamInitials}
+      <header className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-line-strong bg-surface-elevated/90 px-4 py-3 shadow-xl backdrop-blur-md sm:px-5">
+        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+          <span className="truncate font-['Outfit',sans-serif] text-base sm:text-lg font-black tracking-wide text-white">
+            {teamDisplayName}
           </span>
-          <span className="text-line-strong">/</span>
-          <span className="text-sm font-bold text-ink-muted capitalize">
+          <span className="shrink-0 text-line-strong">/</span>
+          <span className="shrink-0 text-xs sm:text-sm font-bold text-ink-muted capitalize">
             {activeTab === 'home' ? 'Home' : 'Lineup'}
           </span>
         </div>
