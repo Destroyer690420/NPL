@@ -46,3 +46,15 @@ export function getTeamContext(): Promise<TeamContextResult> {
 export function logoutTeamSession(): Promise<{ revoked: boolean }> {
   return callFunction('logoutTeamSession', {})
 }
+
+export interface TeamLineupPlayer {
+  id: string
+  name: string
+  photoUrl: string | null
+}
+
+/** Fetches available players in the auction pool (only name and pfp; no price or points). */
+export function getTeamLineup(): Promise<TeamLineupPlayer[]> {
+  return callFunction('getTeamLineup', {})
+}
+

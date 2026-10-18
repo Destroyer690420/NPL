@@ -20,6 +20,7 @@ import { toFriendlyError, type FriendlyError } from '@/lib/errors'
 import { getSupabase } from '@/lib/supabase'
 import { readAdminResource, readPublicConfig, readTeamResource } from '@/services/reads'
 import { readStoredSession } from '@/services/session'
+import { getTeamLineup, type TeamLineupPlayer } from '@/services/team'
 
 /**
  * Live data hooks backed by polling.
@@ -317,3 +318,16 @@ export function useTeamEvent(eventId: string | null): LiveResult<EventDoc | null
     return toEventDoc(id, row)
   })
 }
+
+const NO_LINEUP: TeamLineupPlayer[] = []
+
+/**
+ * Returns available auction players for team members.
+ * Strictly presents only name and photoUrl (no price or points).
+ */
+export function useTeamLineup(eventId: string | null): LiveResult<TeamLineupPlayer[]> {
+  return usePolled(eventId ? `teamLineup:${eventId}` : null, NO_LINEUP, async () => {
+    return getTeamLineup()
+  })
+}
+

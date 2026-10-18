@@ -22,7 +22,7 @@ import {
   sessionTokenHash,
 } from '../lib/pin.ts'
 import { RateLimiter } from '../lib/rateLimit.ts'
-import { auditCollection, db, fetchDocById, sessionRef } from '../lib/refs.ts'
+import { auditCollection, db, fetchDocById, fetchQueryRows, playersCollection, sessionRef } from '../lib/refs.ts'
 import { getConfig, getEvent, getSecret, getSession, getTeam } from '../lib/store.ts'
 
 /**
@@ -237,3 +237,44 @@ export const logoutTeamSession = teamCallable({
     return { revoked: true }
   },
 })
+
+/**
+ * Returns all available players in the auction pool for team sessions.
+ * Security: Omits points and base price, returning only player identity (id, name, photoUrl).
+ */
+export const getTeamLineup = teamCallable({
+  schema: z.object({}),
+  handler: async (_input, context) => {
+    const session = context.sessionId
+      ? await getSession(context.eventId, context.sessionId)
+      : null
+    if (!session || session.teamId !== context.teamId || session.revoked) {
+      fail('session-revoked', 'This session is no longer valid. Please sign in again.')
+    }
+    const expiresAtMs = timestampToMillis(session.expiresAt)
+    if (expiresAtMs !== null && expiresAtMs <= Date.now()) {
+      fail('session-expired', 'This session has expired. Please sign in again.')
+    }
+
+    const team = await getTeam(context.eventId, context.teamId)
+    if (!team || !team.active) {
+      fail('team-inactive', 'This team is deactivated. Ask the organizer to reactivate it.')
+    }
+
+    const rows = await fetchQueryRows(playersCollection(context.eventId))
+    return rows
+      .map((r) => {
+        const data = r.data
+        const status = typeof data.status === 'string' ? data.status : 'available'
+        return {
+          id: r.id,
+          name: typeof data.name === 'string' ? data.name : '',
+          photoUrl: typeof data.photoUrl === 'string' ? data.photoUrl : null,
+          status,
+        }
+      })
+      .filter((p) => p.status === 'available')
+      .sort((a, b) => a.name.localeCompare(b.name))
+  },
+})
+

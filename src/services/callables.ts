@@ -48,7 +48,7 @@ interface ApiEnvelope<T> {
 /** Actions that need no token at all (the credentials themselves are the check). */
 const PUBLIC_ACTIONS = new Set(['adminLogin', 'verifyTeamPin'])
 /** Actions authenticated by the team session token; everything else is admin. */
-const TEAM_ACTIONS = new Set(['getTeamContext', 'logoutTeamSession'])
+const TEAM_ACTIONS = new Set(['getTeamContext', 'logoutTeamSession', 'getTeamLineup'])
 
 function scopeForAction(name: string): SessionScope | null {
   if (PUBLIC_ACTIONS.has(name)) return null
