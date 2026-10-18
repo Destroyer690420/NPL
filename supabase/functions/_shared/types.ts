@@ -43,6 +43,20 @@ export interface SoldPlayerAnnouncement {
   soldAt?: string
 }
 
+export interface AuctionCountdown {
+  targetTime: string
+  durationSeconds: number
+  message?: string
+  startedAt: string
+}
+
+export interface AuctionBreak {
+  active: boolean
+  message: string
+  startedAt?: string
+  resumeTime?: string | null
+}
+
 export interface EventDoc {
   id: string
   name: string
@@ -61,6 +75,10 @@ export interface EventDoc {
   spotlightPlayer: SpotlightPlayer | null
   /** Most recently sold player announcement. */
   lastSoldPlayer?: SoldPlayerAnnouncement | null
+  /** Auction starting countdown timer */
+  countdown?: AuctionCountdown | null
+  /** Auction break / intermission state */
+  break?: AuctionBreak | null
 }
 
 export interface TeamDoc {

@@ -1,6 +1,6 @@
 import { callFunction } from './callables'
-import { broadcastPlayerSold, broadcastSpotlight } from '@/lib/realtime'
-import type { EventStatus, PlayerStatus } from '@shared/types'
+import { broadcastBreak, broadcastCountdown, broadcastPlayerSold, broadcastSpotlight } from '@/lib/realtime'
+import type { AuctionBreak, AuctionCountdown, EventStatus, PlayerStatus } from '@shared/types'
 import type { TeamSummary } from '@shared/types'
 
 /**
@@ -323,3 +323,49 @@ export async function clearSpotlightPlayer(eventId: string): Promise<SetSpotligh
   broadcastSpotlight(eventId, null)
   return result
 }
+
+/* ------------------------- countdown & break -------------------------- */
+
+export interface SetAuctionCountdownInput {
+  eventId: string
+  targetTime: string | null
+  durationSeconds: number | null
+  message?: string | null
+}
+
+export async function setAuctionCountdown(input: SetAuctionCountdownInput): Promise<void> {
+  const countdown: AuctionCountdown | null =
+    input.targetTime && input.durationSeconds
+      ? {
+          targetTime: input.targetTime,
+          durationSeconds: input.durationSeconds,
+          message: input.message?.trim() || 'Starting in',
+          startedAt: new Date().toISOString(),
+        }
+      : null
+
+  await callFunction('setAuctionCountdown', input)
+  broadcastCountdown(input.eventId, countdown)
+}
+
+export interface SetAuctionBreakInput {
+  eventId: string
+  active: boolean
+  message?: string | null
+  resumeTime?: string | null
+}
+
+export async function setAuctionBreak(input: SetAuctionBreakInput): Promise<void> {
+  const breakState: AuctionBreak | null = input.active
+    ? {
+        active: true,
+        message: input.message?.trim() || 'We will be back soon',
+        startedAt: new Date().toISOString(),
+        resumeTime: input.resumeTime?.trim() || null,
+      }
+    : null
+
+  await callFunction('setAuctionBreak', input)
+  broadcastBreak(input.eventId, breakState)
+}
+

@@ -1,22 +1,153 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useOutletContext } from 'react-router'
-import { AlertTriangle, ArrowRight, PlusCircle } from 'lucide-react'
+import { AlertTriangle, ArrowRight, Coffee, Play, PlusCircle, Timer, X } from 'lucide-react'
 import type { AdminOutletContext } from '@/app/outlet'
 import { useAdminEvent } from '@/app/AdminEventProvider'
 import { usePlayers, usePurchases, useTeams } from '@/data/hooks'
 import { currency, formatRelative, points as formatPoints } from '@/lib/format'
 import { Card, CardBody, CardHeader, CardTitle, StatCard } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
+import { Dialog } from '@/components/ui/Dialog'
+import { InputField } from '@/components/ui/Field'
 import { EmptyState, Skeleton } from '@/components/ui/Feedback'
 import { Pill, PurchaseStatusPill } from '@/components/ui/StatusPill'
+import { useToast } from '@/components/ui/Toast'
+import { setAuctionBreak, setAuctionCountdown, updateEvent } from '@/services/admin'
+import { errorMessage } from '@/lib/errors'
+import { cn } from '@/lib/cn'
 
 export function DashboardPage() {
   const { eventId } = useOutletContext<AdminOutletContext>()
   const { event } = useAdminEvent()
+  const toast = useToast()
 
   const teams = useTeams(eventId)
   const players = usePlayers(eventId)
   const purchases = usePurchases(eventId, 8)
+
+  // Live Screen Controls State
+  const [countdownDialogOpen, setCountdownDialogOpen] = useState(false)
+  const [breakDialogOpen, setBreakDialogOpen] = useState(false)
+  const [actionBusy, setActionBusy] = useState(false)
+
+  // Countdown form state
+  const [countdownMinutes, setCountdownMinutes] = useState(5)
+  const [countdownSeconds, setCountdownSeconds] = useState(0)
+  const [countdownMessage, setCountdownMessage] = useState('Auction Starting In')
+
+  // Break form state
+  const [breakMessage, setBreakMessage] = useState('We will be back soon')
+  const [breakResumeTime, setBreakResumeTime] = useState('')
+
+  // Live ticking timer for admin bar display
+  const [now, setNow] = useState(Date.now())
+  useEffect(() => {
+    if (!event?.countdown?.targetTime) return
+    const interval = setInterval(() => setNow(Date.now()), 500)
+    return () => clearInterval(interval)
+  }, [event?.countdown?.targetTime])
+
+  const countdownDiff = useMemo(() => {
+    if (!event?.countdown?.targetTime) return 0
+    return Math.max(0, new Date(event.countdown.targetTime).getTime() - now)
+  }, [event?.countdown?.targetTime, now])
+
+  const remainingMins = Math.floor(countdownDiff / 60000)
+  const remainingSecs = Math.floor((countdownDiff % 60000) / 1000)
+
+  async function handleStartCountdown() {
+    const totalSecs = countdownMinutes * 60 + countdownSeconds
+    if (totalSecs <= 0) {
+      toast.push({ kind: 'error', message: 'Countdown time must be at least 1 second.' })
+      return
+    }
+    setActionBusy(true)
+    try {
+      const targetTime = new Date(Date.now() + totalSecs * 1000).toISOString()
+      await setAuctionCountdown({
+        eventId,
+        targetTime,
+        durationSeconds: totalSecs,
+        message: countdownMessage.trim() || 'Auction Starting In',
+      })
+      setCountdownDialogOpen(false)
+      toast.push({
+        kind: 'success',
+        message: 'Countdown started! Showing "Starting in..." on all team screens.',
+      })
+    } catch (err) {
+      toast.push({ kind: 'error', message: errorMessage(err) })
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
+  async function handleCancelCountdown() {
+    setActionBusy(true)
+    try {
+      await setAuctionCountdown({
+        eventId,
+        targetTime: null,
+        durationSeconds: null,
+      })
+      toast.push({ kind: 'info', message: 'Countdown timer cancelled.' })
+    } catch (err) {
+      toast.push({ kind: 'error', message: errorMessage(err) })
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
+  async function handleStartBreak() {
+    setActionBusy(true)
+    try {
+      await setAuctionBreak({
+        eventId,
+        active: true,
+        message: breakMessage.trim() || 'We will be back soon',
+        resumeTime: breakResumeTime.trim() || null,
+      })
+      setBreakDialogOpen(false)
+      toast.push({
+        kind: 'success',
+        message: 'Break screen activated! All team screens now display "We will be back soon".',
+      })
+    } catch (err) {
+      toast.push({ kind: 'error', message: errorMessage(err) })
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
+  async function handleEndBreak() {
+    setActionBusy(true)
+    try {
+      await setAuctionBreak({
+        eventId,
+        active: false,
+      })
+      toast.push({ kind: 'success', message: 'Break ended. Team screens returned to live view.' })
+    } catch (err) {
+      toast.push({ kind: 'error', message: errorMessage(err) })
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
+  async function handleStartAuctionNow() {
+    setActionBusy(true)
+    try {
+      if (event?.countdown?.targetTime) {
+        await setAuctionCountdown({ eventId, targetTime: null, durationSeconds: null })
+      }
+      await updateEvent({ eventId, status: 'active' })
+      toast.push({ kind: 'success', message: 'The auction is now live!' })
+    } catch (err) {
+      toast.push({ kind: 'error', message: errorMessage(err) })
+    } finally {
+      setActionBusy(false)
+    }
+  }
 
   // Totals are derived from the full team and player documents (purchase
   // listeners are intentionally capped, so they are not a totals source).
@@ -41,9 +172,7 @@ export function DashboardPage() {
     if (event.status === 'setup') {
       list.push({
         tone: 'warn',
-        text: 'The auction has not started yet. Teams cannot see live results until you start it in Settings.',
-        to: '/admin/settings',
-        linkLabel: 'Open settings',
+        text: 'The auction has not started yet. You can start the countdown timer or start the auction now.',
       })
     }
     if (event.status === 'active' && !event.purchasesEnabled) {
@@ -79,6 +208,105 @@ export function DashboardPage() {
 
   return (
     <div>
+      {/* Live Auction Broadcast & Screen Intermission Control Bar */}
+      <div className="mb-6 rounded-2xl border border-line-strong bg-surface/90 p-4 shadow-xl backdrop-blur-md sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="relative flex size-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+                <span className="relative inline-flex size-2.5 rounded-full bg-accent" />
+              </span>
+              <p className="text-xs font-black uppercase tracking-wider text-accent">Auction Broadcast & Screens</p>
+            </div>
+            <h2 className="mt-1 text-lg font-black text-white">Live Screen Controls</h2>
+            <p className="text-xs text-ink-muted">
+              Display a live "Starting in" countdown or intermission break on all team phones in real time.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            {event?.countdown?.targetTime ? (
+              <div className="flex flex-wrap items-center gap-2.5">
+                <div className="flex items-center gap-2 rounded-xl border border-accent/50 bg-accent/15 px-3.5 py-1.5 shadow-[0_0_15px_rgba(245,175,25,0.2)]">
+                  <Timer className="size-4 text-accent animate-pulse" />
+                  <span className="text-xs font-bold text-white">
+                    {countdownDiff > 0 ? (
+                      <>
+                        Starting in{' '}
+                        <span className="text-accent font-mono font-black tabular-nums">
+                          {String(remainingMins).padStart(2, '0')}:{String(remainingSecs).padStart(2, '0')}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-emerald-400 font-bold">Timer Finished</span>
+                    )}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="dangerOutline"
+                  loading={actionBusy}
+                  onClick={() => void handleCancelCountdown()}
+                  icon={<X className="size-3.5" />}
+                >
+                  Cancel Timer
+                </Button>
+                {event.status === 'setup' ? (
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    loading={actionBusy}
+                    onClick={() => void handleStartAuctionNow()}
+                    icon={<Play className="size-3.5" />}
+                  >
+                    Start Auction Now
+                  </Button>
+                ) : null}
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={<Timer className="size-4 text-accent" />}
+                onClick={() => setCountdownDialogOpen(true)}
+              >
+                Start Timer (Starting in...)
+              </Button>
+            )}
+
+            {event?.break?.active ? (
+              <div className="flex flex-wrap items-center gap-2.5">
+                <div className="flex items-center gap-2 rounded-xl border border-amber-500/50 bg-amber-500/15 px-3.5 py-1.5 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                  <Coffee className="size-4 text-amber-400 animate-bounce" />
+                  <span className="text-xs font-bold text-amber-200">
+                    Break Active ({event.break.message})
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  loading={actionBusy}
+                  onClick={() => void handleEndBreak()}
+                  icon={<Play className="size-3.5" />}
+                >
+                  End Break & Resume
+                </Button>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                variant="secondary"
+                icon={<Coffee className="size-4 text-amber-400" />}
+                onClick={() => setBreakDialogOpen(true)}
+              >
+                Break Screen
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {warnings.length > 0 ? (
         <div className="mb-6 space-y-2.5">
           {warnings.map((warning, index) => (
@@ -215,6 +443,193 @@ export function DashboardPage() {
           )}
         </Card>
       </div>
+
+      {/* Starting in Countdown Dialog */}
+      <Dialog
+        open={countdownDialogOpen}
+        onClose={() => setCountdownDialogOpen(false)}
+        title="Start Auction Countdown"
+        description="Set a countdown timer before the auction begins. Every team screen will display a synchronized 'Starting in...' countdown."
+        size="md"
+        footer={
+          <div className="flex items-center justify-end gap-2.5">
+            <Button
+              variant="secondary"
+              onClick={() => setCountdownDialogOpen(false)}
+              disabled={actionBusy}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              icon={<Timer className="size-4" />}
+              loading={actionBusy}
+              onClick={() => void handleStartCountdown()}
+            >
+              Start Countdown
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-[13px] font-medium text-ink-soft mb-1.5">
+              Quick Duration Presets
+            </label>
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+              {[
+                { label: '1 min', mins: 1, secs: 0 },
+                { label: '2 min', mins: 2, secs: 0 },
+                { label: '3 min', mins: 3, secs: 0 },
+                { label: '5 min', mins: 5, secs: 0 },
+                { label: '10 min', mins: 10, secs: 0 },
+                { label: '15 min', mins: 15, secs: 0 },
+              ].map((preset) => {
+                const isSelected = countdownMinutes === preset.mins && countdownSeconds === preset.secs
+                return (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => {
+                      setCountdownMinutes(preset.mins)
+                      setCountdownSeconds(preset.secs)
+                    }}
+                    className={cn(
+                      'rounded-xl border py-2 px-2.5 text-xs font-bold transition-all',
+                      isSelected
+                        ? 'border-accent bg-accent/20 text-accent shadow-[0_0_12px_rgba(245,175,25,0.25)]'
+                        : 'border-line bg-surface-muted/60 text-ink-muted hover:border-line-strong hover:text-white',
+                    )}
+                  >
+                    {preset.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <InputField
+              label="Minutes"
+              type="number"
+              min={0}
+              max={180}
+              value={countdownMinutes}
+              onChange={(e) => setCountdownMinutes(Math.max(0, parseInt(e.target.value) || 0))}
+            />
+            <InputField
+              label="Seconds"
+              type="number"
+              min={0}
+              max={59}
+              value={countdownSeconds}
+              onChange={(e) => setCountdownSeconds(Math.max(0, Math.min(59, parseInt(e.target.value) || 0)))}
+            />
+          </div>
+
+          <InputField
+            label="Banner Message"
+            placeholder="e.g. Auction Starting In"
+            value={countdownMessage}
+            onChange={(e) => setCountdownMessage(e.target.value)}
+            hint="This header will appear above the countdown clock on every team screen."
+          />
+
+          <div className="rounded-xl border border-line bg-surface-muted/40 p-3.5 text-xs text-ink-muted flex items-start gap-2.5">
+            <Timer className="size-4 text-accent shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-white">Live Sync Active</p>
+              <p className="text-[11px] leading-relaxed mt-0.5">
+                When started, teams can still browse the auction lineup by tapping &ldquo;Preview Lineup&rdquo; on the countdown screen.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* Break / Intermission Dialog */}
+      <Dialog
+        open={breakDialogOpen}
+        onClose={() => setBreakDialogOpen(false)}
+        title="Activate Auction Break"
+        description="Pause the auction and broadcast an intermission screen to all team screens saying 'We will be back soon'."
+        size="md"
+        footer={
+          <div className="flex items-center justify-end gap-2.5">
+            <Button
+              variant="secondary"
+              onClick={() => setBreakDialogOpen(false)}
+              disabled={actionBusy}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              icon={<Coffee className="size-4" />}
+              loading={actionBusy}
+              onClick={() => void handleStartBreak()}
+            >
+              Activate Break Screen
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <InputField
+            label="Screen Message"
+            placeholder="We will be back soon"
+            value={breakMessage}
+            onChange={(e) => setBreakMessage(e.target.value)}
+            hint="Main headline shown in large text on all team devices."
+          />
+
+          <div>
+            <label className="block text-[13px] font-medium text-ink-soft mb-1.5">
+              Quick Estimated Return
+            </label>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { label: '5 Mins', value: 'in 5 minutes' },
+                { label: '10 Mins', value: 'in 10 minutes' },
+                { label: '15 Mins', value: 'in 15 minutes' },
+                { label: 'Clear', value: '' },
+              ].map((chip) => (
+                <button
+                  key={chip.label}
+                  type="button"
+                  onClick={() => setBreakResumeTime(chip.value)}
+                  className={cn(
+                    'rounded-xl border py-2 px-2 text-xs font-bold transition-all',
+                    breakResumeTime === chip.value && chip.value !== ''
+                      ? 'border-amber-400 bg-amber-400/20 text-amber-300'
+                      : 'border-line bg-surface-muted/60 text-ink-muted hover:border-line-strong hover:text-white',
+                  )}
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <InputField
+            label="Estimated Return Note (Optional)"
+            placeholder="e.g. in 10 minutes or after tea break"
+            value={breakResumeTime}
+            onChange={(e) => setBreakResumeTime(e.target.value)}
+            hint="Sub-message informing teams when to expect the auction to resume."
+          />
+
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-200/90 flex items-start gap-2.5">
+            <Coffee className="size-4 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold text-white">Full Screen Intermission</p>
+              <p className="text-[11px] leading-relaxed mt-0.5 text-amber-200/80">
+                While on break, all team screens show &ldquo;We will be back soon&rdquo; with smooth animated visual effects and a button to view the player lineup.
+              </p>
+            </div>
+          </div>
+        </div>
+      </Dialog>
     </div>
   )
 }

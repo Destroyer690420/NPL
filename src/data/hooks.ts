@@ -191,9 +191,51 @@ function usePolled<T>(key: string | null, initial: T, fetcher: () => Promise<T>)
       void load()
     }
 
+    const onCountdownChange = (e: Event): void => {
+      const custom = e as CustomEvent<{ eventId: string; countdown: import('@shared/types').AuctionCountdown | null }>
+      if (!active) return
+      setState((previous) => {
+        if (!previous.data || typeof previous.data !== 'object') return previous
+        const doc = previous.data as Record<string, unknown>
+        if ('countdown' in doc || 'status' in doc) {
+          return {
+            ...previous,
+            data: {
+              ...doc,
+              countdown: custom.detail?.countdown ?? null,
+            } as T,
+          }
+        }
+        return previous
+      })
+      void load()
+    }
+
+    const onBreakChange = (e: Event): void => {
+      const custom = e as CustomEvent<{ eventId: string; break: import('@shared/types').AuctionBreak | null }>
+      if (!active) return
+      setState((previous) => {
+        if (!previous.data || typeof previous.data !== 'object') return previous
+        const doc = previous.data as Record<string, unknown>
+        if ('break' in doc || 'status' in doc) {
+          return {
+            ...previous,
+            data: {
+              ...doc,
+              break: custom.detail?.break ?? null,
+            } as T,
+          }
+        }
+        return previous
+      })
+      void load()
+    }
+
     document.addEventListener('visibilitychange', refresh)
     window.addEventListener('focus', refresh)
     window.addEventListener('auction:spotlight_change', onSpotlightChange)
+    window.addEventListener('auction:countdown_change', onCountdownChange)
+    window.addEventListener('auction:break_change', onBreakChange)
 
     return () => {
       active = false
@@ -201,6 +243,8 @@ function usePolled<T>(key: string | null, initial: T, fetcher: () => Promise<T>)
       document.removeEventListener('visibilitychange', refresh)
       window.removeEventListener('focus', refresh)
       window.removeEventListener('auction:spotlight_change', onSpotlightChange)
+      window.removeEventListener('auction:countdown_change', onCountdownChange)
+      window.removeEventListener('auction:break_change', onBreakChange)
     }
     // The fetcher closes over the same parameters as `key`.
     // eslint-disable-next-line react-hooks/exhaustive-deps

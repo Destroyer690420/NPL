@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { Home, LogOut, Menu, RefreshCw, Trophy, Users, X } from 'lucide-react'
+import { Coffee, Home, LogOut, Menu, RefreshCw, Trophy, Users, X } from 'lucide-react'
 import { useTeamAuth } from '@/auth/TeamAuthProvider'
 import { useTeamDoc, useTeamEvent, useTeamLineup, useTeamPurchases } from '@/data/hooks'
 import { currency, points as formatPoints } from '@/lib/format'
@@ -12,6 +12,8 @@ import { Pill } from '@/components/ui/StatusPill'
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar'
 import { SpotlightPlayerCard } from '@/features/auction/SpotlightPlayerCard'
 import { SoldPlayerCelebration } from '@/features/auction/SoldPlayerCelebration'
+import { StartingInCountdownScreen } from '@/features/auction/StartingInCountdownScreen'
+import { AuctionBreakScreen } from '@/features/auction/AuctionBreakScreen'
 import { TeamLineupView } from './TeamLineupView'
 import { subscribeToAuctionRealtime } from '@/lib/realtime'
 
@@ -261,9 +263,47 @@ export function TeamPanelPage() {
         </div>
       ) : null}
 
-      {/* Main Page Area: Render either Lineup or Home Dashboard */}
-      {activeTab === 'lineup' ? (
-        <TeamLineupView players={lineup.data} loading={lineup.loading} />
+      {/* Main Page Area: Render Break Screen, Countdown Screen, Lineup, or Home Dashboard */}
+      {eventLive.data?.break?.active && activeTab === 'home' ? (
+        <AuctionBreakScreen
+          breakState={eventLive.data.break}
+          eventName={context.eventName}
+          onViewLineup={() => setActiveTab('lineup')}
+        />
+      ) : eventLive.data?.countdown?.targetTime && activeTab === 'home' ? (
+        <StartingInCountdownScreen
+          countdown={eventLive.data.countdown}
+          eventName={context.eventName}
+          onViewLineup={() => setActiveTab('lineup')}
+        />
+      ) : activeTab === 'lineup' ? (
+        <>
+          {eventLive.data?.break?.active ? (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+              <div className="flex items-center gap-2">
+                <Coffee className="size-4 shrink-0 text-amber-400" />
+                <span className="font-bold">Auction Intermission Active — "We will be back soon"</span>
+              </div>
+              <Button size="sm" variant="secondary" onClick={() => setActiveTab('home')}>
+                Return to Break Screen
+              </Button>
+            </div>
+          ) : eventLive.data?.countdown?.targetTime ? (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-accent">
+              <div className="flex items-center gap-2">
+                <span className="relative flex size-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent opacity-75" />
+                  <span className="relative inline-flex size-2 rounded-full bg-accent" />
+                </span>
+                <span className="font-bold">Auction countdown is ticking down</span>
+              </div>
+              <Button size="sm" variant="secondary" onClick={() => setActiveTab('home')}>
+                Return to Countdown
+              </Button>
+            </div>
+          ) : null}
+          <TeamLineupView players={lineup.data} loading={lineup.loading} />
+        </>
       ) : (
         <>
           {teamData ? (

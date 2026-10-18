@@ -210,6 +210,22 @@ export const setSpotlightPlayerSchema = z.object({
 })
 export type SetSpotlightPlayerInput = z.infer<typeof setSpotlightPlayerSchema>
 
+export const setAuctionCountdownSchema = z.object({
+  eventId: idSchema,
+  targetTime: z.union([z.string().trim(), z.null()]),
+  durationSeconds: z.union([z.number().int().positive(), z.null()]),
+  message: z.union([z.string().trim().max(100), z.null()]).optional(),
+})
+export type SetAuctionCountdownInput = z.infer<typeof setAuctionCountdownSchema>
+
+export const setAuctionBreakSchema = z.object({
+  eventId: idSchema,
+  active: z.boolean(),
+  message: z.union([z.string().trim().max(200), z.null()]).optional(),
+  resumeTime: z.union([z.string().trim().max(100), z.null()]).optional(),
+})
+export type SetAuctionBreakInput = z.infer<typeof setAuctionBreakSchema>
+
 export interface SchemaIssue {
   message: string
   path: Array<string | number | symbol>

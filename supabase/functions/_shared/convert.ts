@@ -106,6 +106,9 @@ export function toEventDoc(id: string, data: Data): EventDoc | null {
     createdAt: toTimestampValue(data.createdAt),
     updatedAt: toTimestampValue(data.updatedAt),
     spotlightPlayer: toSpotlightPlayer(data.spotlightPlayer),
+    lastSoldPlayer: data.lastSoldPlayer ? (data.lastSoldPlayer as EventDoc['lastSoldPlayer']) : null,
+    countdown: data.countdown ? (data.countdown as EventDoc['countdown']) : null,
+    break: data.break ? (data.break as EventDoc['break']) : null,
   }
 }
 

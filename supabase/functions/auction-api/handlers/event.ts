@@ -1,4 +1,11 @@
-import { createEventSchema, eventIdSchema, setSpotlightPlayerSchema, updateEventSchema } from '../../_shared/schemas.ts'
+import {
+  createEventSchema,
+  eventIdSchema,
+  setAuctionBreakSchema,
+  setAuctionCountdownSchema,
+  setSpotlightPlayerSchema,
+  updateEventSchema,
+} from '../../_shared/schemas.ts'
 import { DEFAULT_EVENT_ID } from '../../_shared/constants.ts'
 import { computeEventTotals, validateEventConsistency } from '../../_shared/calculations.ts'
 import {
@@ -11,7 +18,7 @@ import { adminCallable } from '../lib/callables.ts'
 import { fail, unwrapPlan } from '../lib/errors.ts'
 import { auditRef, configRef, db } from '../lib/refs.ts'
 import { supabase } from '../lib/supabase.ts'
-import type { SpotlightPlayer } from '../../_shared/types.ts'
+import type { AuctionBreak, AuctionCountdown, SpotlightPlayer } from '../../_shared/types.ts'
 import {
   applyWrites,
   readEventTx,
@@ -248,4 +255,91 @@ export const setSpotlightPlayer = adminCallable({
     return { ok: true, eventId, spotlightPlayer }
   },
 })
+
+/**
+ * Sets or clears the countdown timer for the auction start.
+ * Broadcasts to all connected team screens.
+ */
+export const setAuctionCountdown = adminCallable({
+  schema: setAuctionCountdownSchema,
+  handler: async (input) => {
+    const { eventId, targetTime, durationSeconds, message } = input
+
+    let countdown: AuctionCountdown | null = null
+    if (targetTime && durationSeconds) {
+      countdown = {
+        targetTime,
+        durationSeconds,
+        message: message?.trim() || 'Starting in',
+        startedAt: new Date().toISOString(),
+      }
+    }
+
+    const { data: eventRow } = await supabase
+      .from('events')
+      .select('data')
+      .eq('id', eventId)
+      .maybeSingle()
+
+    if (eventRow) {
+      const currentData = (eventRow.data ?? {}) as Record<string, unknown>
+      await supabase
+        .from('events')
+        .update({
+          data: {
+            ...currentData,
+            countdown,
+            updatedAt: new Date().toISOString(),
+          },
+        })
+        .eq('id', eventId)
+    }
+
+    return { ok: true, eventId, countdown }
+  },
+})
+
+/**
+ * Sets or clears the break / intermission state for the auction.
+ * Broadcasts "We will be back soon" to all team screens.
+ */
+export const setAuctionBreak = adminCallable({
+  schema: setAuctionBreakSchema,
+  handler: async (input) => {
+    const { eventId, active, message, resumeTime } = input
+
+    let breakState: AuctionBreak | null = null
+    if (active) {
+      breakState = {
+        active: true,
+        message: message?.trim() || 'We will be back soon',
+        startedAt: new Date().toISOString(),
+        resumeTime: resumeTime?.trim() || null,
+      }
+    }
+
+    const { data: eventRow } = await supabase
+      .from('events')
+      .select('data')
+      .eq('id', eventId)
+      .maybeSingle()
+
+    if (eventRow) {
+      const currentData = (eventRow.data ?? {}) as Record<string, unknown>
+      await supabase
+        .from('events')
+        .update({
+          data: {
+            ...currentData,
+            break: breakState,
+            updatedAt: new Date().toISOString(),
+          },
+        })
+        .eq('id', eventId)
+    }
+
+    return { ok: true, eventId, break: breakState }
+  },
+})
+
 
