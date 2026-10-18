@@ -11,7 +11,7 @@ export interface StartingInCountdownScreenProps {
 
 export function StartingInCountdownScreen({
   countdown,
-  eventName = 'Auction',
+  eventName = 'Nexturn Premier League',
   onViewLineup,
 }: StartingInCountdownScreenProps) {
   const [now, setNow] = useState(Date.now())
@@ -68,12 +68,15 @@ export function StartingInCountdownScreen({
           <span className="relative inline-flex size-2.5 rounded-full bg-accent" />
         </span>
         <span className="font-['Outfit',sans-serif] text-xs font-black uppercase tracking-widest text-accent">
-          {eventName} · Live Sync
+          {eventName || 'Nexturn Premier League'}
         </span>
       </div>
 
       {/* Headline Title */}
       <div className="relative z-10 max-w-lg space-y-2">
+        <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-white font-['Outfit',sans-serif] drop-shadow-[0_2px_15px_rgba(0,0,0,0.8)]">
+          {isFinished ? 'Starting Now' : 'Get Ready'}
+        </h1>
         <div className="inline-flex items-center gap-1.5 text-accent-light">
           <Sparkles className="size-4 animate-bounce" />
           <p className="font-['Outfit',sans-serif] text-sm sm:text-base font-extrabold uppercase tracking-[0.3em] drop-shadow-[0_0_12px_rgba(245,175,25,0.8)]">
@@ -81,9 +84,6 @@ export function StartingInCountdownScreen({
           </p>
           <Sparkles className="size-4 animate-bounce" />
         </div>
-        <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-white font-['Outfit',sans-serif] drop-shadow-[0_2px_15px_rgba(0,0,0,0.8)]">
-          {isFinished ? 'Starting Now' : 'Get Ready'}
-        </h1>
       </div>
 
       {/* Digital Countdown Timer Clock */}
