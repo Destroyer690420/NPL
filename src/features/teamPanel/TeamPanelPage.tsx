@@ -88,13 +88,9 @@ export function TeamPanelPage() {
     <div className="mx-auto min-h-dvh w-full max-w-3xl px-4 py-6 sm:px-6">
       {/* Top Navbar */}
       <header className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-line-strong bg-surface-elevated/90 px-4 py-3 shadow-xl backdrop-blur-md sm:px-5">
-        <div className="flex min-w-0 items-center gap-2.5 sm:gap-3">
+        <div className="flex min-w-0 items-center">
           <span className="truncate font-['Outfit',sans-serif] text-base sm:text-lg font-black tracking-wide text-white">
             {teamDisplayName}
-          </span>
-          <span className="shrink-0 text-line-strong">/</span>
-          <span className="shrink-0 text-xs sm:text-sm font-bold text-ink-muted capitalize">
-            {activeTab === 'home' ? 'Home' : 'Lineup'}
           </span>
         </div>
 
