@@ -30,6 +30,19 @@ export interface SpotlightPlayer {
   updatedAt?: number
 }
 
+export interface SoldPlayerAnnouncement {
+  eventId?: string
+  purchaseId?: string
+  playerId?: string
+  playerName: string
+  playerPhotoUrl?: string | null
+  playerPoints?: number
+  teamId?: string
+  teamName: string
+  finalPrice?: number
+  soldAt?: string
+}
+
 export interface EventDoc {
   id: string
   name: string
@@ -46,6 +59,8 @@ export interface EventDoc {
   updatedAt: TimestampValue
   /** Player currently on the auction block, if any. */
   spotlightPlayer: SpotlightPlayer | null
+  /** Most recently sold player announcement. */
+  lastSoldPlayer?: SoldPlayerAnnouncement | null
 }
 
 export interface TeamDoc {

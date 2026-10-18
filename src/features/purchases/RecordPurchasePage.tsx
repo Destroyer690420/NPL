@@ -216,6 +216,7 @@ export function RecordPurchasePage() {
         teamId: attempt.teamId,
         finalPrice: attempt.price,
         requestId: attempt.requestId,
+        playerPhotoUrl: selectedPlayer?.photoUrl ?? null,
       })
       resetForm()
       setConfirmOpen(false)

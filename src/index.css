@@ -126,6 +126,54 @@
   }
 }
 
+/* Sold celebration animations */
+@keyframes sold-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7) translateY(24px);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.04) translateY(-3px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes sold-exit {
+  0% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.92) translateY(-16px);
+  }
+}
+
+@keyframes progress-drain {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+.animate-sold-pop {
+  animation: sold-pop 400ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-sold-exit {
+  animation: sold-exit 300ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+.animate-progress-drain {
+  animation: progress-drain 1800ms linear forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

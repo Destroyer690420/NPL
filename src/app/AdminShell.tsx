@@ -14,6 +14,7 @@ import { ConnectionBadge } from '@/app/ConnectionBadge'
 import { CreateEventPanel } from '@/features/events/CreateEventPanel'
 import { LoadingBlock } from '@/components/ui/Feedback'
 import { SpotlightPlayerCard } from '@/features/auction/SpotlightPlayerCard'
+import { SoldPlayerCelebration } from '@/features/auction/SoldPlayerCelebration'
 import { clearSpotlightPlayer } from '@/services/admin'
 import { subscribeToAuctionRealtime } from '@/lib/realtime'
 import { useToast } from '@/components/ui/Toast'
@@ -87,6 +88,9 @@ export function AdminShell() {
         onAdminClose={handleAdminCloseSpotlight}
         onSell={handleSellSpotlight}
       />
+      {!isRecordPurchase ? (
+        <SoldPlayerCelebration currencyLabel={event.currencyLabel} />
+      ) : null}
       <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-x-4 px-4 py-2.5 sm:px-6">
           <div className="flex shrink-0 items-center gap-2.5">

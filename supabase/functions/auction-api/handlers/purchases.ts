@@ -52,7 +52,25 @@ export const recordPurchase = adminCallable({
 
       const { result, writes } = unwrapPlan(plan)
       applyWrites(tx, input.eventId, writes, { actorEmail: context.email })
-      tx.set(eventRef(input.eventId), { spotlightPlayer: null }, { merge: true })
+      tx.set(
+        eventRef(input.eventId),
+        {
+          spotlightPlayer: null,
+          lastSoldPlayer: {
+            eventId: input.eventId,
+            purchaseId: result.purchaseId,
+            playerId: result.playerId,
+            playerName: result.playerName,
+            playerPhotoUrl: player?.photoUrl ?? null,
+            playerPoints: result.playerPoints,
+            teamId: result.teamId,
+            teamName: result.teamName,
+            finalPrice: result.finalPrice,
+            soldAt: new Date().toISOString(),
+          },
+        },
+        { merge: true },
+      )
       return result
     })
   },

@@ -11,6 +11,7 @@ import { EmptyState, LoadingBlock } from '@/components/ui/Feedback'
 import { Pill } from '@/components/ui/StatusPill'
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar'
 import { SpotlightPlayerCard } from '@/features/auction/SpotlightPlayerCard'
+import { SoldPlayerCelebration } from '@/features/auction/SoldPlayerCelebration'
 import { TeamLineupView } from './TeamLineupView'
 import { subscribeToAuctionRealtime } from '@/lib/realtime'
 
@@ -374,6 +375,9 @@ export function TeamPanelPage() {
         spotlight={eventLive.data?.spotlightPlayer ?? null}
         currencyLabel={currencyLabel}
       />
+
+      {/* Sold Player Celebration Animation Overlay - plays on every team screen when a player is sold */}
+      <SoldPlayerCelebration currencyLabel={currencyLabel} />
     </div>
   )
 }
