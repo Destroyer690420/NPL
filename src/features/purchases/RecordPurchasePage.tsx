@@ -4,9 +4,7 @@ import {
   AlertTriangle,
   BadgeCheck,
   Ban,
-  CheckCircle2,
   Radio,
-  RotateCcw,
   Search,
   ShoppingCart,
 } from 'lucide-react'
@@ -14,7 +12,7 @@ import type { AdminOutletContext } from '@/app/outlet'
 import { useAdminEvent } from '@/app/AdminEventProvider'
 import { usePlayers, usePurchases, useTeams } from '@/data/hooks'
 import { isCallError } from '@/services/callables'
-import { recordPurchase, clearSpotlightPlayer, setSpotlightPlayer, type RecordPurchaseResult } from '@/services/admin'
+import { recordPurchase, clearSpotlightPlayer, setSpotlightPlayer } from '@/services/admin'
 import { fetchPurchaseFromServer } from '@/services/reads'
 import { newRequestId } from '@/lib/ids'
 import { errorMessage, toFriendlyError, type FriendlyError } from '@/lib/errors'
@@ -42,7 +40,6 @@ type SubmitState =
   | { kind: 'idle' }
   | { kind: 'submitting' }
   | { kind: 'failed'; attempt: Attempt; error: FriendlyError }
-  | { kind: 'success'; result: RecordPurchaseResult }
 
 function sameAttempt(a: Attempt, b: Attempt): boolean {
   return a.playerId === b.playerId && a.teamId === b.teamId && a.price === b.price
@@ -220,9 +217,8 @@ export function RecordPurchasePage() {
         finalPrice: attempt.price,
         requestId: attempt.requestId,
       })
-      setSubmit({ kind: 'success', result })
+      resetForm()
       setConfirmOpen(false)
-      lastAttempt.current = null
       toast.push({
         kind: 'success',
         message: `${result.playerName} sold to ${result.teamName} for ${currency(result.finalPrice, currencyLabel)}.`,
@@ -248,32 +244,11 @@ export function RecordPurchasePage() {
     try {
       const existing = await fetchPurchaseFromServer(eventId, attempt.requestId)
       if (existing) {
-        const team = teams.data.find((entry) => entry.id === existing.teamId)
-        setSubmit({
-          kind: 'success',
-          result: {
-            purchaseId: existing.id,
-            playerId: existing.playerId,
-            playerName: existing.playerNameSnapshot,
-            playerPoints: existing.playerPointsSnapshot,
-            teamId: existing.teamId,
-            teamName: existing.teamNameSnapshot,
-            finalPrice: existing.finalPrice,
-            teamSummary: {
-              startingPurse: team?.startingPurse ?? 0,
-              totalSpent: team?.totalSpent ?? 0,
-              remainingPurse: team?.remainingPurse ?? 0,
-              totalPoints: team?.totalPoints ?? 0,
-              playerCount: team?.playerCount ?? 0,
-            },
-            idempotentReplay: true,
-          },
-        })
-        lastAttempt.current = null
+        resetForm()
+        setConfirmOpen(false)
         toast.push({
           kind: 'success',
           message: 'The purchase was in fact recorded.',
-          detail: 'The retry is no longer needed — the receipt is shown below.',
         })
       } else {
         toast.push({
@@ -378,41 +353,6 @@ export function RecordPurchasePage() {
         </div>
       ) : null}
 
-      {submit.kind === 'success' ? (
-        <div className="mb-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-5 shadow-lg">
-          <div className="flex flex-wrap items-start gap-4">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-emerald-500/40 bg-emerald-500/20 text-emerald-400">
-              <CheckCircle2 className="size-5" aria-hidden />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-base font-bold text-white">
-                {submit.result.playerName} sold to {submit.result.teamName}
-              </p>
-              <p className="mt-1 text-sm text-ink-muted">
-                <span className="font-bold text-emerald-400">{currency(submit.result.finalPrice, currencyLabel)}</span> ·{' '}
-                <span className="text-sky-300">{formatPoints(submit.result.playerPoints)} pts</span> ·{' '}
-                {submit.result.teamName}'s purse is now{' '}
-                <span className="font-bold text-white">
-                  {currency(submit.result.teamSummary.remainingPurse, currencyLabel)}
-                </span>
-              </p>
-              {submit.result.idempotentReplay ? (
-                <p className="mt-1.5 text-xs text-ink-muted">
-                  Recorded once — this retry did not charge the team twice.
-                </p>
-              ) : null}
-            </div>
-            <div className="flex gap-2.5">
-              <Button variant="secondary" onClick={resetForm} icon={<RotateCcw className="size-4" aria-hidden />}>
-                Record another
-              </Button>
-              <Link to="/admin/transactions">
-                <Button variant="ghost">Transactions</Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       <div className="grid gap-5 lg:grid-cols-5">
         <Card className="lg:col-span-3">
