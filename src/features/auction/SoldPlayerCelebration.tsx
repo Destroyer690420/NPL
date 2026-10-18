@@ -34,17 +34,17 @@ export function SoldPlayerCelebration({ currencyLabel = '₹' }: SoldPlayerCeleb
       setIsExiting(false)
       setVisible(true)
 
-      // Start smooth exit transition after ~1800ms
+      // Start smooth exit transition after 4000ms (4 seconds)
       exitTimerRef.current = window.setTimeout(() => {
         setIsExiting(true)
-      }, 1800)
+      }, 4000)
 
-      // Clean up completely after transition (2100ms)
+      // Clean up completely after transition (4300ms)
       dismissTimerRef.current = window.setTimeout(() => {
         setVisible(false)
         setAnnouncement(null)
         setIsExiting(false)
-      }, 2100)
+      }, 4300)
     }
 
     window.addEventListener('auction:player_sold', handlePlayerSold)
