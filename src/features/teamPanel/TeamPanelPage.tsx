@@ -108,46 +108,6 @@ export function TeamPanelPage() {
           </span>
         </div>
 
-        {/* Quick Nav switcher for tablet/desktop */}
-        <div className="hidden sm:flex items-center gap-1 rounded-xl border border-line-strong bg-surface-muted/60 p-1">
-          <button
-            type="button"
-            onClick={() => setActiveTab('home')}
-            className={cn(
-              'flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold transition-all cursor-pointer',
-              activeTab === 'home'
-                ? 'bg-accent text-black shadow-sm font-black'
-                : 'text-ink-muted hover:text-white',
-            )}
-          >
-            <Home className="size-3.5" aria-hidden />
-            Home
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('lineup')}
-            className={cn(
-              'flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold transition-all cursor-pointer',
-              activeTab === 'lineup'
-                ? 'bg-accent text-black shadow-sm font-black'
-                : 'text-ink-muted hover:text-white',
-            )}
-          >
-            <Users className="size-3.5" aria-hidden />
-            Lineup
-            {lineup.data.length > 0 ? (
-              <span
-                className={cn(
-                  'ml-1 rounded-full px-1.5 py-0.2 text-[10px]',
-                  activeTab === 'lineup' ? 'bg-black/20 text-black' : 'bg-surface text-ink-muted',
-                )}
-              >
-                {lineup.data.length}
-              </span>
-            ) : null}
-          </button>
-        </div>
-
         <button
           type="button"
           onClick={() => setSidebarOpen(true)}
@@ -278,39 +238,6 @@ export function TeamPanelPage() {
                     <span className="size-2 rounded-full bg-accent animate-pulse" />
                   ) : null}
                 </button>
-              </div>
-
-              {/* Team Profile Tile */}
-              <div className="rounded-xl border border-line bg-surface-muted/40 p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Team</p>
-                <div className="mt-1.5">
-                  <p className="truncate text-base font-bold text-white">{context.teamName}</p>
-                  <p className="text-xs text-ink-muted">Private team session</p>
-                </div>
-              </div>
-
-              {/* Stats overview */}
-              {teamData ? (
-                <div className="rounded-xl border border-line bg-surface-muted/30 p-4 space-y-2.5">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Portfolio Summary</p>
-                  <div className="grid grid-cols-2 gap-2 text-center">
-                    <div className="rounded-lg border border-line/60 bg-surface-muted/40 p-2.5">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Points</p>
-                      <p className="mt-0.5 text-base font-bold text-sky-400 tabular-nums">{formatPoints(teamData.totalPoints)}</p>
-                    </div>
-                    <div className="rounded-lg border border-line/60 bg-surface-muted/40 p-2.5">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Players</p>
-                      <p className="mt-0.5 text-base font-bold text-white tabular-nums">{teamData.playerCount}</p>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="rounded-xl border border-line/50 bg-surface-muted/20 p-3 text-xs text-ink-muted">
-                <p className="font-semibold text-white">Live Sync Active</p>
-                <p className="mt-1 text-[11px] leading-relaxed">
-                  Your purse balance and squad update in realtime as auction purchases are confirmed.
-                </p>
               </div>
             </div>
 
