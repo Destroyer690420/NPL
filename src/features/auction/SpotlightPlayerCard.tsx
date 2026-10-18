@@ -249,11 +249,6 @@ export function SpotlightPlayerCard({
                 <stop offset="100%" stopColor="#92400e" />
               </linearGradient>
 
-              {/* Gold Glow Filter for stadium lights */}
-              <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="3" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
             </defs>
 
             {/* Stadium Sky & Stands */}
@@ -278,21 +273,11 @@ export function SpotlightPlayerCard({
             <circle cx="295" cy="215" r="1.5" fill="#f5af19" opacity="0.35" />
             <circle cx="345" cy="222" r="1" fill="#38bdf8" opacity="0.25" />
 
-            {/* Left Floodlight Cones */}
+            {/* Left Floodlight Beam Cone Effect */}
             <polygon points="0,0 180,240 60,320 0,160" fill="url(#floodlightLeft)" />
-            {/* Left Floodlight Source Flare */}
-            <circle cx="20" cy="20" r="18" fill="#ffffff" opacity="0.5" filter="url(#goldGlow)" />
-            <circle cx="20" cy="20" r="6" fill="#fff" />
-            <circle cx="34" cy="27" r="4" fill="#fef08a" opacity="0.8" />
-            <circle cx="12" cy="33" r="3.5" fill="#fef08a" opacity="0.8" />
 
-            {/* Right Floodlight Cones */}
+            {/* Right Floodlight Beam Cone Effect */}
             <polygon points="400,0 220,240 340,320 400,160" fill="url(#floodlightRight)" />
-            {/* Right Floodlight Source Flare */}
-            <circle cx="380" cy="20" r="18" fill="#ffffff" opacity="0.5" filter="url(#goldGlow)" />
-            <circle cx="380" cy="20" r="6" fill="#fff" />
-            <circle cx="366" cy="27" r="4" fill="#fef08a" opacity="0.8" />
-            <circle cx="388" cy="33" r="3.5" fill="#fef08a" opacity="0.8" />
 
             {/* Dynamic Angled Golden Plates - LEFT SIDE */}
             {/* Plate 1: Upper Left Thick Plate */}
@@ -442,12 +427,6 @@ export function SpotlightPlayerCard({
           </div>
         </div>
 
-        {/* Delicate 4-pointed Star Sparkle in Bottom Right Corner */}
-        <div className="absolute bottom-4 right-4 pointer-events-none text-slate-500/50">
-          <svg viewBox="0 0 24 24" fill="currentColor" className="size-6">
-            <path d="M12 0L14.8 9.2L24 12L14.8 14.8L12 24L9.2 14.8L0 12L9.2 9.2L12 0Z" />
-          </svg>
-        </div>
 
         {/* Admin Controls */}
         {isAdmin ? (
