@@ -7,21 +7,49 @@ import {
   toImportPayload,
 } from '@/features/players/playerImport'
 
-const HEADER = 'player_id,name,points,base_price'
+const HEADER = 'name,nationality,role,star,rating,image_url'
 
 describe('buildPlayerImportPreview', () => {
-  it('accepts a well formed file and reports counts', () => {
+  it('accepts a well formed file with name, nationality, role, star, rating, image_url and reports counts', () => {
     const preview = buildPlayerImportPreview(
-      [HEADER, 'P001,Rohit Sharma,250,20000', 'P002,"Ishan, Kishan",180,15000'].join('\n'),
+      [
+        HEADER,
+        'Rohit Sharma,India,Batsman,Yes,9.5,https://example.com/rohit.jpg',
+        'Jasprit Bumrah,India,Bowler,No,9.8,/player-images/bumrah.jpg',
+        'Travis Head,Australia,All-rounder,,8.5,',
+      ].join('\n'),
     )
     expect(preview.missingColumns).toEqual([])
-    expect(preview.validCount).toBe(2)
+    expect(preview.validCount).toBe(3)
     expect(preview.invalidCount).toBe(0)
     expect(preview.canCommit).toBe(true)
-    expect(preview.rows[0]).toMatchObject({ line: 2, playerId: 'P001', points: 250, basePrice: 20_000 })
+    expect(preview.rows[0]).toMatchObject({
+      line: 2,
+      name: 'Rohit Sharma',
+      nationality: 'India',
+      role: 'Batsman',
+      star: 'Yes',
+      points: 9.5,
+      basePrice: 0,
+    })
+    expect(preview.rows[2]).toMatchObject({
+      name: 'Travis Head',
+      nationality: 'Australia',
+      role: 'All-rounder',
+      points: 8.5,
+    })
   })
 
-  it('tolerates header aliases, currency symbols and thousand separators', () => {
+  it('supports decimal ratings (e.g. 5.7) and whole numbers (e.g. 10)', () => {
+    const preview = buildPlayerImportPreview(
+      [HEADER, 'Player One,India,Batter,,5.7,', 'Player Two,India,Bowler,,10,'].join('\n'),
+    )
+    expect(preview.validCount).toBe(2)
+    expect(preview.rows[0]!.points).toBe(5.7)
+    expect(preview.rows[1]!.points).toBe(10)
+  })
+
+  it('tolerates legacy header aliases, currency symbols and thousand separators', () => {
     const preview = buildPlayerImportPreview(
       ['id,player,pts,price', 'X1,"Jasprit Bumrah",₨180,"12,000"'].join('\n'),
     )
@@ -30,38 +58,37 @@ describe('buildPlayerImportPreview', () => {
   })
 
   it('reports missing required columns and blocks commit', () => {
-    const preview = buildPlayerImportPreview(['name,points', 'Rohit,250'].join('\n'))
-    expect(preview.missingColumns).toEqual(['base_price'])
+    const preview = buildPlayerImportPreview(['role,star', 'Batter,Yes'].join('\n'))
+    expect(preview.missingColumns).toEqual(['name', 'rating'])
     expect(preview.canCommit).toBe(false)
   })
 
   it('flags invalid numbers with the row line number', () => {
     const preview = buildPlayerImportPreview(
-      [HEADER, 'P001,Rohit,abc,20000', 'P002,Ishan,-5,15000'].join('\n'),
+      [HEADER, 'Rohit,India,Batter,,abc,', 'Ishan,India,Keeper,,-5,'].join('\n'),
     )
     expect(preview.invalidCount).toBe(2)
-    expect(preview.rows[0]!.errors[0]).toContain('Points')
+    expect(preview.rows[0]!.errors[0]).toContain('Rating')
     expect(preview.rows[1]!.errors.join(' ')).toContain('negative')
   })
 
-  it('detects duplicate player ids and names within the file', () => {
+  it('detects duplicate names within the file', () => {
     const preview = buildPlayerImportPreview(
-      [HEADER, 'P001,Rohit,250,20000', 'P001,Suresh,150,10000', 'P003,Rohit,100,5000'].join('\n'),
+      [HEADER, 'Rohit,India,Batter,,8,', 'Suresh,India,Batter,,7,', 'Rohit,India,Batter,,9,'].join('\n'),
     )
-    expect(preview.validCount).toBe(1)
-    expect(preview.duplicateCount).toBe(2)
-    expect(preview.rows[1]!.errors.join(' ')).toContain('duplicated')
+    expect(preview.validCount).toBe(2)
+    expect(preview.duplicateCount).toBe(1)
     expect(preview.rows[2]!.errors.join(' ')).toContain('Duplicate name')
   })
 
   it('requires a name on every row', () => {
-    const preview = buildPlayerImportPreview([HEADER, 'P001,,250,20000'].join('\n'))
+    const preview = buildPlayerImportPreview([HEADER, ',India,Batter,,8,'].join('\n'))
     expect(preview.rows[0]!.errors.join(' ')).toContain('Name is required')
   })
 
-  it('never lets a duplicate name slip through when a distinct id is present', () => {
+  it('never lets a duplicate name slip through when distinct case is present', () => {
     const preview = buildPlayerImportPreview(
-      [HEADER, 'P001,Rohit,250,20000', 'P002,rohit,150,10000'].join('\n'),
+      [HEADER, 'Rohit,India,Batter,,8,', 'rohit,India,Batter,,7,'].join('\n'),
     )
     expect(preview.invalidCount).toBe(1)
     expect(preview.rows[1]!.errors.join(' ')).toContain('Duplicate name')
@@ -70,10 +97,10 @@ describe('buildPlayerImportPreview', () => {
   it('parses, normalizes, and validates image_url column', () => {
     const preview = buildPlayerImportPreview(
       [
-        'player_id,name,points,base_price,image_url',
-        'P001,Rohit Sharma,250,20000,player-images/rohit.jpg',
-        'P002,Ishan Kishan,180,15000,https://example.com/ishan.png',
-        'P003,Surya,200,18000,javascript:alert(1)',
+        HEADER,
+        'Rohit Sharma,India,Batter,,8.5,player-images/rohit.jpg',
+        'Ishan Kishan,India,Keeper,,7.5,https://example.com/ishan.png',
+        'Surya,India,Batter,,9.0,javascript:alert(1)',
       ].join('\n'),
     )
     expect(preview.validCount).toBe(2)
@@ -86,6 +113,9 @@ describe('buildPlayerImportPreview', () => {
     expect(payload).toHaveLength(2)
     expect(payload[0]!.photoUrl).toBe('/player-images/rohit.jpg')
     expect(payload[1]!.photoUrl).toBe('https://example.com/ishan.png')
+    expect(payload[0]!.nationality).toBe('India')
+    expect(payload[0]!.role).toBe('Batter')
+    expect(payload[0]!.points).toBe(8.5)
   })
 
   it('successfully validates workspace players.csv', () => {
@@ -107,26 +137,35 @@ describe('buildPlayerImportPreview', () => {
 })
 
 describe('toImportPayload', () => {
-  it('only includes fully valid rows', () => {
+  it('only includes fully valid rows and keeps decimal ratings', () => {
     const preview = buildPlayerImportPreview(
-      [HEADER, 'P001,Rohit,250,20000', 'P002,Ishan,abc,15000', 'P003,Jasprit,180,12000'].join('\n'),
+      [
+        HEADER,
+        'Rohit,India,Batter,Yes,8.5,',
+        'Ishan,India,Keeper,,abc,',
+        'Jasprit,India,Bowler,Yes,9.8,',
+      ].join('\n'),
     )
     const payload = toImportPayload(preview.rows, 'all-valid-rows')
     expect(payload).toHaveLength(2)
-    expect(payload.map((row) => row.externalReference)).toEqual(['P001', 'P003'])
-    expect(payload.every((row) => Number.isSafeInteger(row.points))).toBe(true)
+    expect(payload.map((row) => row.name)).toEqual(['Rohit', 'Jasprit'])
+    expect(payload[0]!.points).toBe(8.5)
+    expect(payload[1]!.points).toBe(9.8)
+    expect(payload[0]!.nationality).toBe('India')
+    expect(payload[0]!.role).toBe('Batter')
+    expect(payload[0]!.star).toBe('Yes')
   })
 })
 
 describe('buildErrorReportCsv', () => {
-  it('lists only invalid rows with their line numbers', () => {
+  it('lists only invalid rows with their line numbers and updated columns', () => {
     const preview = buildPlayerImportPreview(
-      [HEADER, 'P001,Rohit,250,20000', 'P002,Ishan,abc,15000'].join('\n'),
+      [HEADER, 'Rohit,India,Batter,,8.5,', 'Ishan,India,Keeper,,abc,'].join('\n'),
     )
     const report = buildErrorReportCsv(preview.rows)
     expect(report).toHaveLength(2)
-    expect(report[0]).toEqual(['line', 'player_id', 'name', 'points', 'base_price', 'image_url', 'errors'])
+    expect(report[0]).toEqual(['line', 'name', 'nationality', 'role', 'star', 'rating', 'image_url', 'errors'])
     expect(report[1]![0]).toBe(3)
-    expect(String(report[1]![6])).toContain('Points')
+    expect(String(report[1]![7])).toContain('Rating')
   })
 })

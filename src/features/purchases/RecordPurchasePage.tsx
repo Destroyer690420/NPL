@@ -17,7 +17,7 @@ import { fetchPurchaseFromServer } from '@/services/reads'
 import { newRequestId } from '@/lib/ids'
 import { errorMessage, toFriendlyError, type FriendlyError } from '@/lib/errors'
 import { currency, formatRelative, points as formatPoints } from '@/lib/format'
-import { parseAmountInput, subtractInts, addInts } from '@shared/money'
+import { parseAmountInput, subtractInts, addInts, addPoints } from '@shared/money'
 import { SectionTitle } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -158,7 +158,7 @@ export function RecordPurchasePage() {
     if (!selectedTeam || price === null) return null
     return {
       remainingPurse: subtractInts(selectedTeam.startingPurse, addInts(selectedTeam.totalSpent, price)),
-      totalPoints: addInts(selectedTeam.totalPoints, selectedPlayer?.points ?? 0),
+      totalPoints: addPoints(selectedTeam.totalPoints, selectedPlayer?.points ?? 0),
       playerCount: selectedTeam.playerCount + 1,
     }
   }, [selectedTeam, selectedPlayer, price])

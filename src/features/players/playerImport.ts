@@ -5,8 +5,9 @@ import { parseCsv } from '@/lib/csv'
 
 /**
  * Player CSV import:
- *   player_id,name,points,base_price,image_url
+ *   name,nationality,role,star,rating,image_url
  *
+ * Ratings accept decimal values (e.g. 5.7) and whole numbers (e.g. 10).
  * The whole file is validated up front; invalid rows are reported with their
  * line number and nothing is written until the admin explicitly commits.
  */
@@ -15,6 +16,10 @@ export interface PlayerImportRow {
   line: number
   playerId: string | null
   name: string
+  nationality: string | null
+  role: string | null
+  star: string | null
+  rating: number | null
   points: number | null
   basePrice: number | null
   photoUrl: string | null
@@ -32,19 +37,28 @@ export interface PlayerImportPreview {
   canCommit: boolean
 }
 
-export const PLAYER_CSV_TEMPLATE_HEADERS = ['player_id', 'name', 'points', 'base_price', 'image_url'] as const
+export const PLAYER_CSV_TEMPLATE_HEADERS = [
+  'name',
+  'nationality',
+  'role',
+  'star',
+  'rating',
+  'image_url',
+] as const
 
 export const PLAYER_CSV_TEMPLATE = [
   PLAYER_CSV_TEMPLATE_HEADERS.join(','),
-  'P001,Rohit Sharma,250,20000,/player-images/rohit.jpg',
-  'P002,Ishan Kishan,180,15000,/player-images/ishan.jpg',
+  'Rohit Sharma,Indian,Batsman,Yes,9.5,https://zskbpnzhxntnupdnlecp.supabase.co/storage/v1/object/public/player-images/P002.png',
+  'Jasprit Bumrah,Indian,Bowler,Yes,10,https://zskbpnzhxntnupdnlecp.supabase.co/storage/v1/object/public/player-images/P004.png',
+  'Will Jacks,Overseas,All-Rounder,No,8.2,https://zskbpnzhxntnupdnlecp.supabase.co/storage/v1/object/public/player-images/P008.png',
 ].join('\r\n')
 
 const HEADER_ALIASES: Record<string, string[]> = {
-  playerId: ['player_id', 'playerid', 'player id', 'id', 'external_id', 'externalid', 'code'],
   name: ['name', 'player', 'player_name', 'playername', 'player name', 'full name'],
-  points: ['points', 'pts', 'point', 'score', 'marks'],
-  basePrice: ['base_price', 'baseprice', 'base price', 'price', 'reference price', 'base'],
+  nationality: ['nationality', 'country', 'nation', 'nat', 'origin'],
+  role: ['role', 'player_role', 'playerrole', 'position', 'type', 'skill'],
+  star: ['star', 'star_player', 'starplayer', 'is_star', 'starred', 'marquee'],
+  rating: ['rating', 'ratings', 'rate', 'points', 'pts', 'point', 'score', 'marks'],
   photoUrl: [
     'image_url',
     'imageurl',
@@ -60,6 +74,8 @@ const HEADER_ALIASES: Record<string, string[]> = {
     'img',
     'img_url',
   ],
+  playerId: ['player_id', 'playerid', 'player id', 'id', 'external_id', 'externalid', 'code'],
+  basePrice: ['base_price', 'baseprice', 'base price', 'price', 'reference price', 'base'],
 }
 
 function findColumn(headers: string[], aliases: string[]): number {
@@ -70,6 +86,14 @@ function findColumn(headers: string[], aliases: string[]): number {
     if (index >= 0) return index
   }
   return -1
+}
+
+export function toRatingField(raw: string): number | null {
+  const cleaned = raw.trim().replace(/[,\s]/g, '').replace(/^[^\d+-]+/, '')
+  if (cleaned === '' || !/^[+-]?\d+(?:\.\d+)?$/.test(cleaned)) return null
+  const value = Number(cleaned.replace(/^\+/, ''))
+  if (!Number.isFinite(value)) return null
+  return Math.round((value + Number.EPSILON) * 100) / 100
 }
 
 function toIntegerField(raw: string): number | null {
@@ -98,7 +122,7 @@ export function buildPlayerImportPreview(text: string): PlayerImportPreview {
     return {
       rows: [],
       headers: [],
-      missingColumns: ['name', 'points', 'base_price'],
+      missingColumns: ['name', 'rating'],
       validCount: 0,
       invalidCount: 0,
       duplicateCount: 0,
@@ -108,17 +132,19 @@ export function buildPlayerImportPreview(text: string): PlayerImportPreview {
 
   const headers = table[0]!.map((header) => header.trim())
   const columns = {
-    playerId: findColumn(headers, HEADER_ALIASES.playerId!),
     name: findColumn(headers, HEADER_ALIASES.name!),
-    points: findColumn(headers, HEADER_ALIASES.points!),
-    basePrice: findColumn(headers, HEADER_ALIASES.basePrice!),
+    nationality: findColumn(headers, HEADER_ALIASES.nationality!),
+    role: findColumn(headers, HEADER_ALIASES.role!),
+    star: findColumn(headers, HEADER_ALIASES.star!),
+    rating: findColumn(headers, HEADER_ALIASES.rating!),
     photoUrl: findColumn(headers, HEADER_ALIASES.photoUrl!),
+    playerId: findColumn(headers, HEADER_ALIASES.playerId!),
+    basePrice: findColumn(headers, HEADER_ALIASES.basePrice!),
   }
 
   const missingColumns: string[] = []
   if (columns.name < 0) missingColumns.push('name')
-  if (columns.points < 0) missingColumns.push('points')
-  if (columns.basePrice < 0) missingColumns.push('base_price')
+  if (columns.rating < 0) missingColumns.push('rating')
 
   const seenIds = new Map<string, number>()
   const seenNames = new Map<string, number>()
@@ -128,22 +154,28 @@ export function buildPlayerImportPreview(text: string): PlayerImportPreview {
     const cells = table[index]!
     const line = index + 1
     const rawName = columns.name >= 0 ? (cells[columns.name] ?? '').trim() : ''
-    const rawId = columns.playerId >= 0 ? (cells[columns.playerId] ?? '').trim() : ''
-    const rawPoints = columns.points >= 0 ? (cells[columns.points] ?? '').trim() : ''
-    const rawPrice = columns.basePrice >= 0 ? (cells[columns.basePrice] ?? '').trim() : ''
+    const rawNationality = columns.nationality >= 0 ? (cells[columns.nationality] ?? '').trim() : ''
+    const rawRole = columns.role >= 0 ? (cells[columns.role] ?? '').trim() : ''
+    const rawStar = columns.star >= 0 ? (cells[columns.star] ?? '').trim() : ''
+    const rawRating = columns.rating >= 0 ? (cells[columns.rating] ?? '').trim() : ''
     const rawPhoto = columns.photoUrl >= 0 ? (cells[columns.photoUrl] ?? '').trim() : ''
+    const rawId = columns.playerId >= 0 ? (cells[columns.playerId] ?? '').trim() : ''
+    const rawPrice = columns.basePrice >= 0 ? (cells[columns.basePrice] ?? '').trim() : ''
 
     const errors: string[] = []
     if (rawName === '') errors.push('Name is required.')
 
-    const points = rawPoints === '' ? null : toIntegerField(rawPoints)
-    if (points === null) errors.push('Points must be a whole number (0 or more).')
-    else if (points < 0) errors.push('Points must not be negative.')
-    else if (points > MAX_POINTS) errors.push(`Points must be at most ${MAX_POINTS}.`)
+    const rating = rawRating === '' ? null : toRatingField(rawRating)
+    if (rating === null) errors.push('Rating must be a valid number (e.g. 5.7 or 10).')
+    else if (rating < 0) errors.push('Rating must not be negative.')
+    else if (rating > MAX_POINTS) errors.push(`Rating must be at most ${MAX_POINTS}.`)
 
-    const basePrice = rawPrice === '' ? null : toIntegerField(rawPrice)
-    if (basePrice === null) errors.push('Base price must be a whole number (0 or more).')
-    else if (!isNonNegativeInteger(basePrice)) errors.push('Base price must not be negative.')
+    let basePrice: number | null = 0
+    if (rawPrice !== '') {
+      basePrice = toIntegerField(rawPrice)
+      if (basePrice === null) errors.push('Base price must be a whole number (0 or more).')
+      else if (!isNonNegativeInteger(basePrice)) errors.push('Base price must not be negative.')
+    }
 
     const photoUrl = rawPhoto === '' ? null : normalizePhotoUrl(rawPhoto)
     if (photoUrl !== null && !isValidHttpUrl(photoUrl)) {
@@ -176,7 +208,11 @@ export function buildPlayerImportPreview(text: string): PlayerImportPreview {
       line,
       playerId: rawId === '' ? null : rawId,
       name: rawName,
-      points,
+      nationality: rawNationality === '' ? null : rawNationality,
+      role: rawRole === '' ? null : rawRole,
+      star: rawStar === '' ? null : rawStar,
+      rating,
+      points: rating,
       basePrice,
       photoUrl,
       errors,
@@ -205,6 +241,9 @@ export interface ImportPayloadRow {
   basePrice: number
   photoUrl?: string | null
   externalReference: string | null
+  nationality?: string | null
+  role?: string | null
+  star?: string | null
 }
 
 export function toImportPayload(
@@ -213,28 +252,32 @@ export function toImportPayload(
 ): ImportPayloadRow[] {
   return rows
     .filter((row) => row.errors.length === 0 || mode === 'valid-only')
-    .filter((row) => row.errors.length === 0 && row.points !== null && row.basePrice !== null)
+    .filter((row) => row.errors.length === 0 && row.rating !== null)
     .map((row) => ({
       name: row.name,
-      points: row.points as number,
-      basePrice: row.basePrice as number,
+      points: row.rating as number,
+      basePrice: row.basePrice ?? 0,
       photoUrl: row.photoUrl ?? null,
       externalReference: row.playerId,
+      nationality: row.nationality,
+      role: row.role,
+      star: row.star,
     }))
 }
 
 export function buildErrorReportCsv(rows: PlayerImportRow[]): Array<Array<string | number>> {
-  const header = ['line', 'player_id', 'name', 'points', 'base_price', 'image_url', 'errors']
+  const header = ['line', 'name', 'nationality', 'role', 'star', 'rating', 'image_url', 'errors']
   return [
     header,
     ...rows
       .filter((row) => row.errors.length > 0)
       .map((row) => [
         row.line,
-        row.playerId ?? '',
         row.name,
-        row.points ?? '',
-        row.basePrice ?? '',
+        row.nationality ?? '',
+        row.role ?? '',
+        row.star ?? '',
+        row.rating ?? '',
         row.photoUrl ?? '',
         row.errors.join(' '),
       ]),

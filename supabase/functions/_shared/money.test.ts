@@ -36,9 +36,14 @@ describe('parseAmountInput / parsePointsInput', () => {
     expect(parseAmountInput(String(MAX_AMOUNT + 1))).toBeNull()
   })
 
-  it('accepts zero points but not negative', () => {
+  it('accepts zero points, whole numbers, and decimal points like 5.7', () => {
     expect(parsePointsInput('0')).toBe(0)
+    expect(parsePointsInput('10')).toBe(10)
+    expect(parsePointsInput('5.7')).toBe(5.7)
+    expect(parsePointsInput(5.7)).toBe(5.7)
+    expect(parsePointsInput('8.25')).toBe(8.25)
     expect(parsePointsInput('-5')).toBeNull()
+    expect(parsePointsInput('abc')).toBeNull()
   })
 })
 

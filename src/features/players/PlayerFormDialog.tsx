@@ -13,6 +13,9 @@ export interface PlayerFormValues {
   photoUrl: string | null
   externalReference: string | null
   notes: string | null
+  nationality?: string | null
+  role?: string | null
+  star?: string | null
   /** null for sold players (their status is locked until the purchase is reversed). */
   status: 'available' | 'withdrawn' | null
   reason: string | null
@@ -53,6 +56,9 @@ export function PlayerFormDialog({
   const [basePrice, setBasePrice] = useState('')
   const [photoUrl, setPhotoUrl] = useState('')
   const [externalReference, setExternalReference] = useState('')
+  const [nationality, setNationality] = useState('')
+  const [role, setRole] = useState('')
+  const [star, setStar] = useState('')
   const [notes, setNotes] = useState('')
   const [withdrawn, setWithdrawn] = useState(false)
   const [reason, setReason] = useState('')
@@ -79,6 +85,9 @@ export function PlayerFormDialog({
         setBasePrice(player.basePrice > 0 ? Number(player.basePrice).toLocaleString('en-IN') : '')
         setPhotoUrl(player.photoUrl ?? '')
         setExternalReference(player.externalReference ?? '')
+        setNationality(player.nationality ?? '')
+        setRole(player.role ?? '')
+        setStar(player.star ?? '')
         setNotes(player.notes ?? '')
         setWithdrawn(player.status === 'withdrawn')
       } else {
@@ -87,6 +96,9 @@ export function PlayerFormDialog({
         setBasePrice('')
         setPhotoUrl('')
         setExternalReference('')
+        setNationality('')
+        setRole('')
+        setStar('')
         setNotes('')
         setWithdrawn(false)
       }
@@ -106,7 +118,7 @@ export function PlayerFormDialog({
       return
     }
     if (nextPoints === null) {
-      setLocalError('Points must be a whole number of 0 or more.')
+      setLocalError('Rating/points must be a valid number of 0 or more (e.g. 5.7 or 10).')
       return
     }
     if (nextPrice === null) {
@@ -128,6 +140,9 @@ export function PlayerFormDialog({
       basePrice: nextPrice,
       photoUrl: trimmedPhoto === '' ? null : trimmedPhoto,
       externalReference: externalReference.trim() === '' ? null : externalReference.trim(),
+      nationality: nationality.trim() === '' ? null : nationality.trim(),
+      role: role.trim() === '' ? null : role.trim(),
+      star: star.trim() === '' ? null : star.trim(),
       notes: notes.trim() === '' ? null : notes.trim(),
       status: sold ? null : withdrawn ? 'withdrawn' : 'available',
       reason: needsReason ? reason.trim() : null,
@@ -177,11 +192,12 @@ export function PlayerFormDialog({
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <InputField
-            label="Points"
+            label="Rating / Points"
             value={points}
-            inputMode="numeric"
+            inputMode="decimal"
             onChange={(event) => setPoints(event.target.value)}
-            hint="Squad points this player contributes"
+            hint="Rating points (accepts decimals like 5.7 or whole numbers like 10)"
+            placeholder="e.g. 5.7 or 10"
           />
           <InputField
             label={`Base / reference price (${currencyLabel})`}
@@ -202,6 +218,32 @@ export function PlayerFormDialog({
                 ? `= ${currency(nextPrice, currencyLabel)} (${currencyLabel}${nextPrice.toLocaleString('en-IN')})`
                 : 'Whole numbers only (e.g. 1,00,00,000)'
             }
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <InputField
+            label="Nationality"
+            optional
+            value={nationality}
+            maxLength={80}
+            onChange={(event) => setNationality(event.target.value)}
+            placeholder="e.g. Indian or Overseas"
+          />
+          <InputField
+            label="Role"
+            optional
+            value={role}
+            maxLength={80}
+            onChange={(event) => setRole(event.target.value)}
+            placeholder="e.g. Batsman, Bowler, All-Rounder"
+          />
+          <InputField
+            label="Star Player"
+            optional
+            value={star}
+            maxLength={40}
+            onChange={(event) => setStar(event.target.value)}
+            placeholder="e.g. Yes / No"
           />
         </div>
         <InputField

@@ -22,7 +22,7 @@ export function isValidAmount(value: unknown, allowZero = false): value is numbe
 }
 
 export function isValidPoints(value: unknown): value is number {
-  return isSafeInteger(value) && value >= 0 && value <= MAX_POINTS
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= MAX_POINTS
 }
 
 /**
@@ -56,14 +56,28 @@ export function parseAmountInput(raw: unknown, allowZero = false): number | null
 }
 
 export function parsePointsInput(raw: unknown): number | null {
-  const value = parseIntegerInput(raw)
-  if (value === null) return null
-  return isValidPoints(value) ? value : null
+  if (typeof raw === 'number') {
+    if (!isValidPoints(raw)) return null
+    return Math.round((raw + Number.EPSILON) * 100) / 100
+  }
+  if (typeof raw !== 'string') return null
+
+  const cleaned = raw
+    .trim()
+    .replace(/[,\s\u00a0\u202f]/g, '')
+    .replace(/^[^\d+-]+/, '')
+
+  if (cleaned === '' || !/^\+?\d+(?:\.\d+)?$/.test(cleaned)) return null
+
+  const value = Number(cleaned.replace(/^\+/, ''))
+  if (!Number.isFinite(value)) return null
+  const rounded = Math.round((value + Number.EPSILON) * 100) / 100
+  return isValidPoints(rounded) ? rounded : null
 }
 
 export function formatNumber(value: number, locale = 'en-IN'): string {
   if (!Number.isFinite(value)) return '—'
-  return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value)
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }).format(value)
 }
 
 /** Formats an amount with ₹ in front and Indian units (crores, lakh, thousand). */
@@ -130,6 +144,24 @@ export function subtractInts(a: number, b: number): number {
   const result = a - b
   if (!Number.isSafeInteger(result)) {
     throw new RangeError('integer overflow')
+  }
+  return result
+}
+
+/** Adds points/ratings with 2 decimal precision (e.g. 5.7 + 8.2 = 13.9). */
+export function addPoints(a: number, b: number): number {
+  const result = Math.round((a + b + Number.EPSILON) * 100) / 100
+  if (!Number.isFinite(result)) {
+    throw new RangeError('points overflow')
+  }
+  return result
+}
+
+/** Subtracts points/ratings with 2 decimal precision. */
+export function subtractPoints(a: number, b: number): number {
+  const result = Math.round((a - b + Number.EPSILON) * 100) / 100
+  if (!Number.isFinite(result)) {
+    throw new RangeError('points overflow')
   }
   return result
 }

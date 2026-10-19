@@ -26,13 +26,13 @@ export function PlayerImportDialog({
   open,
   onClose,
   eventId,
-  currencyLabel,
+  currencyLabel: _currencyLabel,
   onImported,
 }: {
   open: boolean
   onClose: () => void
   eventId: string
-  currencyLabel: string
+  currencyLabel?: string
   onImported: (imported: number, skipped: string[]) => void
 }) {
   const toast = useToast()
@@ -188,11 +188,12 @@ export function PlayerImportDialog({
                 <thead className="sticky top-0 bg-surface-elevated text-ink-muted">
                   <tr className="text-left uppercase tracking-wider text-[11px] font-bold">
                     <th className="px-3 py-2.5">Line</th>
-                    <th className="px-3 py-2.5">Player ID</th>
                     <th className="px-3 py-2.5">Photo</th>
                     <th className="px-3 py-2.5">Name</th>
-                    <th className="px-3 py-2.5 text-right">Points</th>
-                    <th className="px-3 py-2.5 text-right">Base ({currencyLabel})</th>
+                    <th className="px-3 py-2.5">Nationality</th>
+                    <th className="px-3 py-2.5">Role</th>
+                    <th className="px-3 py-2.5">Star</th>
+                    <th className="px-3 py-2.5 text-right">Rating</th>
                     <th className="px-3 py-2.5">Problems</th>
                   </tr>
                 </thead>
@@ -200,13 +201,14 @@ export function PlayerImportDialog({
                   {previewRows.map((row) => (
                     <tr key={row.line} className={row.errors.length > 0 ? 'bg-rose-500/10' : undefined}>
                       <td className="px-3 py-2 tabular-nums text-ink-muted">{row.line}</td>
-                      <td className="px-3 py-2">{row.playerId ?? '—'}</td>
                       <td className="px-3 py-2">
                         <PlayerAvatar name={row.name || '?'} photoUrl={row.photoUrl} size="sm" />
                       </td>
                       <td className="px-3 py-2 font-bold text-white">{row.name || '—'}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-sky-400">{row.points ?? '—'}</td>
-                      <td className="px-3 py-2 text-right tabular-nums text-ink">{row.basePrice ?? '—'}</td>
+                      <td className="px-3 py-2 text-ink-muted">{row.nationality || '—'}</td>
+                      <td className="px-3 py-2 text-ink-muted">{row.role || '—'}</td>
+                      <td className="px-3 py-2 text-amber-400 font-semibold">{row.star || '—'}</td>
+                      <td className="px-3 py-2 text-right tabular-nums text-sky-400 font-bold">{row.rating ?? '—'}</td>
                       <td className="px-3 py-2 text-rose-400 font-medium">{row.errors.join(' ') || '—'}</td>
                     </tr>
                   ))}

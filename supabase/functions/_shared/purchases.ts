@@ -5,7 +5,7 @@ import {
   type PurchaseLite,
 } from './calculations.ts'
 import type { AppErrorCode } from './errors.ts'
-import { addInts, isValidAmount, subtractInts } from './money.ts'
+import { addInts, addPoints, isValidAmount, subtractInts, subtractPoints } from './money.ts'
 import { SERVER_TIMESTAMP, type PlannedWrite, type PlanResult, type ServerTimestampMarker } from './plan.ts'
 import { cleanOptionalText, collapseWhitespace, isValidRequestId } from './text.ts'
 import { MAX_REASON_LENGTH, MIN_REASON_LENGTH } from './constants.ts'
@@ -159,7 +159,7 @@ export function planPurchase(
 
   const totalSpent = addInts(team.totalSpent, command.finalPrice)
   const remainingPurse = subtractInts(team.startingPurse, totalSpent)
-  const totalPoints = addInts(team.totalPoints, player.points)
+  const totalPoints = addPoints(team.totalPoints, player.points)
   const playerCount = team.playerCount + 1
 
   const writes: PlannedWrite[] = [
@@ -318,7 +318,7 @@ export function planReversal(
   const now = SERVER_TIMESTAMP
   const totalSpent = subtractInts(team.totalSpent, purchase.finalPrice)
   const remainingPurse = addInts(team.remainingPurse, purchase.finalPrice)
-  const totalPoints = subtractInts(team.totalPoints, purchase.playerPointsSnapshot)
+  const totalPoints = subtractPoints(team.totalPoints, purchase.playerPointsSnapshot)
   const playerCount = team.playerCount - 1
 
   const writes: PlannedWrite[] = [

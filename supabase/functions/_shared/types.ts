@@ -28,6 +28,9 @@ export interface SpotlightPlayer {
   photoUrl: string | null
   spotlightId: string
   updatedAt?: number
+  nationality?: string | null
+  role?: string | null
+  star?: string | null
 }
 
 export interface SoldPlayerAnnouncement {
@@ -108,6 +111,10 @@ export interface PlayerDoc {
   photoUrl: string | null
   externalReference: string | null
   notes: string | null
+  nationality?: string | null
+  role?: string | null
+  star?: string | null
+  rating?: number | null
   createdAt: TimestampValue
   updatedAt: TimestampValue
 }

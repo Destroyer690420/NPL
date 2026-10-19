@@ -39,16 +39,21 @@ describe('validatePlayerInput', () => {
   it.each<[string, Parameters<typeof validatePlayerInput>[0]]>([
     ['empty name', { name: '   ', points: 10, basePrice: 100 }],
     ['negative points', { name: 'A', points: -1, basePrice: 100 }],
-    ['fractional points', { name: 'A', points: 1.5, basePrice: 100 }],
     ['negative base price', { name: 'A', points: 10, basePrice: -5 }],
     ['bad photo url', { name: 'A', points: 10, basePrice: 100, photoUrl: 'javascript:alert(1)' }],
   ])('rejects %s', (_label, input) => {
     expect(validatePlayerInput(input).ok).toBe(false)
   })
 
-  it('allows zero points and zero base price', () => {
-    const result = validatePlayerInput({ name: 'Bench Player', points: 0, basePrice: 0 })
-    expect(result.ok).toBe(true)
+  it('allows zero points, decimal ratings like 5.7, and zero base price', () => {
+    const result1 = validatePlayerInput({ name: 'Bench Player', points: 0, basePrice: 0 })
+    expect(result1.ok).toBe(true)
+
+    const result2 = validatePlayerInput({ name: 'Decimal Player', points: 5.7, basePrice: 0 })
+    expect(result2.ok).toBe(true)
+    if (result2.ok) {
+      expect(result2.value.points).toBe(5.7)
+    }
   })
 })
 

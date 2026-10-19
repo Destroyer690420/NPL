@@ -1,7 +1,7 @@
 import { MAX_NOTES_LENGTH, MAX_REASON_LENGTH, MAX_ROSTER_SIZE_LIMIT, MAX_URL_LENGTH } from './constants.ts'
 import type { ConsistencyReport } from './calculations.ts'
 import type { AppErrorCode } from './errors.ts'
-import { isValidAmount, isValidPoints } from './money.ts'
+import { addPoints, isValidAmount, isValidPoints, subtractPoints } from './money.ts'
 import { SERVER_TIMESTAMP, type PlannedWrite, type PlanResult } from './plan.ts'
 import { cleanOptionalText, cleanDisplayName, isValidHttpUrl, normalizeName } from './text.ts'
 import type { AuditAction, EventDoc, EventStatus, PlayerDoc, PlayerStatus, PurchaseDoc, TeamDoc } from './types.ts'
@@ -32,6 +32,9 @@ export interface PlayerInput {
   externalReference?: string | null
   notes?: string | null
   status?: PlayerStatus
+  nationality?: string | null
+  role?: string | null
+  star?: string | null
 }
 
 export interface CleanPlayerInput {
@@ -45,6 +48,9 @@ export interface CleanPlayerInput {
   externalReferenceLower: string | null
   notes: string | null
   status: Extract<PlayerStatus, 'available' | 'withdrawn'>
+  nationality: string | null
+  role: string | null
+  star: string | null
 }
 
 export type ValidationResult<T> =
@@ -68,6 +74,9 @@ export function validatePlayerInput(input: PlayerInput): ValidationResult<CleanP
   }
   const status = input.status === 'withdrawn' ? 'withdrawn' : 'available'
   const externalReference = cleanOptionalText(input.externalReference, 120)
+  const nationality = cleanOptionalText(input.nationality, 100)
+  const role = cleanOptionalText(input.role, 100)
+  const star = cleanOptionalText(input.star, 50)
 
   return {
     ok: true,
@@ -81,6 +90,9 @@ export function validatePlayerInput(input: PlayerInput): ValidationResult<CleanP
       externalReferenceLower: externalReference ? externalReference.toLowerCase() : null,
       notes: cleanOptionalText(input.notes, MAX_NOTES_LENGTH),
       status,
+      nationality,
+      role,
+      star,
     },
   }
 }
@@ -259,8 +271,8 @@ export function planUpdatePlayer(
         'The linked purchase could not be verified, so team totals were left untouched.',
       )
     }
-    pointsDelta = validated.value.points - player.points
-    const nextTotalPoints = team.totalPoints + pointsDelta
+    pointsDelta = subtractPoints(validated.value.points, player.points)
+    const nextTotalPoints = addPoints(team.totalPoints, pointsDelta)
     if (nextTotalPoints < 0) {
       return fail('team-state-inconsistent', 'The correction would make team points negative.')
     }

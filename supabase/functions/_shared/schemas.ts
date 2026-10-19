@@ -46,7 +46,6 @@ const positiveAmount = z
 
 const pointsValue = z
   .number()
-  .int('Must be a whole number.')
   .min(0, 'Must not be negative.')
   .max(MAX_POINTS)
 
@@ -121,11 +120,14 @@ export const createPlayerSchema = z.object({
   eventId: idSchema,
   name: eventNameSchema,
   points: pointsValue,
-  basePrice: nonNegativeAmount,
+  basePrice: nonNegativeAmount.optional().default(0),
   photoUrl: optionalUrl,
   externalReference: optionalText(120),
   notes: optionalText(MAX_NOTES_LENGTH),
   status: z.enum(['available', 'withdrawn']).optional(),
+  nationality: optionalText(100),
+  role: optionalText(100),
+  star: optionalText(50),
 })
 
 export const updatePlayerSchema = z.object({
@@ -138,6 +140,9 @@ export const updatePlayerSchema = z.object({
   externalReference: optionalText(120),
   notes: optionalText(MAX_NOTES_LENGTH),
   status: z.enum(['available', 'withdrawn']).optional(),
+  nationality: optionalText(100),
+  role: optionalText(100),
+  star: optionalText(50),
   reason: z.union([z.string().trim().max(MAX_REASON_LENGTH), z.null()]).optional(),
 })
 
@@ -148,9 +153,12 @@ export const importPlayersSchema = z.object({
       z.object({
         name: eventNameSchema,
         points: pointsValue,
-        basePrice: nonNegativeAmount,
+        basePrice: nonNegativeAmount.optional().default(0),
         photoUrl: optionalUrl,
         externalReference: optionalText(120),
+        nationality: optionalText(100),
+        role: optionalText(100),
+        star: optionalText(50),
       }),
     )
     .min(1, 'No players to import.')

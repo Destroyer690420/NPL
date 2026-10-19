@@ -1,4 +1,4 @@
-import { addInts, subtractInts } from './money.ts'
+import { addInts, addPoints, subtractInts } from './money.ts'
 import type { EventDoc, PlayerDoc, PurchaseDoc, TeamDoc, TeamSummary } from './types.ts'
 
 /**
@@ -22,7 +22,7 @@ export function computeTeamSummary(
   let playerCount = 0
   for (const purchase of activePurchases) {
     totalSpent = addInts(totalSpent, purchase.finalPrice)
-    totalPoints = addInts(totalPoints, purchase.points)
+    totalPoints = addPoints(totalPoints, purchase.points)
     playerCount += 1
   }
   return {
@@ -56,7 +56,7 @@ export function projectPurchase(
     startingPurse: team.startingPurse,
     totalSpent,
     remainingPurse: subtractInts(team.startingPurse, totalSpent),
-    totalPoints: addInts(team.totalPoints, points),
+    totalPoints: addPoints(team.totalPoints, points),
     playerCount: team.playerCount + 1,
   }
 }
@@ -66,7 +66,8 @@ export function isTeamConsistent(team: TeamDoc): boolean {
     Number.isSafeInteger(team.startingPurse) &&
     Number.isSafeInteger(team.totalSpent) &&
     Number.isSafeInteger(team.remainingPurse) &&
-    Number.isSafeInteger(team.totalPoints) &&
+    typeof team.totalPoints === 'number' &&
+    Number.isFinite(team.totalPoints) &&
     Number.isSafeInteger(team.playerCount) &&
     team.remainingPurse === team.startingPurse - team.totalSpent &&
     team.totalSpent >= 0 &&

@@ -1,6 +1,6 @@
 import type { Transaction } from '../lib/firestore-shim.ts'
 import { createPlayerSchema, importPlayersSchema, setPlayerStatusSchema, updatePlayerSchema } from '../../_shared/schemas.ts'
-import { planCreatePlayer, planImportPlayers, planSetPlayerStatus, planUpdatePlayer } from '../../_shared/mutations.ts'
+import { planCreatePlayer, planImportPlayers, planSetPlayerStatus, planUpdatePlayer, type PlayerInput } from '../../_shared/mutations.ts'
 import { adminCallable } from '../lib/callables.ts'
 import { fail, unwrapPlan } from '../lib/errors.ts'
 import { newId } from '../lib/pin.ts'
@@ -50,6 +50,9 @@ export const createPlayer = adminCallable({
             externalReference: input.externalReference ?? null,
             notes: input.notes ?? null,
             status: input.status,
+            nationality: input.nationality ?? null,
+            role: input.role ?? null,
+            star: input.star ?? null,
           },
           actorUid: context.uid,
           auditLogId,
@@ -97,6 +100,9 @@ export const updatePlayer = adminCallable({
             externalReference: input.externalReference,
             notes: input.notes,
             status: input.status,
+            nationality: input.nationality,
+            role: input.role,
+            star: input.star,
           },
           reason: input.reason ?? null,
           actorUid: context.uid,
@@ -154,13 +160,7 @@ export const importPlayers = adminCallable({
       const mode = input.mode ?? 'fail'
       const rows: Array<{
         playerId: string
-        input: {
-          name: string
-          points: number
-          basePrice: number
-          photoUrl?: string | null
-          externalReference: string | null
-        }
+        input: PlayerInput
       }> = []
       const skipped: string[] = []
 
@@ -182,6 +182,9 @@ export const importPlayers = adminCallable({
             basePrice: row.basePrice,
             photoUrl: row.photoUrl ?? null,
             externalReference: reference,
+            nationality: row.nationality ?? null,
+            role: row.role ?? null,
+            star: row.star ?? null,
           },
         })
       }

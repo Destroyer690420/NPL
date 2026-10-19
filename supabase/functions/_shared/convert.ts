@@ -70,6 +70,10 @@ function asInt(value: unknown, fallback = 0): number {
   return typeof value === 'number' && Number.isSafeInteger(value) ? value : fallback
 }
 
+function asNumber(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback
+}
+
 function asBool(value: unknown, fallback = false): boolean {
   return typeof value === 'boolean' ? value : fallback
 }
@@ -81,11 +85,14 @@ function toSpotlightPlayer(data: unknown): import('./types.ts').SpotlightPlayer 
   return {
     playerId: d.playerId,
     name: asString(d.name),
-    points: asInt(d.points),
+    points: asNumber(d.points),
     basePrice: asInt(d.basePrice),
     photoUrl: asNullableString(d.photoUrl),
     spotlightId: asString(d.spotlightId, d.playerId),
     updatedAt: typeof d.updatedAt === 'number' ? d.updatedAt : undefined,
+    nationality: asNullableString(d.nationality),
+    role: asNullableString(d.role),
+    star: d.star !== undefined && d.star !== null ? String(d.star).trim() || null : null,
   }
 }
 
@@ -122,7 +129,7 @@ export function toTeamDoc(id: string, data: Data): TeamDoc | null {
     startingPurse: asInt(data.startingPurse),
     remainingPurse: asInt(data.remainingPurse),
     totalSpent: asInt(data.totalSpent),
-    totalPoints: asInt(data.totalPoints),
+    totalPoints: asNumber(data.totalPoints),
     playerCount: asInt(data.playerCount),
     active: asBool(data.active, true),
     createdAt: toTimestampValue(data.createdAt),
@@ -137,7 +144,7 @@ export function toPlayerDoc(id: string, data: Data): PlayerDoc | null {
     id,
     name: asString(data.name),
     normalizedName: asString(data.normalizedName),
-    points: asInt(data.points),
+    points: asNumber(data.points),
     basePrice: asInt(data.basePrice),
     status,
     soldToTeamId: asNullableString(data.soldToTeamId),
@@ -145,6 +152,10 @@ export function toPlayerDoc(id: string, data: Data): PlayerDoc | null {
     photoUrl: asNullableString(data.photoUrl),
     externalReference: asNullableString(data.externalReference),
     notes: asNullableString(data.notes),
+    nationality: asNullableString(data.nationality),
+    role: asNullableString(data.role),
+    star: data.star !== undefined && data.star !== null ? String(data.star).trim() || null : null,
+    rating: asNumber(data.rating ?? data.points),
     createdAt: toTimestampValue(data.createdAt),
     updatedAt: toTimestampValue(data.updatedAt),
   }
@@ -156,7 +167,7 @@ export function toPurchaseDoc(id: string, data: Data): PurchaseDoc | null {
     id,
     playerId: asString(data.playerId),
     playerNameSnapshot: asString(data.playerNameSnapshot),
-    playerPointsSnapshot: asInt(data.playerPointsSnapshot),
+    playerPointsSnapshot: asNumber(data.playerPointsSnapshot),
     playerPhotoUrlSnapshot: asNullableString(data.playerPhotoUrlSnapshot),
     teamId: asString(data.teamId),
     teamNameSnapshot: asString(data.teamNameSnapshot),

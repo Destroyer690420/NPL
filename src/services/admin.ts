@@ -156,11 +156,14 @@ export interface CreatePlayerInput {
   eventId: string
   name: string
   points: number
-  basePrice: number
+  basePrice?: number
   photoUrl?: string | null
   externalReference?: string | null
   notes?: string | null
   status?: Extract<PlayerStatus, 'available' | 'withdrawn'>
+  nationality?: string | null
+  role?: string | null
+  star?: string | null
 }
 
 export interface CreatePlayerResult {
@@ -183,6 +186,9 @@ export interface UpdatePlayerInput {
   notes?: string | null
   status?: Extract<PlayerStatus, 'available' | 'withdrawn'>
   reason?: string | null
+  nationality?: string | null
+  role?: string | null
+  star?: string | null
 }
 
 export interface UpdatePlayerResult {
@@ -207,9 +213,12 @@ export function setPlayerStatus(
 export interface ImportPlayerRow {
   name: string
   points: number
-  basePrice: number
+  basePrice?: number
   photoUrl?: string | null
   externalReference?: string | null
+  nationality?: string | null
+  role?: string | null
+  star?: string | null
 }
 
 export interface ImportPlayersResult {

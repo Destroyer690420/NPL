@@ -80,6 +80,9 @@ export function PlayersPage() {
           eventId,
           playerId: editing.id,
           name: values.name,
+          nationality: values.nationality,
+          role: values.role,
+          star: values.star,
           points: values.points,
           basePrice: values.basePrice,
           photoUrl: values.photoUrl,
@@ -97,6 +100,9 @@ export function PlayersPage() {
         await createPlayer({
           eventId,
           name: values.name,
+          nationality: values.nationality,
+          role: values.role,
+          star: values.star,
           points: values.points,
           basePrice: values.basePrice,
           photoUrl: values.photoUrl,
@@ -192,7 +198,7 @@ export function PlayersPage() {
                 <thead>
                   <tr className="border-y border-line bg-surface-muted text-left text-xs font-medium uppercase tracking-wide text-muted">
                     <th className="px-4 py-2.5 sm:px-5">Player</th>
-                    <th className="px-3 py-2.5 text-right">Points</th>
+                    <th className="px-3 py-2.5 text-right">Rating</th>
                     <th className="px-3 py-2.5 text-right">Base price</th>
                     <th className="px-3 py-2.5">Status</th>
                     <th className="hidden px-3 py-2.5 md:table-cell">Owner</th>
@@ -216,7 +222,7 @@ export function PlayersPage() {
                           <div className="flex items-center gap-3">
                             <PlayerAvatar name={player.name} photoUrl={player.photoUrl} size="sm" />
                             <div className="min-w-0">
-                              <div className="flex items-center gap-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 <button
                                   type="button"
                                   onClick={() => openEdit(player)}
@@ -224,6 +230,11 @@ export function PlayersPage() {
                                 >
                                   {player.name}
                                 </button>
+                                {player.star ? (
+                                  <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-400 border border-amber-500/30">
+                                    ★ {player.star}
+                                  </span>
+                                ) : null}
                                 {isSpotlighted ? (
                                   <span className="inline-flex items-center gap-1 rounded-full bg-accent/25 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent border border-accent/40 animate-pulse">
                                     <Radio className="size-2.5" />
@@ -231,9 +242,13 @@ export function PlayersPage() {
                                   </span>
                                 ) : null}
                               </div>
-                              {player.externalReference ? (
-                                <span className="block text-[11px] text-muted">{player.externalReference}</span>
-                              ) : null}
+                              <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
+                                {player.role ? <span>{player.role}</span> : null}
+                                {player.role && player.nationality ? <span>•</span> : null}
+                                {player.nationality ? <span>{player.nationality}</span> : null}
+                                {(player.role || player.nationality) && player.externalReference ? <span>•</span> : null}
+                                {player.externalReference ? <span>{player.externalReference}</span> : null}
+                              </div>
                             </div>
                           </div>
                         </td>
