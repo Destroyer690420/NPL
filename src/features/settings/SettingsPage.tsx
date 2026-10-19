@@ -26,7 +26,16 @@ import { Dialog } from '@/components/ui/Dialog'
 import { CheckboxField, InputField, TextareaField } from '@/components/ui/Field'
 import { EventStatusPill, Pill } from '@/components/ui/StatusPill'
 import { useToast } from '@/components/ui/Toast'
-import { checkEventConsistency, createPlayer, resetEventData, setDefaultEvent, updateEvent } from '@/services/admin'
+import {
+  checkEventConsistency,
+  createPlayer,
+  deletePlayersData,
+  deleteTeamsData,
+  deleteTransactionsData,
+  resetEventData,
+  setDefaultEvent,
+  updateEvent,
+} from '@/services/admin'
 import { isCallError } from '@/services/callables'
 import { errorMessage } from '@/lib/errors'
 import { downloadCsv } from '@/lib/csv'
@@ -67,9 +76,10 @@ export function SettingsPage() {
   const [playerSubmitting, setPlayerSubmitting] = useState(false)
   const [playerFormError, setPlayerFormError] = useState<string | null>(null)
 
-  const [resetOpen, setResetOpen] = useState(false)
-  const [resetConfirmText, setResetConfirmText] = useState('')
-  const [resetBusy, setResetBusy] = useState(false)
+  type DeleteTarget = 'transactions' | 'players' | 'teams' | 'all'
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deleteBusy, setDeleteBusy] = useState(false)
 
   const loadedEventRef = useRef<string | null>(null)
   const isDirtyRef = useRef(false)
@@ -273,26 +283,49 @@ export function SettingsPage() {
     downloadCsv(`transactions-${new Date().toISOString().slice(0, 10)}.csv`, rows)
   }
 
-  async function handleResetEvent(): Promise<void> {
-    if (!eventId || resetConfirmText.trim() !== 'DELETE') return
+  async function handleDeleteData(): Promise<void> {
+    if (!eventId || deleteConfirmText.trim() !== 'DELETE' || !deleteTarget) return
     try {
-      setResetBusy(true)
-      await resetEventData(eventId)
-      toast.push({
-        kind: 'success',
-        message: 'All event data has been reset.',
-        detail: 'Teams, players, purchases, and audit logs have been wiped. Event status reset to draft.',
-      })
-      setResetOpen(false)
-      setResetConfirmText('')
+      setDeleteBusy(true)
+      if (deleteTarget === 'transactions') {
+        await deleteTransactionsData(eventId)
+        toast.push({
+          kind: 'success',
+          message: 'All transactions deleted.',
+          detail: 'All purchases cleared, team balances restored to starting purse, and players marked available.',
+        })
+      } else if (deleteTarget === 'players') {
+        await deletePlayersData(eventId)
+        toast.push({
+          kind: 'success',
+          message: 'All players deleted.',
+          detail: 'Player pool emptied and related transactions cleared.',
+        })
+      } else if (deleteTarget === 'teams') {
+        await deleteTeamsData(eventId)
+        toast.push({
+          kind: 'success',
+          message: 'All teams deleted.',
+          detail: 'Teams, PINs, and team sessions deleted. Existing players marked available.',
+        })
+      } else if (deleteTarget === 'all') {
+        await resetEventData(eventId)
+        toast.push({
+          kind: 'success',
+          message: 'All event data has been reset.',
+          detail: 'Teams, players, purchases, and audit logs have been wiped. Event status reset to draft.',
+        })
+      }
+      setDeleteTarget(null)
+      setDeleteConfirmText('')
     } catch (err) {
       toast.push({
         kind: 'error',
-        message: 'Failed to reset event data.',
+        message: 'Failed to delete data.',
         detail: errorMessage(err),
       })
     } finally {
-      setResetBusy(false)
+      setDeleteBusy(false)
     }
   }
 
@@ -638,21 +671,99 @@ export function SettingsPage() {
                 Danger zone
               </CardTitle>
             </CardHeader>
-            <CardBody className="space-y-3">
+            <CardBody className="space-y-4">
               <p className="text-xs text-muted">
-                Permanently delete all teams, players, transactions, and audit records for this event. This action is irreversible.
+                Irreversible deletion tools. You can delete specific datasets individually or wipe the entire event.
               </p>
-              <Button
-                variant="danger"
-                size="sm"
-                icon={<Trash2 className="size-3.5" aria-hidden />}
-                onClick={() => {
-                  setResetConfirmText('')
-                  setResetOpen(true)
-                }}
-              >
-                Delete all event data
-              </Button>
+
+              <div className="divide-y divide-danger/20 rounded-xl border border-danger/20 bg-surface/60 overflow-hidden">
+                {/* 1. Delete Team Data */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5">
+                  <div>
+                    <p className="text-xs font-bold text-white">Delete team data</p>
+                    <p className="text-[11px] text-muted">
+                      Permanently removes all {teams.data.length} teams, their PIN access codes, active sessions, and purchase records.
+                    </p>
+                  </div>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    disabled={teams.data.length === 0}
+                    icon={<Trash2 className="size-3.5" aria-hidden />}
+                    onClick={() => {
+                      setDeleteConfirmText('')
+                      setDeleteTarget('teams')
+                    }}
+                  >
+                    Delete teams
+                  </Button>
+                </div>
+
+                {/* 2. Delete Player Data */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5">
+                  <div>
+                    <p className="text-xs font-bold text-white">Delete player data</p>
+                    <p className="text-[11px] text-muted">
+                      Permanently removes all {players.data.length} players from the auction pool and clears transaction records.
+                    </p>
+                  </div>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    disabled={players.data.length === 0}
+                    icon={<Trash2 className="size-3.5" aria-hidden />}
+                    onClick={() => {
+                      setDeleteConfirmText('')
+                      setDeleteTarget('players')
+                    }}
+                  >
+                    Delete players
+                  </Button>
+                </div>
+
+                {/* 3. Delete Transaction Data */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5">
+                  <div>
+                    <p className="text-xs font-bold text-white">Delete transaction data</p>
+                    <p className="text-[11px] text-muted">
+                      Deletes all {purchases.data.length} purchase records, resets team purses back to starting balance, and marks players available.
+                    </p>
+                  </div>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    disabled={purchases.data.length === 0}
+                    icon={<Trash2 className="size-3.5" aria-hidden />}
+                    onClick={() => {
+                      setDeleteConfirmText('')
+                      setDeleteTarget('transactions')
+                    }}
+                  >
+                    Delete transactions
+                  </Button>
+                </div>
+
+                {/* 4. Delete Everything */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 bg-danger/10">
+                  <div>
+                    <p className="text-xs font-bold text-danger">Delete all event data</p>
+                    <p className="text-[11px] text-muted">
+                      Completely wipes all teams, players, purchases, and audit logs. Resets event status to draft.
+                    </p>
+                  </div>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    icon={<Trash2 className="size-3.5" aria-hidden />}
+                    onClick={() => {
+                      setDeleteConfirmText('')
+                      setDeleteTarget('all')
+                    }}
+                  >
+                    Delete everything
+                  </Button>
+                </div>
+              </div>
             </CardBody>
           </Card>
         </div>
@@ -717,23 +828,45 @@ export function SettingsPage() {
       />
 
       <Dialog
-        open={resetOpen}
-        onClose={() => !resetBusy && setResetOpen(false)}
-        title="Delete all event data"
-        description="This will permanently delete all teams, players, purchases, PINs, and audit logs for this event. There is no recovery."
+        open={deleteTarget !== null}
+        onClose={() => !deleteBusy && setDeleteTarget(null)}
+        title={
+          deleteTarget === 'teams'
+            ? 'Delete all team data'
+            : deleteTarget === 'players'
+              ? 'Delete all player data'
+              : deleteTarget === 'transactions'
+                ? 'Delete all transaction data'
+                : 'Delete all event data'
+        }
+        description={
+          deleteTarget === 'teams'
+            ? 'This will permanently remove all teams, their PIN access codes, active sessions, and associated purchase records.'
+            : deleteTarget === 'players'
+              ? 'This will permanently delete all players in the auction pool and remove any purchases made for them.'
+              : deleteTarget === 'transactions'
+                ? 'This will permanently delete all purchase records. Team budgets will be restored to their starting purse, and all players will be made available again.'
+                : 'This will permanently delete all teams, players, purchases, PINs, and audit logs for this event. There is no recovery.'
+        }
         size="sm"
         footer={
           <>
-            <Button variant="ghost" disabled={resetBusy} onClick={() => setResetOpen(false)}>
+            <Button variant="ghost" disabled={deleteBusy} onClick={() => setDeleteTarget(null)}>
               Cancel
             </Button>
             <Button
               variant="danger"
-              loading={resetBusy}
-              disabled={resetConfirmText.trim() !== 'DELETE'}
-              onClick={() => void handleResetEvent()}
+              loading={deleteBusy}
+              disabled={deleteConfirmText.trim() !== 'DELETE'}
+              onClick={() => void handleDeleteData()}
             >
-              Permanently delete everything
+              {deleteTarget === 'teams'
+                ? 'Delete teams'
+                : deleteTarget === 'players'
+                  ? 'Delete players'
+                  : deleteTarget === 'transactions'
+                    ? 'Delete transactions'
+                    : 'Delete everything'}
             </Button>
           </>
         }
@@ -742,15 +875,21 @@ export function SettingsPage() {
           <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-xs text-danger">
             <p className="font-semibold">Warning: This action cannot be undone.</p>
             <p className="mt-1 text-ink-soft">
-              All rosters, sold player records, team balances, and PINs will be permanently wiped. The event will be reset to draft state.
+              {deleteTarget === 'teams'
+                ? 'All team portfolios and login credentials will be permanently erased.'
+                : deleteTarget === 'players'
+                  ? 'All player records will be permanently removed from the database.'
+                  : deleteTarget === 'transactions'
+                    ? 'All purchase history will be wiped and auction rosters cleared.'
+                    : 'All rosters, sold player records, team balances, and PINs will be permanently wiped.'}
             </p>
           </div>
           <InputField
             label="Type DELETE to confirm"
             placeholder="DELETE"
-            value={resetConfirmText}
+            value={deleteConfirmText}
             autoFocus
-            onChange={(e) => setResetConfirmText(e.target.value)}
+            onChange={(e) => setDeleteConfirmText(e.target.value)}
             hint="Case-sensitive confirmation required."
           />
         </div>

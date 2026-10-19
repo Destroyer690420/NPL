@@ -313,6 +313,18 @@ export function resetEventData(eventId: string): Promise<ResetEventDataResult> {
   return callFunction('resetEventData', { eventId })
 }
 
+export function deleteTransactionsData(eventId: string): Promise<{ ok: boolean; deleted: string }> {
+  return callFunction('deleteTransactionsData', { eventId })
+}
+
+export function deletePlayersData(eventId: string): Promise<{ ok: boolean; deleted: string }> {
+  return callFunction('deletePlayersData', { eventId })
+}
+
+export function deleteTeamsData(eventId: string): Promise<{ ok: boolean; deleted: string }> {
+  return callFunction('deleteTeamsData', { eventId })
+}
+
 /* ---------------------------- spotlight player ---------------------------- */
 
 export interface SetSpotlightPlayerResult {

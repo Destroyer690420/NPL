@@ -199,6 +199,186 @@ export const resetEventData = adminCallable({
 })
 
 /**
+ * Deletes all purchases / transactions for the event.
+ * Reverts player statuses back to available, restores team remainingPurse to startingPurse,
+ * resets team totalSpent, totalPoints, and playerCount to 0, and clears spotlight/sold cards.
+ */
+export const deleteTransactionsData = adminCallable({
+  schema: eventIdSchema,
+  handler: async (input) => {
+    const { eventId } = input
+
+    // 1. Delete all purchases
+    await supabase.from('purchases').delete().eq('event_id', eventId)
+
+    // 2. Reset player statuses back to available
+    const { data: playerRows } = await supabase.from('players').select('id, data').eq('event_id', eventId)
+    if (playerRows && playerRows.length > 0) {
+      const updates = playerRows.map((r) => {
+        const d = (r.data ?? {}) as Record<string, unknown>
+        return {
+          id: r.id,
+          event_id: eventId,
+          data: {
+            ...d,
+            status: 'available',
+            soldToTeamId: null,
+            purchaseId: null,
+            updatedAt: new Date().toISOString(),
+          },
+        }
+      })
+      await supabase.from('players').upsert(updates)
+    }
+
+    // 3. Reset team balances and rosters
+    const { data: teamRows } = await supabase.from('teams').select('id, data').eq('event_id', eventId)
+    if (teamRows && teamRows.length > 0) {
+      const updates = teamRows.map((r) => {
+        const d = (r.data ?? {}) as Record<string, unknown>
+        const startingPurse = Number(d.startingPurse ?? 0)
+        return {
+          id: r.id,
+          event_id: eventId,
+          data: {
+            ...d,
+            remainingPurse: startingPurse,
+            totalSpent: 0,
+            totalPoints: 0,
+            playerCount: 0,
+            updatedAt: new Date().toISOString(),
+          },
+        }
+      })
+      await supabase.from('teams').upsert(updates)
+    }
+
+    // 4. Clear spotlight and last sold player announcements on event
+    const { data: eventRow } = await supabase.from('events').select('data').eq('id', eventId).maybeSingle()
+    if (eventRow) {
+      await supabase.from('events').update({
+        data: {
+          ...(eventRow.data as Record<string, unknown>),
+          spotlightPlayer: null,
+          lastSoldPlayer: null,
+          updatedAt: new Date().toISOString(),
+        },
+      }).eq('id', eventId)
+    }
+
+    return { ok: true, deleted: 'transactions' }
+  },
+})
+
+/**
+ * Deletes all players in the pool.
+ * Also clears transactions and resets team spent/roster count so teams stay consistent.
+ */
+export const deletePlayersData = adminCallable({
+  schema: eventIdSchema,
+  handler: async (input) => {
+    const { eventId } = input
+
+    // 1. Delete all purchases
+    await supabase.from('purchases').delete().eq('event_id', eventId)
+
+    // 2. Delete all players
+    await supabase.from('players').delete().eq('event_id', eventId)
+
+    // 3. Reset team balances and rosters to 0
+    const { data: teamRows } = await supabase.from('teams').select('id, data').eq('event_id', eventId)
+    if (teamRows && teamRows.length > 0) {
+      const updates = teamRows.map((r) => {
+        const d = (r.data ?? {}) as Record<string, unknown>
+        const startingPurse = Number(d.startingPurse ?? 0)
+        return {
+          id: r.id,
+          event_id: eventId,
+          data: {
+            ...d,
+            remainingPurse: startingPurse,
+            totalSpent: 0,
+            totalPoints: 0,
+            playerCount: 0,
+            updatedAt: new Date().toISOString(),
+          },
+        }
+      })
+      await supabase.from('teams').upsert(updates)
+    }
+
+    // 4. Clear spotlight and last sold player announcements on event
+    const { data: eventRow } = await supabase.from('events').select('data').eq('id', eventId).maybeSingle()
+    if (eventRow) {
+      await supabase.from('events').update({
+        data: {
+          ...(eventRow.data as Record<string, unknown>),
+          spotlightPlayer: null,
+          lastSoldPlayer: null,
+          updatedAt: new Date().toISOString(),
+        },
+      }).eq('id', eventId)
+    }
+
+    return { ok: true, deleted: 'players' }
+  },
+})
+
+/**
+ * Deletes all teams, credentials, and active sessions.
+ * Also deletes any purchases made by those teams and marks existing players as available.
+ */
+export const deleteTeamsData = adminCallable({
+  schema: eventIdSchema,
+  handler: async (input) => {
+    const { eventId } = input
+
+    // 1. Delete purchases made by teams
+    await supabase.from('purchases').delete().eq('event_id', eventId)
+
+    // 2. Delete team credentials, indexes, sessions, and teams
+    await supabase.from('team_secrets').delete().eq('event_id', eventId)
+    await supabase.from('pin_index').delete().eq('event_id', eventId)
+    await supabase.from('sessions').delete().eq('event_id', eventId)
+    await supabase.from('teams').delete().eq('event_id', eventId)
+
+    // 3. Mark existing players back to available
+    const { data: playerRows } = await supabase.from('players').select('id, data').eq('event_id', eventId)
+    if (playerRows && playerRows.length > 0) {
+      const updates = playerRows.map((r) => {
+        const d = (r.data ?? {}) as Record<string, unknown>
+        return {
+          id: r.id,
+          event_id: eventId,
+          data: {
+            ...d,
+            status: 'available',
+            soldToTeamId: null,
+            purchaseId: null,
+            updatedAt: new Date().toISOString(),
+          },
+        }
+      })
+      await supabase.from('players').upsert(updates)
+    }
+
+    // 4. Clear last sold player announcement on event
+    const { data: eventRow } = await supabase.from('events').select('data').eq('id', eventId).maybeSingle()
+    if (eventRow) {
+      await supabase.from('events').update({
+        data: {
+          ...(eventRow.data as Record<string, unknown>),
+          lastSoldPlayer: null,
+          updatedAt: new Date().toISOString(),
+        },
+      }).eq('id', eventId)
+    }
+
+    return { ok: true, deleted: 'teams' }
+  },
+})
+
+/**
  * Sets or clears the player currently on the auction block.
  * When a player is set, it updates spotlightPlayer on the event,
  * making it visible to everyone.
