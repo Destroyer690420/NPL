@@ -151,6 +151,8 @@ describe('toImportPayload', () => {
     expect(payload.map((row) => row.name)).toEqual(['Rohit', 'Jasprit'])
     expect(payload[0]!.points).toBe(8.5)
     expect(payload[1]!.points).toBe(9.8)
+    expect(payload[0]!.sortOrder).toBe(0)
+    expect(payload[1]!.sortOrder).toBe(1)
     expect(payload[0]!.nationality).toBe('India')
     expect(payload[0]!.role).toBe('Batter')
     expect(payload[0]!.star).toBe('Yes')
@@ -169,3 +171,21 @@ describe('buildErrorReportCsv', () => {
     expect(String(report[1]![7])).toContain('Rating')
   })
 })
+
+describe('getPlayerSortOrder', () => {
+  it('prefers explicit numeric sortOrder when present', async () => {
+    const { getPlayerSortOrder } = await import('@shared/convert')
+    expect(getPlayerSortOrder({ sortOrder: 5, externalReference: 'P010' })).toBe(5)
+    expect(getPlayerSortOrder({ sortOrder: 0 })).toBe(0)
+  })
+
+  it('parses player ID index when sortOrder is null or missing', async () => {
+    const { getPlayerSortOrder } = await import('@shared/convert')
+    expect(getPlayerSortOrder({ externalReference: 'P001' })).toBe(1)
+    expect(getPlayerSortOrder({ externalReference: 'P025' })).toBe(25)
+    expect(getPlayerSortOrder({ externalReference: '12' })).toBe(12)
+    expect(getPlayerSortOrder({ externalReference: 'custom-name' })).toBe(999999)
+    expect(getPlayerSortOrder({})).toBe(999999)
+  })
+})
+

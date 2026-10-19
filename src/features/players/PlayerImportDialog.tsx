@@ -99,7 +99,7 @@ export function PlayerImportDialog({
         onClose()
       }}
       title="Import players from CSV"
-      description="Columns: player_id, name, points, base_price, image_url. The whole file is validated before anything is written."
+      description="Columns: name, nationality, role, star, rating, image_url. The whole file is validated before anything is written."
       size="lg"
       footer={
         <>
@@ -174,10 +174,10 @@ export function PlayerImportDialog({
             ) : null}
 
             <SelectField
-              label="If a player ID already exists in this event"
+              label="If a player already exists in this event"
               value={duplicateMode}
               onChange={(event) => setDuplicateMode(event.target.value as 'fail' | 'skip-duplicates')}
-              hint="Existing players are matched by player_id, case-insensitively."
+              hint="Existing players are matched by name or ID, case-insensitively."
             >
               <option value="fail">Stop and report (safe default)</option>
               <option value="skip-duplicates">Skip existing players</option>

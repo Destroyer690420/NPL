@@ -35,6 +35,7 @@ export interface PlayerInput {
   nationality?: string | null
   role?: string | null
   star?: string | null
+  sortOrder?: number | null
 }
 
 export interface CleanPlayerInput {
@@ -51,6 +52,7 @@ export interface CleanPlayerInput {
   nationality: string | null
   role: string | null
   star: string | null
+  sortOrder: number | null
 }
 
 export type ValidationResult<T> =
@@ -77,6 +79,9 @@ export function validatePlayerInput(input: PlayerInput): ValidationResult<CleanP
   const nationality = cleanOptionalText(input.nationality, 100)
   const role = cleanOptionalText(input.role, 100)
   const star = cleanOptionalText(input.star, 50)
+  const sortOrder = typeof input.sortOrder === 'number' && Number.isFinite(input.sortOrder)
+    ? input.sortOrder
+    : null
 
   return {
     ok: true,
@@ -93,6 +98,7 @@ export function validatePlayerInput(input: PlayerInput): ValidationResult<CleanP
       nationality,
       role,
       star,
+      sortOrder,
     },
   }
 }

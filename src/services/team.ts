@@ -51,6 +51,8 @@ export interface TeamLineupPlayer {
   id: string
   name: string
   photoUrl: string | null
+  sortOrder?: number | null
+  externalReference?: string | null
 }
 
 /** Fetches available players in the auction pool (only name and pfp; no price or points). */

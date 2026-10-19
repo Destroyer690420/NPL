@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { verifyTeamPinSchema } from '../../_shared/schemas.ts'
-import { timestampToMillis } from '../../_shared/convert.ts'
+import { getPlayerSortOrder, timestampToMillis } from '../../_shared/convert.ts'
 import {
   PIN_ATTEMPT_LIMIT,
   PIN_ATTEMPT_WINDOW_MINUTES,
@@ -270,11 +270,18 @@ export const getTeamLineup = teamCallable({
           id: r.id,
           name: typeof data.name === 'string' ? data.name : '',
           photoUrl: typeof data.photoUrl === 'string' ? data.photoUrl : null,
+          sortOrder: typeof data.sortOrder === 'number' && Number.isFinite(data.sortOrder) ? data.sortOrder : null,
+          externalReference: typeof data.externalReference === 'string' ? data.externalReference : null,
           status,
         }
       })
       .filter((p) => p.status === 'available')
-      .sort((a, b) => a.name.localeCompare(b.name))
+      .sort((a, b) => {
+        const orderA = getPlayerSortOrder(a)
+        const orderB = getPlayerSortOrder(b)
+        if (orderA !== orderB) return orderA - orderB
+        return a.name.localeCompare(b.name)
+      })
   },
 })
 

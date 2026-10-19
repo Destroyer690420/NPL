@@ -53,6 +53,7 @@ export const createPlayer = adminCallable({
             nationality: input.nationality ?? null,
             role: input.role ?? null,
             star: input.star ?? null,
+            sortOrder: input.sortOrder ?? null,
           },
           actorUid: context.uid,
           auditLogId,
@@ -185,6 +186,7 @@ export const importPlayers = adminCallable({
             nationality: row.nationality ?? null,
             role: row.role ?? null,
             star: row.star ?? null,
+            sortOrder: typeof row.sortOrder === 'number' ? row.sortOrder : existingPlayers.length + rows.length,
           },
         })
       }

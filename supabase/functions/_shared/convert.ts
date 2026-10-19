@@ -156,9 +156,32 @@ export function toPlayerDoc(id: string, data: Data): PlayerDoc | null {
     role: asNullableString(data.role),
     star: data.star !== undefined && data.star !== null ? String(data.star).trim() || null : null,
     rating: asNumber(data.rating ?? data.points),
+    sortOrder: typeof data.sortOrder === 'number' && Number.isFinite(data.sortOrder) ? data.sortOrder : null,
     createdAt: toTimestampValue(data.createdAt),
     updatedAt: toTimestampValue(data.updatedAt),
   }
+}
+
+/**
+ * Resolves the deterministic sort order of a player:
+ * 1. An explicit numeric `sortOrder` (set during CSV import or creation).
+ * 2. If missing, attempts to parse integer indices from `externalReference` (e.g. "P001", "P12", "15").
+ * 3. Falls back to 999999 so unindexed players appear at the end.
+ */
+export function getPlayerSortOrder(p: {
+  sortOrder?: number | null
+  externalReference?: string | null
+}): number {
+  if (typeof p.sortOrder === 'number' && Number.isFinite(p.sortOrder)) {
+    return p.sortOrder
+  }
+  if (p.externalReference) {
+    const m = /^P?(\d+)$/i.exec(p.externalReference.trim())
+    if (m) {
+      return parseInt(m[1], 10)
+    }
+  }
+  return 999999
 }
 
 export function toPurchaseDoc(id: string, data: Data): PurchaseDoc | null {

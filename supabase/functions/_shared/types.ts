@@ -115,6 +115,7 @@ export interface PlayerDoc {
   role?: string | null
   star?: string | null
   rating?: number | null
+  sortOrder?: number | null
   createdAt: TimestampValue
   updatedAt: TimestampValue
 }

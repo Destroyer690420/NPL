@@ -128,6 +128,7 @@ export const createPlayerSchema = z.object({
   nationality: optionalText(100),
   role: optionalText(100),
   star: optionalText(50),
+  sortOrder: z.number().int().min(0).optional(),
 })
 
 export const updatePlayerSchema = z.object({
@@ -143,6 +144,7 @@ export const updatePlayerSchema = z.object({
   nationality: optionalText(100),
   role: optionalText(100),
   star: optionalText(50),
+  sortOrder: z.number().int().min(0).optional(),
   reason: z.union([z.string().trim().max(MAX_REASON_LENGTH), z.null()]).optional(),
 })
 
@@ -159,6 +161,7 @@ export const importPlayersSchema = z.object({
         nationality: optionalText(100),
         role: optionalText(100),
         star: optionalText(50),
+        sortOrder: z.number().int().min(0).optional(),
       }),
     )
     .min(1, 'No players to import.')

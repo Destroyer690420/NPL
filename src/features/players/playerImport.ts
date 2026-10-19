@@ -244,6 +244,7 @@ export interface ImportPayloadRow {
   nationality?: string | null
   role?: string | null
   star?: string | null
+  sortOrder?: number | null
 }
 
 export function toImportPayload(
@@ -253,7 +254,7 @@ export function toImportPayload(
   return rows
     .filter((row) => row.errors.length === 0 || mode === 'valid-only')
     .filter((row) => row.errors.length === 0 && row.rating !== null)
-    .map((row) => ({
+    .map((row, index) => ({
       name: row.name,
       points: row.rating as number,
       basePrice: row.basePrice ?? 0,
@@ -262,6 +263,7 @@ export function toImportPayload(
       nationality: row.nationality,
       role: row.role,
       star: row.star,
+      sortOrder: index,
     }))
 }
 

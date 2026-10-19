@@ -17,11 +17,12 @@ import { useToast } from '@/components/ui/Toast'
 import { createPlayer, setPlayerStatus, updatePlayer } from '@/services/admin'
 import { isCallError } from '@/services/callables'
 import { errorMessage } from '@/lib/errors'
+import { getPlayerSortOrder } from '@shared/convert'
 import { cn } from '@/lib/cn'
 import { PlayerFormDialog, type PlayerFormValues } from './PlayerFormDialog'
 
 type StatusFilter = 'all' | PlayerStatus
-type SortKey = 'name' | 'points' | 'basePrice' | 'status'
+type SortKey = 'order' | 'name' | 'points' | 'basePrice' | 'status'
 
 const PAGE_SIZE = 100
 
@@ -35,7 +36,7 @@ export function PlayersPage() {
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [sortKey, setSortKey] = useState<SortKey>('name')
+  const [sortKey, setSortKey] = useState<SortKey>('order')
   const [visible, setVisible] = useState(PAGE_SIZE)
 
   const [formOpen, setFormOpen] = useState(false)
@@ -55,7 +56,15 @@ export function PlayersPage() {
       return normalizeName(`${player.name} ${player.externalReference ?? ''}`).includes(term)
     })
     const sorted = [...list]
-    if (sortKey === 'name') sorted.sort((a, b) => a.name.localeCompare(b.name))
+    if (sortKey === 'order') {
+      sorted.sort((a, b) => {
+        const orderA = getPlayerSortOrder(a)
+        const orderB = getPlayerSortOrder(b)
+        if (orderA !== orderB) return orderA - orderB
+        return a.name.localeCompare(b.name)
+      })
+    }
+    else if (sortKey === 'name') sorted.sort((a, b) => a.name.localeCompare(b.name))
     else if (sortKey === 'points') sorted.sort((a, b) => b.points - a.points)
     else if (sortKey === 'basePrice') sorted.sort((a, b) => b.basePrice - a.basePrice)
     else sorted.sort((a, b) => a.status.localeCompare(b.status) || a.name.localeCompare(b.name))
@@ -165,8 +174,9 @@ export function PlayersPage() {
             <option value="withdrawn">Withdrawn</option>
           </SelectField>
           <SelectField label="Sort by" value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}>
-            <option value="name">Name</option>
-            <option value="points">Points (high → low)</option>
+            <option value="order">CSV list order (Default)</option>
+            <option value="name">Name (A → Z)</option>
+            <option value="points">Rating (high → low)</option>
             <option value="basePrice">Base price (high → low)</option>
             <option value="status">Status</option>
           </SelectField>

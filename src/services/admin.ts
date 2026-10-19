@@ -164,6 +164,7 @@ export interface CreatePlayerInput {
   nationality?: string | null
   role?: string | null
   star?: string | null
+  sortOrder?: number | null
 }
 
 export interface CreatePlayerResult {
@@ -189,6 +190,7 @@ export interface UpdatePlayerInput {
   nationality?: string | null
   role?: string | null
   star?: string | null
+  sortOrder?: number | null
 }
 
 export interface UpdatePlayerResult {
@@ -219,6 +221,7 @@ export interface ImportPlayerRow {
   nationality?: string | null
   role?: string | null
   star?: string | null
+  sortOrder?: number | null
 }
 
 export interface ImportPlayersResult {

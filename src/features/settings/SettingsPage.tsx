@@ -240,11 +240,14 @@ export function SettingsPage() {
   function exportCsv(): void {
     const teamNames = new Map(teams.data.map((team) => [team.id, team.name]))
     const rows: Array<Array<string | number>> = [
-      ['player_id', 'name', 'points', 'base_price', 'status', 'sold_to'],
+      ['name', 'nationality', 'role', 'star', 'rating', 'image_url', 'base_price', 'status', 'sold_to'],
       ...players.data.map((player) => [
-        player.externalReference ?? '',
         player.name,
+        player.nationality ?? '',
+        player.role ?? '',
+        player.star ?? '',
         player.points,
+        player.photoUrl ?? '',
         player.basePrice,
         player.status,
         player.soldToTeamId ? (teamNames.get(player.soldToTeamId) ?? player.soldToTeamId) : '',

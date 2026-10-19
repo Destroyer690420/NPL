@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
+  getPlayerSortOrder,
   toAuditLogDoc,
   toEventDoc,
   toPlayerDoc,
@@ -88,9 +89,15 @@ function mapTeams(value: unknown): TeamDoc[] {
 }
 
 function mapPlayers(value: unknown): PlayerDoc[] {
-  return rowsOf(value)
+  const list = rowsOf(value)
     .map((row) => (rowId(row) ? toPlayerDoc(rowId(row), row) : null))
     .filter((player): player is PlayerDoc => player !== null)
+  return list.sort((a, b) => {
+    const orderA = getPlayerSortOrder(a)
+    const orderB = getPlayerSortOrder(b)
+    if (orderA !== orderB) return orderA - orderB
+    return a.name.localeCompare(b.name)
+  })
 }
 
 function mapPurchases(value: unknown): PurchaseDoc[] {
