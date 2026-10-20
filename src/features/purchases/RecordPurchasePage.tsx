@@ -4,13 +4,16 @@ import {
   AlertTriangle,
   BadgeCheck,
   Ban,
+  Plane,
   Radio,
   Search,
   ShoppingCart,
+  Star,
 } from 'lucide-react'
 import type { AdminOutletContext } from '@/app/outlet'
 import { useAdminEvent } from '@/app/AdminEventProvider'
 import { usePlayers, usePurchases, useTeams } from '@/data/hooks'
+import { isOverseas, isStar } from '@/lib/playerBadges'
 import { isCallError } from '@/services/callables'
 import { recordPurchase, clearSpotlightPlayer, setSpotlightPlayer } from '@/services/admin'
 import { fetchPurchaseFromServer } from '@/services/reads'
@@ -271,7 +274,7 @@ export function RecordPurchasePage() {
         keywords: `${player.externalReference ?? ''} ${player.notes ?? ''}`,
         disabled: player.status !== 'available',
         disabledReason: player.status === 'sold' ? 'Sold' : player.status === 'withdrawn' ? 'Withdrawn' : undefined,
-        sublabel: `${formatPoints(player.points)} pts · base ${currency(player.basePrice, currencyLabel)}${player.externalReference ? ` · ${player.externalReference}` : ''}`,
+        sublabel: `${formatPoints(player.points)} pts · base ${currency(player.basePrice, currencyLabel)}${isOverseas(player.nationality) ? ' · ✈ Overseas' : ''}${isStar(player.star) ? ' · ★ Star' : ''}${player.externalReference ? ` · ${player.externalReference}` : ''}`,
       })),
     [players.data, currencyLabel],
   )
@@ -307,9 +310,21 @@ export function RecordPurchasePage() {
               size="sm"
             />
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-accent">Live in Auction:</span>
                 <span className="text-sm font-bold text-white">{event.spotlightPlayer.name}</span>
+                {isStar(event.spotlightPlayer.star) ? (
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-300 border border-amber-500/30">
+                    <Star className="size-2.5 fill-amber-300" />
+                    Star
+                  </span>
+                ) : null}
+                {isOverseas(event.spotlightPlayer.nationality) ? (
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/20 px-2 py-0.5 text-[10px] font-bold text-sky-300 border border-sky-500/30">
+                    <Plane className="size-2.5" />
+                    Overseas
+                  </span>
+                ) : null}
               </div>
               <p className="text-xs text-ink-muted">
                 Base price: <span className="font-semibold text-accent">{currency(event.spotlightPlayer.basePrice, currencyLabel)}</span> · Points: <span className="font-semibold text-sky-400">{formatPoints(event.spotlightPlayer.points)}</span>

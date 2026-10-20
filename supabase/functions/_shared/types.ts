@@ -44,6 +44,8 @@ export interface SoldPlayerAnnouncement {
   teamName: string
   finalPrice?: number
   soldAt?: string
+  nationality?: string | null
+  star?: string | null
 }
 
 export interface AuctionCountdown {

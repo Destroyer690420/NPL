@@ -67,6 +67,8 @@ export const recordPurchase = adminCallable({
             teamName: result.teamName,
             finalPrice: result.finalPrice,
             soldAt: new Date().toISOString(),
+            nationality: player?.nationality ?? null,
+            star: player?.star ?? null,
           },
         },
         { merge: true },

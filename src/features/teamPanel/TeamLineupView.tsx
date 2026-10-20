@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
-import { Search, Users, X } from 'lucide-react'
+import { Plane, Search, Star, Users, X } from 'lucide-react'
 import type { TeamLineupPlayer } from '@/services/team'
+import { isOverseas, isStar } from '@/lib/playerBadges'
 import { LoadingBlock } from '@/components/ui/Feedback'
 
 export interface TeamLineupViewProps {
@@ -21,6 +22,8 @@ function LineupPlayerCard({ player }: { player: TeamLineupPlayer }) {
 
   const cleanName = player.name.trim()
   const initials = (cleanName.slice(0, 2) || '??').toUpperCase()
+  const overseas = isOverseas(player.nationality)
+  const starPlayer = isStar(player.star)
 
   function handleImageError() {
     if (!hasTriedLocal && imgSrc) {
@@ -53,6 +56,32 @@ function LineupPlayerCard({ player }: { player: TeamLineupPlayer }) {
             </span>
           </div>
         )}
+
+        {/* Floating Badges: Star Player & Overseas Plane */}
+        {(starPlayer || overseas) && (
+          <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between p-1.5 pointer-events-none">
+            <div>
+              {starPlayer ? (
+                <span
+                  title="Star Player"
+                  className="inline-flex size-6 items-center justify-center rounded-full border border-amber-400/80 bg-black/80 shadow-[0_0_10px_rgba(245,175,25,0.6)] backdrop-blur-sm"
+                >
+                  <Star className="size-3.5 fill-amber-300 text-amber-300 drop-shadow-[0_0_4px_rgba(253,224,71,0.8)]" />
+                </span>
+              ) : null}
+            </div>
+            <div>
+              {overseas ? (
+                <span
+                  title={player.nationality ? `Overseas (${player.nationality})` : 'Overseas Player'}
+                  className="inline-flex size-6 items-center justify-center rounded-full border border-sky-400/80 bg-black/80 shadow-[0_0_10px_rgba(56,189,248,0.6)] backdrop-blur-sm"
+                >
+                  <Plane className="size-3.5 text-sky-300 drop-shadow-[0_0_4px_rgba(56,189,248,0.8)]" />
+                </span>
+              ) : null}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Player Name */}
@@ -63,10 +92,30 @@ function LineupPlayerCard({ player }: { player: TeamLineupPlayer }) {
         >
           {cleanName}
         </p>
-        <span className="mt-1.5 inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
-          <span className="size-1.5 rounded-full bg-emerald-400" />
-          Available
-        </span>
+        <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+            <span className="size-1.5 rounded-full bg-emerald-400" />
+            Available
+          </span>
+          {overseas ? (
+            <span
+              title={player.nationality ? `Overseas (${player.nationality})` : 'Overseas Player'}
+              className="inline-flex items-center gap-0.5 rounded-full border border-sky-500/30 bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold text-sky-300"
+            >
+              <Plane className="size-2.5" />
+              OS
+            </span>
+          ) : null}
+          {starPlayer ? (
+            <span
+              title="Star Player"
+              className="inline-flex items-center gap-0.5 rounded-full border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300"
+            >
+              <Star className="size-2.5 fill-amber-300" />
+              Star
+            </span>
+          ) : null}
+        </div>
       </div>
     </div>
   )

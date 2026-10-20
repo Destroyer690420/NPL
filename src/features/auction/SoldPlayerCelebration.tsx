@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { Plane, Star } from 'lucide-react'
 import type { SoldPlayerAnnouncement } from '@shared/types'
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar'
 import { currency, points as formatPoints } from '@/lib/format'
+import { isOverseas, isStar } from '@/lib/playerBadges'
 
 export interface SoldPlayerCelebrationProps {
   currencyLabel?: string
@@ -135,6 +137,24 @@ export function SoldPlayerCelebration({ currencyLabel = '₹' }: SoldPlayerCeleb
         <h3 className="relative mt-3.5 text-2xl sm:text-3xl font-black uppercase tracking-tight text-white font-['Outfit',sans-serif] drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)]">
           {announcement.playerName}
         </h3>
+
+        {/* Badges: Star Player & Overseas */}
+        {(isStar(announcement.star) || isOverseas(announcement.nationality)) ? (
+          <div className="relative mt-2 flex items-center justify-center gap-2">
+            {isStar(announcement.star) ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/80 bg-amber-500/15 px-3 py-0.5 text-xs font-black uppercase tracking-wider text-amber-300 shadow-[0_0_12px_rgba(245,175,25,0.4)]">
+                <Star className="size-3 fill-amber-300 text-amber-300" />
+                Star Player
+              </span>
+            ) : null}
+            {isOverseas(announcement.nationality) ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-sky-400/80 bg-sky-500/15 px-3 py-0.5 text-xs font-black uppercase tracking-wider text-sky-300 shadow-[0_0_12px_rgba(56,189,248,0.4)]">
+                <Plane className="size-3 text-sky-300" />
+                Overseas
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
         {/* SOLD TO Divider */}
         <div className="relative my-2 flex items-center justify-center gap-3">

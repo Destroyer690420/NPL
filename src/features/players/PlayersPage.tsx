@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { Link, useOutletContext } from 'react-router'
-import { Ban, PlusCircle, Radio, Search, UserRound } from 'lucide-react'
+import { Ban, Plane, PlusCircle, Radio, Search, Star, UserRound } from 'lucide-react'
 import type { AdminOutletContext } from '@/app/outlet'
 import { useAdminEvent } from '@/app/AdminEventProvider'
 import { usePlayers, useTeams } from '@/data/hooks'
 import { currency, points as formatPoints } from '@/lib/format'
+import { isOverseas, isStar } from '@/lib/playerBadges'
 import { normalizeName } from '@shared/text'
 import type { PlayerDoc, PlayerStatus } from '@shared/types'
 import { Button } from '@/components/ui/Button'
@@ -240,9 +241,19 @@ export function PlayersPage() {
                                 >
                                   {player.name}
                                 </button>
-                                {player.star ? (
-                                  <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-400 border border-amber-500/30">
-                                    ★ {player.star}
+                                {isStar(player.star) ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-400 border border-amber-500/30">
+                                    <Star className="size-2.5 fill-amber-400 text-amber-400" />
+                                    Star
+                                  </span>
+                                ) : null}
+                                {isOverseas(player.nationality) ? (
+                                  <span
+                                    title={player.nationality ? `Overseas (${player.nationality})` : 'Overseas'}
+                                    className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold text-sky-400 border border-sky-500/30"
+                                  >
+                                    <Plane className="size-2.5" />
+                                    {player.nationality || 'Overseas'}
                                   </span>
                                 ) : null}
                                 {isSpotlighted ? (
@@ -254,8 +265,8 @@ export function PlayersPage() {
                               </div>
                               <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
                                 {player.role ? <span>{player.role}</span> : null}
-                                {player.role && player.nationality ? <span>•</span> : null}
-                                {player.nationality ? <span>{player.nationality}</span> : null}
+                                {player.role && player.nationality && !isOverseas(player.nationality) ? <span>•</span> : null}
+                                {player.nationality && !isOverseas(player.nationality) ? <span>{player.nationality}</span> : null}
                                 {(player.role || player.nationality) && player.externalReference ? <span>•</span> : null}
                                 {player.externalReference ? <span>{player.externalReference}</span> : null}
                               </div>

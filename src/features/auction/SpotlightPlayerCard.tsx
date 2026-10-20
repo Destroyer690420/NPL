@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { ShoppingCart, X, XCircle } from 'lucide-react'
+import { Plane, ShoppingCart, Star, X, XCircle } from 'lucide-react'
 import type { SpotlightPlayer } from '@shared/types'
 import { currency, points as formatPoints } from '@/lib/format'
+import { isOverseas, isStar } from '@/lib/playerBadges'
 import { Button } from '@/components/ui/Button'
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar'
+import { getSupabase } from '@/lib/supabase'
 
 export interface SpotlightPlayerCardProps {
   spotlight: SpotlightPlayer | null
@@ -65,6 +67,7 @@ export function SpotlightPlayerCard({
   const [imgSrc, setImgSrc] = useState<string | null>(() => resolvePhotoSrc(spotlight?.photoUrl))
   const [hasTriedLocal, setHasTriedLocal] = useState(false)
   const [imgFailed, setImgFailed] = useState(false)
+  const [playerMeta, setPlayerMeta] = useState<{ nationality?: string | null; star?: string | null }>({})
 
   // Reset local dismissal and image state whenever a new player is spotlighted
   useEffect(() => {
@@ -76,9 +79,51 @@ export function SpotlightPlayerCard({
     setImgFailed(false)
   }, [spotlight?.spotlightId, spotlight?.photoUrl])
 
+  // Fallback: If nationality/star are not pre-populated on the spotlight object, fetch from players table
+  useEffect(() => {
+    if (!spotlight?.playerId) {
+      setPlayerMeta({})
+      return
+    }
+    if (spotlight.nationality !== undefined || spotlight.star !== undefined) {
+      setPlayerMeta({ nationality: spotlight.nationality, star: spotlight.star })
+      return
+    }
+    const targetPlayerId = spotlight.playerId
+    const sb = getSupabase()
+    if (!sb) return
+    let active = true
+    async function loadMeta() {
+      try {
+        const { data } = await sb!
+          .from('players')
+          .select('data')
+          .eq('id', targetPlayerId)
+          .maybeSingle()
+        if (!active || !data) return
+        const p = (data.data ?? {}) as Record<string, unknown>
+        setPlayerMeta({
+          nationality: typeof p.nationality === 'string' ? p.nationality : null,
+          star: typeof p.star === 'string' ? p.star : null,
+        })
+      } catch {
+        // Ignore fallback errors
+      }
+    }
+    void loadMeta()
+    return () => {
+      active = false
+    }
+  }, [spotlight?.playerId, spotlight?.nationality, spotlight?.star])
+
   if (!spotlight) return null
 
   const isDismissed = Boolean(hideModal || (dismissedId && dismissedId === spotlight.spotlightId))
+
+  const effectiveNationality = spotlight.nationality ?? playerMeta.nationality
+  const effectiveStar = spotlight.star ?? playerMeta.star
+  const overseas = isOverseas(effectiveNationality)
+  const starPlayer = isStar(effectiveStar)
 
   async function handleAdminClose() {
     if (!onAdminClose) return
@@ -124,7 +169,19 @@ export function SpotlightPlayerCard({
           />
         </div>
         <div className="text-left">
-          <p className="text-xs font-bold text-white leading-tight font-['Outfit',sans-serif]">{spotlight.name}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs font-bold text-white leading-tight font-['Outfit',sans-serif]">{spotlight.name}</p>
+            {starPlayer && (
+              <span title="Star Player" className="inline-flex">
+                <Star className="size-3 fill-amber-400 text-amber-400 shrink-0" aria-label="Star Player" />
+              </span>
+            )}
+            {overseas && (
+              <span title="Overseas Player" className="inline-flex">
+                <Plane className="size-3 text-sky-400 shrink-0" aria-label="Overseas Player" />
+              </span>
+            )}
+          </div>
           <p className="text-[11px] font-semibold text-[#f6ad37] leading-tight mt-0.5">
             {currency(spotlight.basePrice, currencyLabel)} · <span className="text-[#00d2ff]">{formatPoints(spotlight.points)} pts</span>
           </p>
@@ -362,6 +419,39 @@ export function SpotlightPlayerCard({
 
           {/* Bottom Vignette for seamless blend */}
           <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[#090d18] via-[#090d18]/50 to-transparent pointer-events-none z-10" />
+
+          {/* Floating Aesthetic Broadcast Badges: Star Player & Overseas Plane */}
+          {(starPlayer || overseas) && (
+            <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between p-3 pointer-events-none">
+              <div>
+                {starPlayer ? (
+                  <div
+                    title="Star Player"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/80 bg-gradient-to-r from-[#1c1508]/92 via-[#2b1f0a]/92 to-[#1c1508]/92 px-3 py-1 shadow-[0_0_18px_rgba(245,175,25,0.45),inset_0_1px_1px_rgba(255,255,255,0.25)] backdrop-blur-md pointer-events-auto transition-all duration-200 hover:scale-105 select-none"
+                  >
+                    <Star className="size-3.5 fill-amber-300 text-amber-300 drop-shadow-[0_0_6px_rgba(253,224,71,0.9)] shrink-0 animate-pulse" aria-hidden="true" />
+                    <span className="font-['Outfit',sans-serif] text-[11px] sm:text-xs font-black uppercase tracking-wider text-amber-200">
+                      Star Player
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+
+              <div>
+                {overseas ? (
+                  <div
+                    title={effectiveNationality ? `Overseas (${effectiveNationality})` : 'Overseas Player'}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/70 bg-gradient-to-r from-[#07152b]/92 via-[#0b2142]/92 to-[#07152b]/92 px-3 py-1 shadow-[0_0_18px_rgba(56,189,248,0.4),inset_0_1px_1px_rgba(255,255,255,0.25)] backdrop-blur-md pointer-events-auto transition-all duration-200 hover:scale-105 select-none"
+                  >
+                    <Plane className="size-3.5 text-sky-300 drop-shadow-[0_0_6px_rgba(56,189,248,0.9)] shrink-0" aria-hidden="true" />
+                    <span className="font-['Outfit',sans-serif] text-[11px] sm:text-xs font-black uppercase tracking-wider text-sky-200">
+                      Overseas
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Player Name in 3D Metallic Gold Championship Display Typography */}

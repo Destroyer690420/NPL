@@ -272,6 +272,9 @@ export const getTeamLineup = teamCallable({
           photoUrl: typeof data.photoUrl === 'string' ? data.photoUrl : null,
           sortOrder: typeof data.sortOrder === 'number' && Number.isFinite(data.sortOrder) ? data.sortOrder : null,
           externalReference: typeof data.externalReference === 'string' ? data.externalReference : null,
+          nationality: typeof data.nationality === 'string' ? data.nationality : null,
+          role: typeof data.role === 'string' ? data.role : null,
+          star: typeof data.star === 'string' ? data.star : null,
           status,
         }
       })

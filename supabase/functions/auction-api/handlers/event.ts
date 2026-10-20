@@ -412,6 +412,9 @@ export const setSpotlightPlayer = adminCallable({
         photoUrl: typeof pData.photoUrl === 'string' ? pData.photoUrl : null,
         spotlightId: `${playerId}-${Date.now()}`,
         updatedAt: Date.now(),
+        nationality: typeof pData.nationality === 'string' ? pData.nationality : null,
+        role: typeof pData.role === 'string' ? pData.role : null,
+        star: typeof pData.star === 'string' ? pData.star : null,
       }
     }
 
