@@ -99,6 +99,22 @@ describe('planPurchase - success path', () => {
       playerCount: 3,
     })
   })
+
+  it('accepts players with decimal points (ratings)', () => {
+    const result = planPurchase(
+      command(),
+      baseState({
+        player: makePlayer('p1', { points: 9.2 }),
+        team: makeTeam('t1', { startingPurse: 100_000, totalSpent: 0, playerCount: 1, totalPoints: 7.5 }),
+      }),
+    )
+    expect(result.ok).toBe(true)
+    if (!result.ok) return
+    expect(result.writes.find((w) => w.kind === 'team')?.data).toMatchObject({
+      totalPoints: 16.7,
+    })
+    expect(result.result.teamSummary.totalPoints).toBe(16.7)
+  })
 })
 
 describe('planPurchase - rejections never produce writes', () => {

@@ -106,7 +106,7 @@ export function computeEventTotals(
     confirmedPurchaseCount: confirmed.length,
     reversedPurchaseCount: purchases.length - confirmed.length,
     totalSpent: confirmed.reduce((sum, p) => addInts(sum, p.finalPrice), 0),
-    totalPoints: confirmed.reduce((sum, p) => addInts(sum, p.playerPointsSnapshot), 0),
+    totalPoints: confirmed.reduce((sum, p) => addPoints(sum, p.playerPointsSnapshot), 0),
   }
 }
 

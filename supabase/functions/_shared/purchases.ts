@@ -5,7 +5,7 @@ import {
   type PurchaseLite,
 } from './calculations.ts'
 import type { AppErrorCode } from './errors.ts'
-import { addInts, addPoints, isValidAmount, subtractInts, subtractPoints } from './money.ts'
+import { addInts, addPoints, isValidAmount, isValidPoints, subtractInts, subtractPoints } from './money.ts'
 import { SERVER_TIMESTAMP, type PlannedWrite, type PlanResult, type ServerTimestampMarker } from './plan.ts'
 import { cleanOptionalText, collapseWhitespace, isValidRequestId } from './text.ts'
 import { MAX_REASON_LENGTH, MIN_REASON_LENGTH } from './constants.ts'
@@ -116,7 +116,7 @@ export function planPurchase(
   if (player.purchaseId !== null || player.soldToTeamId !== null) {
     return fail('player-status-conflict', undefined, { playerId: player.id })
   }
-  if (!Number.isSafeInteger(player.points) || player.points < 0) {
+  if (!isValidPoints(player.points)) {
     return fail('player-invalid', 'Player points are invalid.', { playerId: player.id })
   }
 
