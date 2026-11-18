@@ -1,0 +1,72 @@
+name: Supabase keep-alive
+
+# Supabase pauses Free plan projects after ~7 days without database activity.
+# This workflow calls the project's public read API on a schedule so that never
+# happens. Consecutive runs are at most 5 days apart:
+#   1st, 6th, 11th, 16th, 21st, 26th, 31st of each month (06:00 UTC).
+#
+# The values below are public identifiers (the same ones shipped in the web
+# bundle), not secrets. They can be overridden with repository secrets
+# SUPABASE_URL / SUPABASE_ANON_KEY without editing this file.
+
+on:
+  schedule:
+    - cron: '0 6 */5 * *'
+  # Manual trigger from the Actions tab (or `gh workflow run supabase-keepalive.yml`).
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-keep-alive
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    name: Ping Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL || 'https://zskbpnzhxntnupdnlecp.supabase.co' }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY || 'sb_publishable_PFfkH49JK6-5sNlPvMlfzw_56MUw-PU' }}
+    steps:
+      - name: Call the public config read API
+        run: |
+          set -euo pipefail
+
+          echo "Pinging $SUPABASE_URL"
+          status=$(curl \
+            --silent --show-error \
+            --retry 3 --retry-delay 10 --retry-all-errors \
+            --max-time 30 \
+            --output response.json \
+            --write-out '%{http_code}' \
+            --request POST "$SUPABASE_URL/rest/v1/rpc/api_public_config" \
+            --header "apikey: $SUPABASE_ANON_KEY" \
+            --header "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            --header "Content-Type: application/json" \
+            --data '{}')
+
+          echo "HTTP status: $status"
+          echo "Response: $(cat response.json 2>/dev/null || echo '<empty>')"
+
+          {
+            echo "### Supabase keep-alive"
+            echo ""
+            echo "- Endpoint: \`POST $SUPABASE_URL/rest/v1/rpc/api_public_config\`"
+            echo "- HTTP status: \`$status\`"
+            echo "- Response:"
+            echo '```json'
+            cat response.json 2>/dev/null || echo '<empty>'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+            echo "::error::Supabase answered with HTTP $status. The project may be paused or the key is wrong."
+            exit 1
+          fi
+
+          if [ ! -s response.json ] || [ "$(tr -d '[:space:]' < response.json)" = "null" ]; then
+            echo "::warning::The project answered but returned no config. Check that the SQL migrations have run."
+          fi

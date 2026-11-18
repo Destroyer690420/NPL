@@ -23,6 +23,7 @@ There is deliberately **no** bidding UI, projector, leaderboard or cross-team vi
 - [Supabase setup (one time)](#supabase-setup-one-time)
 - [Admin login (interim shared credentials)](#admin-login-interim-shared-credentials)
 - [Hosting the app](#hosting-the-app)
+- [Keeping the free project awake](#keeping-the-free-project-awake)
 - [Demo data](#demo-data)
 - [CSV import format](#csv-import-format)
 - [Scripts reference](#scripts-reference)
@@ -154,6 +155,38 @@ these require a card: **Netlify**, **Vercel**, **Cloudflare Pages**, **GitHub Pa
 4. In the Hosting settings, set the build command `npm run build` and publish directory `dist`.
 
 The team panel URL to share is simply `https://<your-site>/team`.
+
+## Keeping the free project awake
+
+Supabase pauses Free plan projects that go ~7 days without database activity. Paused is
+recoverable (dashboard → **Resume project**, data intact, up to 1 year), but the event would be
+offline until then.
+
+This repo ships a scheduled GitHub Actions workflow, `.github/workflows/supabase-keepalive.yml`,
+that calls the project's public read API (`POST /rest/v1/rpc/api_public_config`) at 06:00 UTC on
+the 1st, 6th, 11th, 16th, 21st, 26th and 31st of each month — never more than 5 days apart — so the
+project always counts as active. Each run also writes its HTTP status to the Actions run summary.
+
+- **Activate it:** the workflow only runs from the default branch, so it must be pushed to `main`.
+- **Run it on demand:** Actions tab → *Supabase keep-alive* → **Run workflow**.
+- **Change the target:** set repository secrets `SUPABASE_URL` / `SUPABASE_ANON_KEY`; otherwise the
+  public URL and publishable key (the same values the web bundle ships) are used.
+- **If it ever fails:** the job exits non-zero on any non-2xx response, so a paused or broken
+  project shows up as a failed run (and GitHub emails you if Actions notifications are on).
+
+Two honest caveats:
+
+1. GitHub automatically disables scheduled workflows in a **public** repository after 60 days with
+   no repository activity (commits, PRs, etc.). Running the workflow does not count as activity.
+   If the repo will sit idle for months, either re-enable it from the Actions tab, or use a free
+   external pinger instead (for example [cron-job.org](https://cron-job.org) or UptimeRobot, both
+   free and card-free) pointing a `POST` at
+   `https://<ref>.supabase.co/rest/v1/rpc/api_public_config` with headers
+   `apikey: <publishable key>`, `Authorization: Bearer <publishable key>`,
+   `Content-Type: application/json` and body `{}`.
+2. Scheduled cron runs can be delayed by GitHub during peak load. The 5-day cadence leaves two
+   days of headroom inside the 7-day window, but for an event you cannot afford to miss, restoring
+   the project from the dashboard is always the fallback.
 
 ## Demo data
 
