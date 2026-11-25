@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router'
 import {
-  Gavel,
   Maximize2,
   Minimize2,
   Music,
@@ -258,7 +257,9 @@ function CircularPlayerShowcase({
   }
 
   const initials = (name.trim().slice(0, 2) || '??').toUpperCase()
-  const repeated = `${ringText}  ${ringText}  ${ringText}  `
+  const unit = `${ringText} • `
+  const repeatCount = Math.max(4, Math.round(66 / unit.length))
+  const repeated = `${Array.from({ length: repeatCount }, () => ringText).join(' • ')} •`
   const fillCircle =
     circleTone === 'crimson'
       ? 'radial-gradient(circle at 50% 45%, #7c1820 0%, #4b0d12 72%, #2c0609 100%)'
@@ -266,7 +267,7 @@ function CircularPlayerShowcase({
 
   const boxStyle =
     size === 'sold'
-      ? { width: 'clamp(300px, 51vh, 540px)', height: 'clamp(300px, 51vh, 540px)' }
+      ? { width: 'clamp(330px, 57vh, 600px)', height: 'clamp(330px, 57vh, 600px)' }
       : { width: 'clamp(340px, 64vh, 660px)', height: 'clamp(340px, 64vh, 660px)' }
 
   return (
@@ -280,7 +281,7 @@ function CircularPlayerShowcase({
         style={{ background: fillCircle }}
       />
 
-      {/* Rotating yellow circular text ring (STAR PLAYER STAR PLAYER ...) */}
+      {/* Rotating yellow circular text ring filling the full 360° circle */}
       <div
         className="pointer-events-none absolute inset-0 animate-presenter-spin-slow will-change-transform"
         style={{ transformOrigin: 'center center' }}
@@ -298,12 +299,17 @@ function CircularPlayerShowcase({
           </defs>
           <text
             fill="#fde047"
-            fontSize="24"
+            fontSize="21"
             fontWeight="900"
-            letterSpacing="3.8"
+            letterSpacing="2.4"
             fontFamily="Outfit, sans-serif"
           >
-            <textPath href={`#ringTextPath-${circleTone}`} startOffset="0%">
+            <textPath
+              href={`#ringTextPath-${circleTone}`}
+              startOffset="0%"
+              textLength="1075"
+              lengthAdjust="spacing"
+            >
               {repeated}
             </textPath>
           </text>
@@ -362,33 +368,6 @@ const CELEBRATION_SPARKS = [
   { left: '29%', bottom: '4%', size: 5, delay: '2.6s', dur: '4.7s', color: '#f5af19' },
   { left: '68%', bottom: '5%', size: 6, delay: '2.9s', dur: '5.2s', color: '#fde047' },
 ] as const
-
-/** Championship angled SOLD stamp badge with gavel icon & pulsing golden glow. */
-function SoldChampionshipStamp({ tilt = 'left' }: { tilt?: 'left' | 'right' }) {
-  return (
-    <div className="animate-presenter-stamp-slam">
-      <div
-        className={`flex flex-col items-center justify-center rounded-2xl border-2 border-[#f5eb3b]/90 bg-gradient-to-b from-[#2b0509]/90 via-[#160205]/95 to-black/95 px-7 py-3.5 backdrop-blur-md animate-presenter-sold-glow ${
-          tilt === 'left' ? '-rotate-6' : 'rotate-6'
-        }`}
-      >
-        <div className="flex items-center gap-2.5">
-          <Gavel className="size-7 lg:size-8 text-[#f5eb3b]" aria-hidden="true" />
-          <span className="font-['Outfit',sans-serif] text-4xl lg:text-5xl font-black uppercase tracking-[0.14em] text-white drop-shadow-[0_2px_12px_rgba(245,235,59,0.45)]">
-            SOLD
-          </span>
-        </div>
-        <div className="mt-1 flex items-center gap-1.5">
-          <span className="h-[1px] w-5 bg-[#f5eb3b]/60" />
-          <span className="font-['Outfit',sans-serif] text-[10px] font-extrabold uppercase tracking-[0.28em] text-[#f5eb3b]">
-            HAMMER DOWN
-          </span>
-          <span className="h-[1px] w-5 bg-[#f5eb3b]/60" />
-        </div>
-      </div>
-    </div>
-  )
-}
 
 /**
  * Full-screen widescreen Presenter stage matching the reference broadcast design.
@@ -781,44 +760,24 @@ export function PresenterPage() {
           </header>
 
           {/* Centerpiece SOLD Stage */}
-          <div className="relative z-10 my-auto flex flex-col items-center justify-center py-2">
-            <div className="relative flex w-full max-w-6xl items-center justify-center gap-6 sm:gap-12 lg:gap-16">
-              {/* Left Championship SOLD Stamp */}
-              <div className="hidden md:block">
-                <SoldChampionshipStamp tilt="left" />
-              </div>
-
-              {/* Center Circular Player Showcase with Breathing Stadium Halo */}
-              <div className="relative flex items-center justify-center">
-                <div
-                  className="pointer-events-none absolute -inset-10 rounded-full blur-3xl animate-presenter-halo-breathe"
-                  style={{
-                    background:
-                      'radial-gradient(circle, rgba(245, 235, 59, 0.28) 0%, rgba(220, 38, 38, 0.32) 48%, transparent 72%)',
-                  }}
-                />
-                <CircularPlayerShowcase
-                  name={soldData.playerName}
-                  photoUrl={soldData.playerPhotoUrl}
-                  rating={soldPoints}
-                  ringText={soldStar ? 'STAR PLAYER' : 'SOLD OUT'}
-                  circleTone="crimson"
-                  size="sold"
-                />
-              </div>
-
-              {/* Right Championship SOLD Stamp */}
-              <div className="hidden md:block">
-                <SoldChampionshipStamp tilt="right" />
-              </div>
-            </div>
-
-            {/* Mobile SOLD stamp */}
-            <div className="mt-3 flex md:hidden items-center gap-2 rounded-full border border-[#f5eb3b]/80 bg-black/75 px-5 py-1.5 animate-presenter-stamp-slam">
-              <Gavel className="size-4 text-[#f5eb3b]" />
-              <span className="font-['Outfit',sans-serif] text-xl font-black uppercase tracking-widest text-white">
-                SOLD
-              </span>
+          <div className="relative z-10 my-auto flex flex-col items-center justify-center py-1">
+            {/* Center Circular Player Showcase with Breathing Stadium Halo */}
+            <div className="relative flex items-center justify-center">
+              <div
+                className="pointer-events-none absolute -inset-12 rounded-full blur-3xl animate-presenter-halo-breathe"
+                style={{
+                  background:
+                    'radial-gradient(circle, rgba(245, 235, 59, 0.3) 0%, rgba(220, 38, 38, 0.36) 48%, transparent 72%)',
+                }}
+              />
+              <CircularPlayerShowcase
+                name={soldData.playerName}
+                photoUrl={soldData.playerPhotoUrl}
+                rating={soldPoints}
+                ringText="SOLD OUT"
+                circleTone="crimson"
+                size="sold"
+              />
             </div>
 
             {/* Slanted Yellow Player Name Bar with Shimmer Sweep */}
