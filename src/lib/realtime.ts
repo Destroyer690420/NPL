@@ -18,6 +18,29 @@ export interface BreakBroadcastPayload {
 }
 
 const activeChannels = new Map<string, RealtimeChannel>()
+const emittedSoldKeys = new Set<string>()
+
+function soldEventKey(payload: SoldPlayerAnnouncement): string {
+  if (payload.purchaseId) return `id:${payload.purchaseId}`
+  return `meta:${payload.playerId ?? payload.playerName}:${payload.teamName}:${payload.soldAt ?? ''}`
+}
+
+function tryMarkSoldEmitted(payload: SoldPlayerAnnouncement, fromPostgresFallback = false): boolean {
+  if (fromPostgresFallback && payload.soldAt) {
+    const soldMs = Date.parse(payload.soldAt)
+    if (Number.isFinite(soldMs) && Date.now() - soldMs > 20_000) {
+      return false
+    }
+  }
+  const key = soldEventKey(payload)
+  if (emittedSoldKeys.has(key)) return false
+  emittedSoldKeys.add(key)
+  if (emittedSoldKeys.size > 100) {
+    const first = emittedSoldKeys.values().next().value
+    if (first) emittedSoldKeys.delete(first)
+  }
+  return true
+}
 
 /**
  * Initializes and joins the Supabase Realtime channel for an auction event.
@@ -58,7 +81,7 @@ export function subscribeToAuctionRealtime(eventId: string): () => void {
       'broadcast',
       { event: 'player_sold' },
       ({ payload }: { payload: SoldPlayerAnnouncement }) => {
-        if (!payload?.eventId || payload.eventId === eventId) {
+        if ((!payload?.eventId || payload.eventId === eventId) && tryMarkSoldEmitted(payload)) {
           window.dispatchEvent(
             new CustomEvent('auction:player_sold', {
               detail: payload,
@@ -130,7 +153,7 @@ export function subscribeToAuctionRealtime(eventId: string): () => void {
               }),
             )
           }
-          if (newData.lastSoldPlayer) {
+          if (newData.lastSoldPlayer && tryMarkSoldEmitted(newData.lastSoldPlayer, true)) {
             window.dispatchEvent(
               new CustomEvent('auction:player_sold', {
                 detail: newData.lastSoldPlayer,
@@ -221,11 +244,13 @@ export function broadcastPlayerSold(eventId: string, announcement: SoldPlayerAnn
   }
 
   // 1. Dispatch locally so the sender window updates synchronously in 0ms
-  window.dispatchEvent(
-    new CustomEvent('auction:player_sold', {
-      detail: payload,
-    }),
-  )
+  if (tryMarkSoldEmitted(payload)) {
+    window.dispatchEvent(
+      new CustomEvent('auction:player_sold', {
+        detail: payload,
+      }),
+    )
+  }
 
   // 2. Broadcast via Supabase Realtime WebSocket to all connected devices
   try {

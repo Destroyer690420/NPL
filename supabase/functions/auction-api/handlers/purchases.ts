@@ -68,6 +68,7 @@ export const recordPurchase = adminCallable({
             finalPrice: result.finalPrice,
             soldAt: new Date().toISOString(),
             nationality: player?.nationality ?? null,
+            role: player?.role ?? null,
             star: player?.star ?? null,
           },
         },

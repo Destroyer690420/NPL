@@ -45,6 +45,7 @@ export interface SoldPlayerAnnouncement {
   finalPrice?: number
   soldAt?: string
   nationality?: string | null
+  role?: string | null
   star?: string | null
 }
 

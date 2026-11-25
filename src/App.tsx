@@ -7,6 +7,7 @@ import { LoadingBlock } from '@/components/ui/Feedback'
 import { AdminLoginPage } from '@/features/auth/AdminLoginPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { PlayersPage } from '@/features/players/PlayersPage'
+import { PresenterPage } from '@/features/auction/PresenterPage'
 import { RecordPurchasePage } from '@/features/purchases/RecordPurchasePage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { TeamDetailPage } from '@/features/teams/TeamDetailPage'
@@ -56,6 +57,7 @@ export function App() {
           <Route path="teams" element={<TeamsPage />} />
           <Route path="teams/:teamId" element={<TeamDetailPage />} />
           <Route path="transactions" element={<TransactionsPage />} />
+          <Route path="presenter" element={<PresenterPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Route>

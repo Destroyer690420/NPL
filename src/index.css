@@ -174,6 +174,135 @@
   animation: progress-drain 4000ms linear forwards;
 }
 
+/* Presenter broadcast animations */
+@keyframes presenter-spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes presenter-player-in {
+  0% {
+    opacity: 0;
+    transform: translateY(36px) scale(0.88);
+    filter: brightness(1.35);
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.02);
+    filter: brightness(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: brightness(1);
+  }
+}
+
+@keyframes presenter-banner-in {
+  0% {
+    opacity: 0;
+    transform: translateX(70px) scaleX(0.92);
+  }
+  70% {
+    opacity: 1;
+    transform: translateX(-4px) scaleX(1.01);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scaleX(1);
+  }
+}
+
+@keyframes presenter-rise-in {
+  0% {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes presenter-seal-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.3) rotate(-25deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.12) rotate(6deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes presenter-stamp-slam {
+  0% {
+    opacity: 0;
+    transform: scale(2.2) rotate(-12deg);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(0.92) rotate(2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes presenter-progress-sold {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+.animate-presenter-spin-slow {
+  animation: presenter-spin-slow 22s linear infinite;
+}
+
+.animate-presenter-player-in {
+  animation: presenter-player-in 650ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-presenter-banner-in {
+  animation: presenter-banner-in 550ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+}
+
+.animate-presenter-rise-1 {
+  animation: presenter-rise-in 500ms cubic-bezier(0.16, 1, 0.3, 1) 240ms both;
+}
+
+.animate-presenter-rise-2 {
+  animation: presenter-rise-in 500ms cubic-bezier(0.16, 1, 0.3, 1) 340ms both;
+}
+
+.animate-presenter-rise-3 {
+  animation: presenter-rise-in 500ms cubic-bezier(0.16, 1, 0.3, 1) 440ms both;
+}
+
+.animate-presenter-seal-pop {
+  animation: presenter-seal-pop 650ms cubic-bezier(0.16, 1, 0.3, 1) 280ms both;
+}
+
+.animate-presenter-stamp-slam {
+  animation: presenter-stamp-slam 550ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+}
+
+.animate-presenter-progress-sold {
+  animation: presenter-progress-sold 5500ms linear forwards;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -220,6 +220,9 @@ export function RecordPurchasePage() {
         finalPrice: attempt.price,
         requestId: attempt.requestId,
         playerPhotoUrl: selectedPlayer?.photoUrl ?? null,
+        nationality: selectedPlayer?.nationality ?? null,
+        role: selectedPlayer?.role ?? null,
+        star: selectedPlayer?.star ?? null,
       })
       resetForm()
       setConfirmOpen(false)

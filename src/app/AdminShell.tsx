@@ -2,6 +2,7 @@ import { NavLink, Navigate, Outlet, useLocation, useNavigate } from 'react-route
 import { useEffect, type ReactNode } from 'react'
 import {
   LayoutDashboard,
+  MonitorPlay,
   ReceiptText,
   Settings,
   ShoppingCart,
@@ -23,6 +24,7 @@ import { cn } from '@/lib/cn'
 const NAV_ITEMS = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/purchases/new', label: 'Record purchase', icon: ShoppingCart },
+  { to: '/admin/presenter', label: 'Presenter', icon: MonitorPlay },
   { to: '/admin/players', label: 'Players', icon: Users },
   { to: '/admin/teams', label: 'Teams', icon: UsersRound },
   { to: '/admin/transactions', label: 'Transactions', icon: ReceiptText },
@@ -46,6 +48,7 @@ export function AdminShell() {
   const { event, eventId, loading, error, fromCache } = useAdminEvent()
 
   const isRecordPurchase = location.pathname.startsWith('/admin/purchases')
+  const isPresenter = location.pathname.startsWith('/admin/presenter')
 
   useEffect(() => {
     if (!eventId) return
@@ -80,15 +83,17 @@ export function AdminShell() {
 
   return (
     <div className="min-h-dvh">
-      <SpotlightPlayerCard
-        spotlight={event.spotlightPlayer ?? null}
-        currencyLabel={event.currencyLabel}
-        isAdmin={true}
-        hideModal={isRecordPurchase}
-        onAdminClose={handleAdminCloseSpotlight}
-        onSell={handleSellSpotlight}
-      />
-      {!isRecordPurchase ? (
+      {!isPresenter ? (
+        <SpotlightPlayerCard
+          spotlight={event.spotlightPlayer ?? null}
+          currencyLabel={event.currencyLabel}
+          isAdmin={true}
+          hideModal={isRecordPurchase}
+          onAdminClose={handleAdminCloseSpotlight}
+          onSell={handleSellSpotlight}
+        />
+      ) : null}
+      {!isRecordPurchase && !isPresenter ? (
         <SoldPlayerCelebration currencyLabel={event.currencyLabel} />
       ) : null}
       <header className="sticky top-0 z-40 border-b border-line bg-surface/90 backdrop-blur-md">
@@ -122,7 +127,7 @@ export function AdminShell() {
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className={isPresenter ? 'w-full px-3 py-3 sm:px-4 sm:py-4' : 'mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8'}>
         <Outlet context={{ eventId }} />
       </main>
     </div>
