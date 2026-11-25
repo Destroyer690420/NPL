@@ -127,7 +127,7 @@ export function AdminShell() {
           </div>
         </div>
       </header>
-      <main className={isPresenter ? 'w-full px-3 py-3 sm:px-4 sm:py-4' : 'mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8'}>
+      <main className={isPresenter ? 'w-full p-0' : 'mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8'}>
         <Outlet context={{ eventId }} />
       </main>
     </div>

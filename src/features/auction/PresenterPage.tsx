@@ -162,15 +162,6 @@ function BroadcastBackdrop({ variant }: { variant: 'gold' | 'crimson' }) {
         fill={`url(#arcRim-${variant})`}
         opacity="0.55"
       />
-
-      {/* Subtle dark vignette on top/bottom edges */}
-      <rect
-        width="1920"
-        height="1080"
-        fill="none"
-        stroke="rgba(0,0,0,0.4)"
-        strokeWidth="40"
-      />
     </svg>
   )
 }
@@ -211,10 +202,10 @@ function RatingStarburst({ rating, label = 'RATING' }: { rating: number; label?:
         />
       </svg>
       <div className="relative z-10 flex flex-col items-center justify-center text-center leading-none">
-        <span className="font-['Outfit',sans-serif] text-4xl sm:text-5xl lg:text-[54px] font-black tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
+        <span className="font-['Outfit',sans-serif] text-5xl sm:text-6xl lg:text-7xl xl:text-[78px] font-black tracking-tight text-white drop-shadow-[0_3px_10px_rgba(0,0,0,0.5)]">
           {formatPoints(rating)}
         </span>
-        <span className="mt-1 font-['Outfit',sans-serif] text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.12em] text-white/95">
+        <span className="mt-1 font-['Outfit',sans-serif] text-xs sm:text-sm lg:text-[15px] font-black uppercase tracking-[0.14em] text-white/95">
           {label}
         </span>
       </div>
@@ -568,28 +559,28 @@ export function PresenterPage() {
     void unlockAuctionAudio().then(() => {
       const sample = spotlight
         ? {
-            purchaseId: `test-${Date.now()}`,
-            playerId: spotlight.playerId,
-            playerName: spotlight.name,
-            playerPhotoUrl: spotlight.photoUrl,
-            playerPoints: spotlight.points,
-            teamName: teams.data[0]?.name ?? 'TEAM 01',
-            finalPrice: Math.max(spotlight.basePrice * 2, 20000000),
-            nationality: spotlightMeta.nationality ?? spotlight.nationality,
-            role: spotlightMeta.role ?? spotlight.role,
-            star: spotlightMeta.star ?? spotlight.star,
-          }
+          purchaseId: `test-${Date.now()}`,
+          playerId: spotlight.playerId,
+          playerName: spotlight.name,
+          playerPhotoUrl: spotlight.photoUrl,
+          playerPoints: spotlight.points,
+          teamName: teams.data[0]?.name ?? 'TEAM 01',
+          finalPrice: Math.max(spotlight.basePrice * 2, 20000000),
+          nationality: spotlightMeta.nationality ?? spotlight.nationality,
+          role: spotlightMeta.role ?? spotlight.role,
+          star: spotlightMeta.star ?? spotlight.star,
+        }
         : {
-            purchaseId: `test-${Date.now()}`,
-            playerName: players.data[0]?.name ?? 'ROHIT SHARMA',
-            playerPhotoUrl: players.data[0]?.photoUrl ?? null,
-            playerPoints: players.data[0]?.points ?? 9.5,
-            teamName: teams.data[0]?.name ?? 'TEAM 01',
-            finalPrice: 50000000,
-            nationality: players.data[0]?.nationality ?? 'Indian',
-            role: players.data[0]?.role ?? 'Batter',
-            star: players.data[0]?.star ?? '⭐',
-          }
+          purchaseId: `test-${Date.now()}`,
+          playerName: players.data[0]?.name ?? 'ROHIT SHARMA',
+          playerPhotoUrl: players.data[0]?.photoUrl ?? null,
+          playerPoints: players.data[0]?.points ?? 9.5,
+          teamName: teams.data[0]?.name ?? 'TEAM 01',
+          finalPrice: 50000000,
+          nationality: players.data[0]?.nationality ?? 'Indian',
+          role: players.data[0]?.role ?? 'Batter',
+          star: players.data[0]?.star ?? '⭐',
+        }
       showSoldCelebration(sample)
     })
   }
@@ -609,18 +600,16 @@ export function PresenterPage() {
     <div
       ref={stageRef}
       onClick={() => void handleUnlockAudio()}
-      className={`relative w-full overflow-hidden select-none bg-black text-white ${
-        isFullscreen
+      className={`relative w-full overflow-hidden select-none bg-black text-white ${isFullscreen
           ? 'fixed inset-0 z-50 h-dvh w-screen'
-          : 'min-h-[calc(100dvh-4.5rem)] rounded-2xl border border-white/10 shadow-2xl'
-      }`}
+          : 'min-h-[calc(100dvh-3.25rem)]'
+        }`}
     >
       {/* Discreet Bottom-Right Controls (auto-hides in Fullscreen; keeps top-right broadcast clean) */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`absolute right-4 bottom-4 z-40 flex flex-wrap items-center gap-2 transition-opacity duration-300 ${
-          controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
+        className={`absolute right-4 bottom-4 z-40 flex flex-wrap items-center gap-2 transition-opacity duration-300 ${controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
       >
         <button
           type="button"
@@ -631,13 +620,12 @@ export function PresenterPage() {
               setMuted((m) => !m)
             }
           }}
-          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold backdrop-blur-md transition cursor-pointer ${
-            muted
+          className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold backdrop-blur-md transition cursor-pointer ${muted
               ? 'border-rose-500/50 bg-rose-950/80 text-rose-200'
               : audioUnlocked
                 ? 'border-emerald-400/50 bg-black/75 text-emerald-300'
                 : 'border-amber-400/70 bg-black/80 text-amber-300 animate-pulse'
-          }`}
+            }`}
         >
           {muted ? (
             <>
@@ -684,9 +672,8 @@ export function PresenterPage() {
       {soldData ? (
         <div
           key={`sold-${soldData.purchaseId ?? soldData.playerName}`}
-          className={`relative flex h-full min-h-[inherit] w-full flex-col justify-between px-6 py-6 sm:px-12 sm:py-8 transition-opacity duration-300 ${
-            soldState?.exiting ? 'opacity-0' : 'opacity-100'
-          }`}
+          className={`relative flex h-full min-h-[inherit] w-full flex-col justify-between px-6 py-6 sm:px-12 sm:py-8 transition-opacity duration-300 ${soldState?.exiting ? 'opacity-0' : 'opacity-100'
+            }`}
         >
           <BroadcastBackdrop variant="crimson" />
 
@@ -845,19 +832,19 @@ export function PresenterPage() {
               </div>
             </div>
 
-            {/* RIGHT SIDE (~58%): Full-Bleed Slanted Yellow Name Bar + Centered Role/Rating, Base Price Pill & Flag */}
-            <div className="flex w-full lg:w-[58%] flex-col items-center text-center space-y-6 sm:space-y-8">
-              {/* Slanted Full-Bleed Yellow Name Banner extending to right screen edge */}
-              <div className="w-full animate-presenter-banner-in">
+            {/* RIGHT SIDE (~58%): Auto-sized Slanted Yellow Name Bar + Centered Role/Rating, Base Price Pill & Flag */}
+            <div className="flex w-full lg:w-[58%] flex-col items-center text-center space-y-6 sm:space-y-8 px-6 lg:px-10">
+              {/* Slanted Yellow Name Banner sized dynamically to player's name */}
+              <div className="w-full flex justify-center animate-presenter-banner-in">
                 <div
-                  className="w-full bg-[#f5eb3b] py-3.5 sm:py-4.5 pl-10 sm:pl-14 pr-8 shadow-[0_14px_35px_rgba(0,0,0,0.65)] text-left"
+                  className="inline-flex w-fit max-w-full items-center justify-center bg-[#f5eb3b] py-3.5 sm:py-4.5 px-12 sm:px-16 shadow-[0_14px_35px_rgba(0,0,0,0.65)]"
                   style={{
-                    clipPath: 'polygon(28px 0%, 100% 0%, 100% 100%, 0% 100%)',
+                    clipPath: 'polygon(26px 0%, 100% 0%, calc(100% - 26px) 100%, 0% 100%)',
                   }}
                 >
                   <h1
-                    className="font-['Outfit',sans-serif] font-black uppercase tracking-tight text-black leading-none truncate"
-                    style={{ fontSize: 'clamp(2.1rem, 4.4vw, 4.35rem)' }}
+                    className="whitespace-nowrap font-['Outfit',sans-serif] font-black uppercase tracking-tight text-black leading-none"
+                    style={{ fontSize: 'clamp(2rem, 4.1vw, 4.2rem)' }}
                   >
                     {spotlight.name}
                   </h1>
@@ -865,7 +852,7 @@ export function PresenterPage() {
               </div>
 
               {/* Centered Info Stack aligned cleanly beneath the yellow name banner */}
-              <div className="flex w-full max-w-[780px] flex-col items-center space-y-6 sm:space-y-8 px-6 lg:px-10">
+              <div className="flex w-full max-w-[780px] flex-col items-center space-y-6 sm:space-y-8">
                 {/* Role & Rating Line (Pure white bold uppercase, balanced spacing) */}
                 <div className="flex w-full flex-wrap items-center justify-around gap-x-10 gap-y-2 animate-presenter-rise-1">
                   <span
@@ -917,12 +904,6 @@ export function PresenterPage() {
                       </span>
                     </div>
                   )}
-
-                  {spotlightIsStar && spotlightIsOverseas ? (
-                    <span className="rounded-full border border-amber-400/60 bg-black/50 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-amber-300">
-                      ★ Star Player
-                    </span>
-                  ) : null}
                 </div>
               </div>
             </div>
