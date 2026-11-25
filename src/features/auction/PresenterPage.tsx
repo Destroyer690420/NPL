@@ -305,15 +305,15 @@ function CircularPlayerShowcase({
         </text>
       </svg>
 
-      {/* Player Portrait: bottom half clipped neatly to the inner circle, top/head rises slightly above */}
+      {/* Player Portrait: bottom half clipped neatly to the inner circle, head unclipped at top */}
       <div
-        className="relative z-10 flex h-full w-full items-end justify-center overflow-hidden animate-presenter-player-in"
+        className="relative z-10 flex h-full w-full items-end justify-center animate-presenter-player-in"
         style={{
-          clipPath: 'polygon(0% 0%, 100% 0%, 100% 54%, 90% 78%, 75% 90%, 50% 92%, 25% 90%, 10% 78%, 0% 54%)',
+          clipPath: 'polygon(-10% -30%, 110% -30%, 100% 54%, 88% 77%, 73% 89%, 50% 91%, 27% 89%, 12% 77%, 0% 54%)',
         }}
       >
         <div
-          className="flex h-[98%] w-[90%] items-end justify-center overflow-hidden rounded-b-full"
+          className="flex h-[92%] w-[88%] items-end justify-center"
         >
           {!src || failed ? (
             <div className="mb-10 flex size-60 sm:size-72 lg:size-80 items-center justify-center rounded-full border-4 border-amber-300/70 bg-black/50">
@@ -326,7 +326,7 @@ function CircularPlayerShowcase({
               src={src}
               alt={name}
               onError={onError}
-              className="h-full w-full object-contain object-bottom scale-[1.22] origin-bottom"
+              className="h-full w-full object-contain object-bottom scale-[1.14] origin-bottom"
               style={{
                 filter: 'drop-shadow(0 12px 28px rgba(0, 0, 0, 0.75))',
               }}
