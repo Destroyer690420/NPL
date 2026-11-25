@@ -5,8 +5,6 @@ import {
   Minimize2,
   Music,
   Plane,
-  Radio,
-  Star,
   Volume2,
   VolumeX,
 } from 'lucide-react'
@@ -42,12 +40,49 @@ function tryLocalImageFallback(currentSrc: string): string | null {
   return match ? `/player-images/${match[1]}` : null
 }
 
-/** Crisp inline SVG Indian tricolor flag for domestic Indian players. */
-function IndiaFlag({ className = 'h-6 w-9' }: { className?: string }) {
+/** Formats base/sold price compactly on one crisp line like broadcast graphics (e.g. ₹2 CR, ₹75 LAKH). */
+function formatBroadcastPrice(amount: number | null | undefined, currencyLabel = '₹'): string {
+  if (amount === null || amount === undefined || !Number.isFinite(amount)) return '—'
+  if (amount >= 10_000_000) {
+    const cr = amount / 10_000_000
+    const text = Number.isInteger(cr) ? String(cr) : cr.toFixed(2).replace(/\.?0+$/, '')
+    return `${currencyLabel}${text} CR`
+  }
+  if (amount >= 100_000) {
+    const lakh = amount / 100_000
+    const text = Number.isInteger(lakh) ? String(lakh) : lakh.toFixed(2).replace(/\.?0+$/, '')
+    return `${currencyLabel}${text} LAKH`
+  }
+  if (amount >= 1_000) {
+    const k = amount / 1_000
+    const text = Number.isInteger(k) ? String(k) : k.toFixed(1).replace(/\.0$/, '')
+    return `${currencyLabel}${text}K`
+  }
+  return currency(amount, currencyLabel).toUpperCase()
+}
+
+/** Crisp red warning triangle matching the reference Star Player & Sold graphics. */
+function AlertTriangleBadge({ className = 'size-8 sm:size-10' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 36 32" className={`${className} shrink-0 drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]`} aria-hidden="true">
+      <path
+        d="M16.2 2.4c.8-1.4 2.8-1.4 3.6 0l14.6 25.6c.8 1.4-.2 3.1-1.8 3.1H3.4c-1.6 0-2.6-1.7-1.8-3.1L16.2 2.4z"
+        fill="#a8141c"
+        stroke="#ef4444"
+        strokeWidth="1.2"
+      />
+      <rect x="16.5" y="10.5" width="3" height="10" rx="1.5" fill="#ffffff" />
+      <circle cx="18" cy="24.5" r="1.8" fill="#ffffff" />
+    </svg>
+  )
+}
+
+/** Crisp inline SVG Indian tricolor flag. */
+function IndiaFlag({ className = 'h-8 w-12 sm:h-10 sm:w-16' }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 36 24"
-      className={`${className} rounded-[3px] shadow-[0_2px_8px_rgba(0,0,0,0.6)] ring-1 ring-white/25 shrink-0`}
+      className={`${className} rounded-[3px] shadow-[0_4px_14px_rgba(0,0,0,0.75)] ring-1 ring-white/20 shrink-0`}
       aria-hidden="true"
     >
       <rect width="36" height="8" y="0" fill="#FF9933" />
@@ -59,11 +94,92 @@ function IndiaFlag({ className = 'h-6 w-9' }: { className?: string }) {
   )
 }
 
-/** Golden scalloped 20-point starburst rating seal matching the reference broadcast. */
+/**
+ * Full-bleed curved sweeping studio background matching Image 1 (black left + sweeping gold/crimson waves on right).
+ */
+function BroadcastBackdrop({ variant }: { variant: 'gold' | 'crimson' }) {
+  const isCrimson = variant === 'crimson'
+  const cMain = isCrimson ? '#7a0a12' : '#5c5206'
+  const cMid = isCrimson ? '#4a050a' : '#3a3303'
+  const cBright = isCrimson ? '#b91c1c' : '#96870a'
+  const cEdge = isCrimson ? '#dc2626' : '#c2af12'
+
+  return (
+    <svg
+      className="pointer-events-none absolute inset-0 size-full"
+      viewBox="0 0 1920 1080"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <defs>
+        <radialGradient id={`bgGlow-${variant}`} cx="78%" cy="48%" r="60%">
+          <stop offset="0%" stopColor={cBright} stopOpacity="0.88" />
+          <stop offset="45%" stopColor={cMain} stopOpacity="0.68" />
+          <stop offset="82%" stopColor={cMid} stopOpacity="0.28" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+        </radialGradient>
+
+        <linearGradient id={`waveSweep1-${variant}`} x1="100%" y1="0%" x2="25%" y2="100%">
+          <stop offset="0%" stopColor={cEdge} stopOpacity="0.62" />
+          <stop offset="45%" stopColor={cMain} stopOpacity="0.48" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+        </linearGradient>
+
+        <linearGradient id={`waveSweep2-${variant}`} x1="85%" y1="15%" x2="30%" y2="95%">
+          <stop offset="0%" stopColor={cBright} stopOpacity="0.45" />
+          <stop offset="60%" stopColor={cMid} stopOpacity="0.32" />
+          <stop offset="100%" stopColor="#000000" stopOpacity="0" />
+        </linearGradient>
+
+        <linearGradient id={`arcRim-${variant}`} x1="100%" y1="0%" x2="40%" y2="100%">
+          <stop offset="0%" stopColor={cEdge} stopOpacity="0.35" />
+          <stop offset="50%" stopColor={cEdge} stopOpacity="0.65" />
+          <stop offset="100%" stopColor={cEdge} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+
+      {/* Pure black base */}
+      <rect width="1920" height="1080" fill="#000000" />
+
+      {/* Right sweeping ambient glow */}
+      <rect width="1920" height="1080" fill={`url(#bgGlow-${variant})`} />
+
+      {/* Diagonal curved wave body starting mid-top and sweeping down-right */}
+      <path
+        d="M 760 0 C 980 280, 1140 680, 1240 1080 L 1920 1080 L 1920 0 Z"
+        fill={`url(#waveSweep1-${variant})`}
+      />
+
+      {/* Secondary overlapping sweeping curve */}
+      <path
+        d="M 1020 0 C 1220 340, 1320 700, 1460 1080 L 1920 1080 L 1920 0 Z"
+        fill={`url(#waveSweep2-${variant})`}
+      />
+
+      {/* Soft curved light arc rising across the right half (signature wave highlight in Image 1) */}
+      <path
+        d="M 1920 110 C 1420 280, 1160 640, 1080 1080 L 1165 1080 C 1255 680, 1495 340, 1920 185 Z"
+        fill={`url(#arcRim-${variant})`}
+        opacity="0.55"
+      />
+
+      {/* Subtle dark vignette on top/bottom edges */}
+      <rect
+        width="1920"
+        height="1080"
+        fill="none"
+        stroke="rgba(0,0,0,0.4)"
+        strokeWidth="40"
+      />
+    </svg>
+  )
+}
+
+/** Olive-gold 20-point scalloped starburst seal with crisp white rating number & label (matches Image 1). */
 function RatingStarburst({ rating, label = 'RATING' }: { rating: number; label?: string }) {
   const points: string[] = []
   const spikes = 20
-  const outerR = 48
+  const outerR = 49
   const innerR = 39
   for (let i = 0; i < spikes * 2; i += 1) {
     const r = i % 2 === 0 ? outerR : innerR
@@ -74,31 +190,31 @@ function RatingStarburst({ rating, label = 'RATING' }: { rating: number; label?:
   }
 
   return (
-    <div className="relative flex size-28 sm:size-32 lg:size-36 items-center justify-center animate-presenter-seal-pop select-none">
+    <div className="relative flex size-36 sm:size-44 lg:size-48 xl:size-52 items-center justify-center animate-presenter-seal-pop select-none">
       <svg
         viewBox="0 0 100 100"
-        className="absolute inset-0 size-full drop-shadow-[0_6px_18px_rgba(0,0,0,0.85)]"
+        className="absolute inset-0 size-full drop-shadow-[0_10px_25px_rgba(0,0,0,0.85)]"
         aria-hidden="true"
       >
         <defs>
-          <linearGradient id="presenterStarburstGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#fef08a" />
-            <stop offset="45%" stopColor="#f5af19" />
-            <stop offset="100%" stopColor="#b45309" />
+          <linearGradient id="presenterOliveStarburst" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#948636" />
+            <stop offset="50%" stopColor="#7a6e28" />
+            <stop offset="100%" stopColor="#5e541c" />
           </linearGradient>
         </defs>
         <polygon
           points={points.join(' ')}
-          fill="url(#presenterStarburstGrad)"
-          stroke="#fffbeb"
-          strokeWidth="1.5"
+          fill="url(#presenterOliveStarburst)"
+          stroke="rgba(255,255,255,0.22)"
+          strokeWidth="1"
         />
       </svg>
       <div className="relative z-10 flex flex-col items-center justify-center text-center leading-none">
-        <span className="font-['Outfit',sans-serif] text-3xl sm:text-4xl lg:text-[42px] font-black tracking-tight text-[#090b10]">
+        <span className="font-['Outfit',sans-serif] text-4xl sm:text-5xl lg:text-[54px] font-black tracking-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.45)]">
           {formatPoints(rating)}
         </span>
-        <span className="mt-0.5 font-['Outfit',sans-serif] text-[9px] sm:text-[10px] font-black uppercase tracking-[0.16em] text-[#1c1508]">
+        <span className="mt-1 font-['Outfit',sans-serif] text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.12em] text-white/95">
           {label}
         </span>
       </div>
@@ -106,62 +222,27 @@ function RatingStarburst({ rating, label = 'RATING' }: { rating: number; label?:
   )
 }
 
-/** Rotating circular badge ring behind the player photo (like the video's circular STAR PLAYER halo). */
-function CircularHaloRing({ text }: { text: string }) {
-  const repeated = `${text}  •  ${text}  •  ${text}  •  `
-  return (
-    <svg
-      viewBox="0 0 300 300"
-      className="pointer-events-none size-[290px] sm:size-[350px] lg:size-[410px] animate-presenter-spin-slow opacity-90"
-      aria-hidden="true"
-    >
-      <defs>
-        <path
-          id="presenterHaloPath"
-          d="M 150, 150 m -124, 0 a 124,124 0 1,1 248,0 a 124,124 0 1,1 -248,0"
-        />
-      </defs>
-      <circle
-        cx="150"
-        cy="150"
-        r="138"
-        fill="none"
-        stroke="rgba(250, 204, 21, 0.35)"
-        strokeWidth="1.5"
-        strokeDasharray="6 6"
-      />
-      <circle
-        cx="150"
-        cy="150"
-        r="110"
-        fill="none"
-        stroke="rgba(245, 175, 25, 0.45)"
-        strokeWidth="2"
-      />
-      <text
-        fill="#fde047"
-        fontSize="14"
-        fontWeight="900"
-        letterSpacing="3.4"
-        fontFamily="Outfit, sans-serif"
-      >
-        <textPath href="#presenterHaloPath" startOffset="0%">
-          {repeated}
-        </textPath>
-      </text>
-    </svg>
-  )
-}
-
-/** Player cutout portrait with local fallback + initial badge fallback. */
-function PresenterPlayerPhoto({
+/**
+ * Large circular player showcase matching Image 1:
+ * - Olive-gold inner circle
+ * - Bold yellow rotating circular text ring around the perimeter
+ * - Large player portrait whose lower body clips neatly inside the circle while the head pops out the top
+ * - Overlapping Rating Starburst on bottom-right
+ */
+function CircularPlayerShowcase({
   name,
   photoUrl,
-  className = '',
+  rating,
+  ringText,
+  circleTone = 'gold',
+  size = 'spotlight',
 }: {
   name: string
   photoUrl: string | null | undefined
-  className?: string
+  rating: number
+  ringText: string
+  circleTone?: 'gold' | 'crimson'
+  size?: 'spotlight' | 'sold'
 }) {
   const [src, setSrc] = useState<string | null>(() => resolvePhotoSrc(photoUrl))
   const [triedLocal, setTriedLocal] = useState(false)
@@ -186,36 +267,93 @@ function PresenterPlayerPhoto({
   }
 
   const initials = (name.trim().slice(0, 2) || '??').toUpperCase()
+  const repeated = `${ringText}  ${ringText}  ${ringText}  `
+  const fillCircle =
+    circleTone === 'crimson'
+      ? 'radial-gradient(circle at 50% 45%, #7c1820 0%, #4b0d12 72%, #2c0609 100%)'
+      : 'radial-gradient(circle at 50% 45%, #7b6f17 0%, #584e0d 72%, #3a3406 100%)'
 
-  if (!src || failed) {
-    return (
-      <div
-        className={`flex size-56 sm:size-64 lg:size-72 items-center justify-center rounded-full border-4 border-amber-400/80 bg-gradient-to-b from-[#1e263c] to-[#0b101d] shadow-[0_0_50px_rgba(245,175,25,0.45)] ${className}`}
-      >
-        <span className="font-['Outfit',sans-serif] text-7xl sm:text-8xl font-black text-amber-300">
-          {initials}
-        </span>
-      </div>
-    )
-  }
+  const boxStyle =
+    size === 'sold'
+      ? { width: 'clamp(280px, 48vh, 520px)', height: 'clamp(280px, 48vh, 520px)' }
+      : { width: 'clamp(340px, 64vh, 660px)', height: 'clamp(340px, 64vh, 660px)' }
 
   return (
-    <img
-      src={src}
-      alt={name}
-      onError={onError}
-      className={`h-full w-auto max-w-full object-contain object-bottom select-none ${className}`}
-      style={{
-        filter:
-          'drop-shadow(0 0 12px rgba(254, 240, 138, 0.6)) drop-shadow(0 16px 32px rgba(0, 0, 0, 0.85))',
-      }}
-    />
+    <div
+      className="relative flex items-center justify-center select-none shrink-0"
+      style={boxStyle}
+    >
+      {/* Filled circular backing (matches Image 1 olive-gold disc) */}
+      <div
+        className="absolute inset-[9%] rounded-full shadow-[0_0_60px_rgba(0,0,0,0.85)]"
+        style={{ background: fillCircle }}
+      />
+
+      {/* Rotating yellow circular text ring (STAR PLAYER STAR PLAYER ...) */}
+      <svg
+        viewBox="0 0 400 400"
+        className="pointer-events-none absolute inset-0 size-full animate-presenter-spin-slow"
+        aria-hidden="true"
+      >
+        <defs>
+          <path
+            id={`ringTextPath-${circleTone}`}
+            d="M 200, 200 m -174, 0 a 174,174 0 1,1 348,0 a 174,174 0 1,1 -348,0"
+          />
+        </defs>
+        <text
+          fill="#fde047"
+          fontSize="24"
+          fontWeight="900"
+          letterSpacing="3.8"
+          fontFamily="Outfit, sans-serif"
+        >
+          <textPath href={`#ringTextPath-${circleTone}`} startOffset="0%">
+            {repeated}
+          </textPath>
+        </text>
+      </svg>
+
+      {/* Player Portrait: bottom half clipped neatly to the inner circle, top/head rises slightly above */}
+      <div
+        className="relative z-10 flex h-full w-full items-end justify-center overflow-hidden animate-presenter-player-in"
+        style={{
+          clipPath: 'polygon(0% 0%, 100% 0%, 100% 54%, 90% 78%, 75% 90%, 50% 92%, 25% 90%, 10% 78%, 0% 54%)',
+        }}
+      >
+        <div
+          className="flex h-[98%] w-[90%] items-end justify-center overflow-hidden rounded-b-full"
+        >
+          {!src || failed ? (
+            <div className="mb-10 flex size-60 sm:size-72 lg:size-80 items-center justify-center rounded-full border-4 border-amber-300/70 bg-black/50">
+              <span className="font-['Outfit',sans-serif] text-7xl sm:text-8xl font-black text-amber-200">
+                {initials}
+              </span>
+            </div>
+          ) : (
+            <img
+              src={src}
+              alt={name}
+              onError={onError}
+              className="h-full w-full object-contain object-bottom scale-[1.22] origin-bottom"
+              style={{
+                filter: 'drop-shadow(0 12px 28px rgba(0, 0, 0, 0.75))',
+              }}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Overlapping Starburst Rating Seal at Bottom-Right */}
+      <div className="absolute -bottom-2 -right-2 sm:-bottom-3 sm:-right-3 z-20">
+        <RatingStarburst rating={rating} label="RATING" />
+      </div>
+    </div>
   )
 }
 
 /**
- * Full-screen widescreen Presenter stage designed for a second projector laptop.
- * Automatically reacts in real time to selections and sales made on the main admin laptop.
+ * Full-screen widescreen Presenter stage matching the reference broadcast design.
  */
 export function PresenterPage() {
   const { eventId } = useOutletContext<AdminOutletContext>()
@@ -247,18 +385,15 @@ export function PresenterPage() {
   const currencyLabel = event?.currencyLabel ?? '₹'
   const eventName = event?.name || 'Nexturn Premier League'
 
-  // Keep track of Web Audio unlock status
   useEffect(() => {
     return subscribeAuctionAudioState(setAudioUnlocked)
   }, [])
 
-  // Unlock audio on first pointer or keyboard interaction anywhere in Presenter
   const handleUnlockAudio = useCallback(async () => {
     const ok = await unlockAuctionAudio()
     setAudioUnlocked(ok)
   }, [])
 
-  // Sync fullscreen state with browser fullscreen API
   useEffect(() => {
     function onFsChange() {
       setIsFullscreen(Boolean(document.fullscreenElement))
@@ -267,7 +402,7 @@ export function PresenterPage() {
     return () => document.removeEventListener('fullscreenchange', onFsChange)
   }, [])
 
-  // Auto-hide toolbar in fullscreen when mouse stops moving
+  // Auto-hide toolbar in fullscreen when mouse is idle
   useEffect(() => {
     if (!isFullscreen) {
       setControlsVisible(true)
@@ -279,7 +414,7 @@ export function PresenterPage() {
       if (hideControlsTimerRef.current) window.clearTimeout(hideControlsTimerRef.current)
       hideControlsTimerRef.current = window.setTimeout(() => {
         setControlsVisible(false)
-      }, 2400)
+      }, 2200)
     }
     poke()
     window.addEventListener('mousemove', poke)
@@ -306,7 +441,6 @@ export function PresenterPage() {
     }
   }, [])
 
-  // Keyboard shortcut: 'F' toggles fullscreen
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if (e.key.toLowerCase() === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey) {
@@ -317,7 +451,6 @@ export function PresenterPage() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [toggleFullscreen])
 
-  // Trigger SOLD celebration + iconic IPL tune when a player is sold
   const showSoldCelebration = useCallback(
     (announcement: SoldPlayerAnnouncement) => {
       if (soldTimersRef.current.exit) window.clearTimeout(soldTimersRef.current.exit)
@@ -357,7 +490,6 @@ export function PresenterPage() {
 
   const spotlight: SpotlightPlayer | null = event?.spotlightPlayer ?? null
 
-  // Play subtle intro cue when a new player enters the stage
   useEffect(() => {
     const id = spotlight?.spotlightId ?? null
     if (id && id !== lastSpotlightIdRef.current) {
@@ -370,7 +502,6 @@ export function PresenterPage() {
     }
   }, [spotlight?.spotlightId, muted])
 
-  // Fallback player lookup for nationality / role / star if missing on spotlight
   useEffect(() => {
     if (!spotlight?.playerId) {
       setSpotlightMeta({})
@@ -442,7 +573,7 @@ export function PresenterPage() {
             playerName: spotlight.name,
             playerPhotoUrl: spotlight.photoUrl,
             playerPoints: spotlight.points,
-            teamName: teams.data[0]?.name ?? 'ROYAL TITANS',
+            teamName: teams.data[0]?.name ?? 'TEAM 01',
             finalPrice: Math.max(spotlight.basePrice * 2, 20000000),
             nationality: spotlightMeta.nationality ?? spotlight.nationality,
             role: spotlightMeta.role ?? spotlight.role,
@@ -463,34 +594,31 @@ export function PresenterPage() {
     })
   }
 
-  // Resolved fields for current spotlighted player
   const effectiveNationality = spotlight?.nationality ?? spotlightMeta.nationality ?? null
   const effectiveRole = spotlight?.role ?? spotlightMeta.role ?? null
   const effectiveStar = spotlight?.star ?? spotlightMeta.star ?? null
   const spotlightIsStar = isStar(effectiveStar)
   const spotlightIsOverseas = isOverseas(effectiveNationality)
 
-  // Resolved fields for sold celebration
   const soldData = soldState?.announcement ?? null
   const soldStar = isStar(soldData?.star ?? soldPlayerRecord?.star)
   const soldOverseas = isOverseas(soldData?.nationality ?? soldPlayerRecord?.nationality)
-  const soldRole = soldData?.role ?? soldPlayerRecord?.role ?? null
   const soldPoints = soldData?.playerPoints ?? soldPlayerRecord?.points ?? 0
 
   return (
     <div
       ref={stageRef}
       onClick={() => void handleUnlockAudio()}
-      className={`relative w-full overflow-hidden select-none bg-[#05060a] text-white ${
+      className={`relative w-full overflow-hidden select-none bg-black text-white ${
         isFullscreen
           ? 'fixed inset-0 z-50 h-dvh w-screen'
-          : 'min-h-[calc(100dvh-4.5rem)] rounded-2xl border border-line-strong shadow-2xl'
+          : 'min-h-[calc(100dvh-4.5rem)] rounded-2xl border border-white/10 shadow-2xl'
       }`}
     >
-      {/* Floating Control Toolbar */}
+      {/* Discreet Bottom-Right Controls (auto-hides in Fullscreen; keeps top-right broadcast clean) */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`absolute right-4 top-4 z-40 flex flex-wrap items-center gap-2 transition-opacity duration-300 ${
+        className={`absolute right-4 bottom-4 z-40 flex flex-wrap items-center gap-2 transition-opacity duration-300 ${
           controlsVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
         }`}
       >
@@ -505,26 +633,26 @@ export function PresenterPage() {
           }}
           className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold backdrop-blur-md transition cursor-pointer ${
             muted
-              ? 'border-rose-500/50 bg-rose-950/70 text-rose-200'
+              ? 'border-rose-500/50 bg-rose-950/80 text-rose-200'
               : audioUnlocked
-                ? 'border-emerald-400/50 bg-emerald-950/70 text-emerald-200'
-                : 'border-amber-400/70 bg-amber-500/20 text-amber-200 animate-pulse'
+                ? 'border-emerald-400/50 bg-black/75 text-emerald-300'
+                : 'border-amber-400/70 bg-black/80 text-amber-300 animate-pulse'
           }`}
         >
           {muted ? (
             <>
               <VolumeX className="size-3.5" />
-              Sound Muted
+              Muted
             </>
           ) : audioUnlocked ? (
             <>
               <Volume2 className="size-3.5" />
-              IPL Sound Ready
+              Sound Ready
             </>
           ) : (
             <>
               <Volume2 className="size-3.5" />
-              Click to Enable Sound
+              Enable Sound
             </>
           )}
         </button>
@@ -551,7 +679,7 @@ export function PresenterPage() {
       </div>
 
       {/* =====================================================================
-          VIEW 1: PLAYER SOLD ANIMATION (Crimson-Red Stadium Theme + IPL Tune)
+          VIEW 1: PLAYER SOLD ANIMATION (Matches Video Frames 00:05 - 00:10)
          ===================================================================== */}
       {soldData ? (
         <div
@@ -559,299 +687,256 @@ export function PresenterPage() {
           className={`relative flex h-full min-h-[inherit] w-full flex-col justify-between px-6 py-6 sm:px-12 sm:py-8 transition-opacity duration-300 ${
             soldState?.exiting ? 'opacity-0' : 'opacity-100'
           }`}
-          style={{
-            background:
-              'radial-gradient(ellipse 75% 65% at 50% 48%, rgba(168, 12, 24, 0.72) 0%, rgba(72, 6, 12, 0.55) 45%, #050507 100%)',
-          }}
         >
-          {/* Ambient crimson/gold stadium flares */}
-          <div className="pointer-events-none absolute -top-24 left-1/4 h-96 w-96 rounded-full bg-red-600/25 blur-3xl animate-pulse" />
-          <div className="pointer-events-none absolute -bottom-24 right-1/4 h-96 w-96 rounded-full bg-amber-500/20 blur-3xl animate-pulse" />
+          <BroadcastBackdrop variant="crimson" />
 
-          {/* Header Bar */}
+          {/* Top Bar */}
           <header className="relative z-10 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl border border-amber-400/60 bg-black/50 px-3.5 py-1.5 backdrop-blur-md">
-                <span className="font-['Outfit',sans-serif] text-base sm:text-xl font-black tracking-wider text-white">
-                  NEXTURN <span className="text-accent">PL</span>
-                </span>
-              </div>
+            <div className="flex flex-col leading-none">
+              <span className="font-['Outfit',sans-serif] text-2xl sm:text-3xl font-black tracking-tight text-white">
+                NPL <span className="text-amber-300">AUCTION</span>
+              </span>
+              <span className="mt-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.26em] text-white/65">
+                WHERE PASSION MEETS PRECISION
+              </span>
             </div>
-            <p className="font-['Outfit',sans-serif] text-xs sm:text-sm font-black uppercase tracking-[0.28em] text-white/80 pr-48 sm:pr-64">
+            <p className="font-['Outfit',sans-serif] text-base sm:text-xl lg:text-2xl font-black uppercase tracking-wider text-white">
               {eventName}
             </p>
           </header>
 
           {/* Centerpiece SOLD Stage */}
-          <div className="relative z-10 my-auto flex flex-col items-center justify-center py-4">
-            <div className="relative flex w-full max-w-6xl items-center justify-center gap-4 sm:gap-10 lg:gap-16">
-              {/* Left SOLD Stamp */}
-              <div className="hidden md:flex flex-col items-center animate-presenter-stamp-slam">
-                <div className="flex items-center gap-2.5 rounded-2xl border-2 border-amber-400/90 bg-black/70 px-6 py-3 shadow-[0_0_35px_rgba(245,175,25,0.5)] backdrop-blur-md">
-                  <span className="text-2xl lg:text-3xl" aria-hidden="true">
-                    ⚠️
-                  </span>
-                  <span className="font-['Outfit',sans-serif] text-3xl lg:text-4xl font-black uppercase tracking-widest text-amber-300">
-                    SOLD
-                  </span>
-                  <span className="text-2xl lg:text-3xl" aria-hidden="true">
-                    ⚠️
-                  </span>
-                </div>
+          <div className="relative z-10 my-auto flex flex-col items-center justify-center py-2">
+            <div className="relative flex w-full max-w-6xl items-center justify-center gap-6 sm:gap-12 lg:gap-20">
+              {/* Left SOLD */}
+              <div className="hidden md:flex items-center gap-3 animate-presenter-stamp-slam">
+                <AlertTriangleBadge className="size-10 lg:size-12" />
+                <span className="font-['Outfit',sans-serif] text-4xl lg:text-5xl font-black uppercase tracking-wider text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)]">
+                  SOLD
+                </span>
+                <AlertTriangleBadge className="size-10 lg:size-12" />
               </div>
 
-              {/* Center Player + Rotating Halo + Starburst Rating */}
-              <div className="relative flex h-[280px] sm:h-[340px] lg:h-[390px] w-[300px] sm:w-[360px] lg:w-[420px] items-end justify-center">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <CircularHaloRing text={soldStar ? 'STAR PLAYER' : 'SOLD OUT'} />
-                </div>
+              {/* Center Circular Player Showcase */}
+              <CircularPlayerShowcase
+                name={soldData.playerName}
+                photoUrl={soldData.playerPhotoUrl}
+                rating={soldPoints}
+                ringText={soldStar ? 'STAR PLAYER' : 'SOLD OUT'}
+                circleTone="crimson"
+                size="sold"
+              />
 
-                <div className="relative z-10 flex h-full w-full items-end justify-center pt-4 animate-presenter-player-in">
-                  <PresenterPlayerPhoto
-                    name={soldData.playerName}
-                    photoUrl={soldData.playerPhotoUrl}
-                  />
-                </div>
-
-                {/* Overlapping Starburst Rating Seal */}
-                <div className="absolute -bottom-3 right-2 sm:right-4 z-20">
-                  <RatingStarburst rating={soldPoints} label="RATING" />
-                </div>
-              </div>
-
-              {/* Right SOLD Stamp */}
-              <div className="hidden md:flex flex-col items-center animate-presenter-stamp-slam">
-                <div className="flex items-center gap-2.5 rounded-2xl border-2 border-amber-400/90 bg-black/70 px-6 py-3 shadow-[0_0_35px_rgba(245,175,25,0.5)] backdrop-blur-md">
-                  <span className="text-2xl lg:text-3xl" aria-hidden="true">
-                    ⚠️
-                  </span>
-                  <span className="font-['Outfit',sans-serif] text-3xl lg:text-4xl font-black uppercase tracking-widest text-amber-300">
-                    SOLD
-                  </span>
-                  <span className="text-2xl lg:text-3xl" aria-hidden="true">
-                    ⚠️
-                  </span>
-                </div>
+              {/* Right SOLD */}
+              <div className="hidden md:flex items-center gap-3 animate-presenter-stamp-slam">
+                <AlertTriangleBadge className="size-10 lg:size-12" />
+                <span className="font-['Outfit',sans-serif] text-4xl lg:text-5xl font-black uppercase tracking-wider text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)]">
+                  SOLD
+                </span>
+                <AlertTriangleBadge className="size-10 lg:size-12" />
               </div>
             </div>
 
             {/* Mobile SOLD stamp */}
-            <div className="mt-3 flex md:hidden items-center gap-2 rounded-full border border-amber-400 bg-black/75 px-4 py-1 animate-presenter-stamp-slam">
-              <span className="font-['Outfit',sans-serif] text-sm font-black uppercase tracking-widest text-amber-300">
-                ⚠️ SOLD ⚠️
+            <div className="mt-3 flex md:hidden items-center gap-2 animate-presenter-stamp-slam">
+              <AlertTriangleBadge className="size-6" />
+              <span className="font-['Outfit',sans-serif] text-2xl font-black uppercase tracking-wider text-white">
+                SOLD
               </span>
+              <AlertTriangleBadge className="size-6" />
             </div>
 
-            {/* Gold Player Name Banner */}
-            <div className="mt-5 w-full max-w-3xl animate-presenter-banner-in">
-              <div className="mx-auto w-fit max-w-full rounded-2xl bg-gradient-to-r from-[#fde047] via-[#f5af19] to-[#facc15] px-8 sm:px-14 py-2.5 sm:py-3.5 shadow-[0_12px_35px_rgba(245,175,25,0.45)]">
-                <h1 className="truncate text-center font-['Outfit',sans-serif] text-3xl sm:text-5xl lg:text-6xl font-black uppercase tracking-wide text-[#090b10]">
+            {/* Yellow-Gold Player Name Bar */}
+            <div className="mt-5 animate-presenter-banner-in">
+              <div className="bg-[#f5eb3b] px-10 sm:px-16 py-2 sm:py-2.5 shadow-[0_12px_35px_rgba(0,0,0,0.65)]">
+                <h1 className="text-center font-['Outfit',sans-serif] text-3xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-black leading-none">
                   {soldData.playerName}
                 </h1>
               </div>
             </div>
 
-            {/* White SOLD -> TEAM Banner */}
-            <div className="mt-4 w-full max-w-2xl animate-presenter-rise-1">
-              <div className="mx-auto w-fit max-w-full rounded-2xl bg-white px-8 sm:px-12 py-2.5 sm:py-3 shadow-[0_14px_40px_rgba(0,0,0,0.75)]">
-                <p className="truncate text-center font-['Outfit',sans-serif] text-2xl sm:text-4xl lg:text-5xl font-black uppercase tracking-wide text-[#090b10]">
-                  SOLD ➜ {soldData.teamName}
+            {/* White Rounded SOLD -> TEAM Pill */}
+            <div className="mt-4 animate-presenter-rise-1">
+              <div className="rounded-[28px] bg-white px-8 sm:px-14 py-2.5 sm:py-3.5 shadow-[0_14px_40px_rgba(0,0,0,0.75)]">
+                <p className="whitespace-nowrap text-center font-['Outfit',sans-serif] text-2xl sm:text-4xl lg:text-5xl font-black uppercase tracking-tight text-black leading-none">
+                  SOLD -&gt; {soldData.teamName}
                 </p>
               </div>
             </div>
 
-            {/* Final Price & Meta Badges */}
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-3 animate-presenter-rise-2">
-              {soldData.finalPrice ? (
-                <div className="rounded-full border border-emerald-400/70 bg-emerald-950/80 px-6 py-1.5 shadow-[0_0_25px_rgba(16,185,129,0.4)]">
-                  <span className="font-['Outfit',sans-serif] text-lg sm:text-2xl font-black tracking-wide text-emerald-300 tabular-nums">
-                    FINAL PRICE: {currency(soldData.finalPrice, currencyLabel).toUpperCase()}
+            {/* Final Price Line */}
+            {soldData.finalPrice ? (
+              <div className="mt-3.5 flex items-center gap-3 animate-presenter-rise-2">
+                <span className="font-['Outfit',sans-serif] text-xl sm:text-2xl lg:text-3xl font-black uppercase tracking-wider text-amber-300 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
+                  {formatBroadcastPrice(soldData.finalPrice, currencyLabel)}
+                </span>
+                {soldOverseas ? (
+                  <span className="inline-flex items-center gap-1.5 text-sm sm:text-base font-extrabold uppercase tracking-wider text-sky-300">
+                    <Plane className="size-4" />
+                    OVERSEAS
                   </span>
-                </div>
-              ) : null}
-              {soldRole ? (
-                <span className="rounded-full border border-white/25 bg-black/50 px-4 py-1.5 font-['Outfit',sans-serif] text-sm sm:text-base font-extrabold uppercase tracking-wider text-white/90">
-                  {soldRole}
-                </span>
-              ) : null}
-              {soldOverseas ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/60 bg-sky-950/70 px-4 py-1.5 font-['Outfit',sans-serif] text-sm sm:text-base font-extrabold uppercase tracking-wider text-sky-300">
-                  <Plane className="size-4" />
-                  Overseas
-                </span>
-              ) : null}
-            </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
-          {/* Progress Drain Bar */}
-          <div className="relative z-10 h-2 w-full overflow-hidden rounded-full bg-white/10">
-            <div className="h-full bg-gradient-to-r from-amber-300 via-accent to-emerald-400 animate-presenter-progress-sold" />
+          {/* Bottom Progress Drain */}
+          <div className="relative z-10 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+            <div className="h-full bg-gradient-to-r from-amber-300 via-yellow-400 to-white animate-presenter-progress-sold" />
           </div>
         </div>
       ) : spotlight ? (
         /* ===================================================================
-           VIEW 2: LIVE PLAYER SPOTLIGHT (Gold/Black Widescreen Video Layout)
+           VIEW 2: LIVE PLAYER SPOTLIGHT (Exact Match to Image 1)
            =================================================================== */
         <div
           key={`spotlight-${spotlight.spotlightId}`}
-          className="relative flex h-full min-h-[inherit] w-full flex-col justify-between px-6 py-6 sm:px-12 sm:py-8"
-          style={{
-            background:
-              'radial-gradient(circle at 22% 58%, rgba(245, 175, 25, 0.24) 0%, rgba(120, 75, 10, 0.14) 32%, #050609 70%), radial-gradient(circle at 92% 18%, rgba(245, 175, 25, 0.22) 0%, transparent 45%), #050609',
-          }}
+          className="relative flex h-full min-h-[inherit] w-full flex-col justify-between overflow-hidden"
         >
-          {/* Subtle Broadcast Grid Pattern */}
-          <div
-            className="pointer-events-none absolute inset-0 opacity-[0.04]"
-            style={{
-              backgroundImage:
-                'repeating-linear-gradient(-30deg, transparent, transparent 28px, #f5af19 28px, #f5af19 30px)',
-            }}
-          />
+          <BroadcastBackdrop variant="gold" />
 
-          {/* Top Bar */}
-          <header className="relative z-10 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl border border-amber-400/60 bg-black/50 px-4 py-1.5 backdrop-blur-md shadow-[0_0_20px_rgba(245,175,25,0.2)]">
-                <span className="font-['Outfit',sans-serif] text-base sm:text-xl font-black tracking-wider text-white">
-                  NEXTURN <span className="text-accent">PREMIER LEAGUE</span>
-                </span>
-              </div>
+          {/* Top Brand Bar (Matches Image 1 Top-Left & Top-Right) */}
+          <header className="relative z-10 flex items-start justify-between px-6 pt-5 sm:px-10 sm:pt-7">
+            <div className="flex flex-col leading-none">
+              <span className="font-['Outfit',sans-serif] text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white">
+                NPL <span className="text-[#f5eb3b]">2026</span>
+              </span>
+              <span className="mt-1 text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.24em] text-white/75">
+                WHERE PASSION MEETS PRECISION
+              </span>
             </div>
 
-            <div className="flex items-center gap-3 pr-48 sm:pr-72">
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/80 bg-amber-500/15 px-4 py-1.5 shadow-[0_0_18px_rgba(245,175,25,0.35)]">
-                <Radio className="size-4 text-accent animate-pulse" />
-                <span className="font-['Outfit',sans-serif] text-xs sm:text-sm font-black uppercase tracking-widest text-accent">
-                  LIVE ON BLOCK
-                </span>
-              </div>
-            </div>
+            <p className="font-['Outfit',sans-serif] text-base sm:text-xl lg:text-2xl font-black uppercase tracking-wide text-white">
+              {eventName}
+            </p>
           </header>
 
-          {/* Main Split Widescreen Stage (Matches Attached Video) */}
-          <div className="relative z-10 my-auto grid w-full max-w-7xl mx-auto items-center gap-8 lg:grid-cols-12 py-4">
-            {/* LEFT COLUMN: Player Cutout + Circular Halo + Starburst Rating + Star Badge */}
-            <div className="flex flex-col items-center justify-center lg:col-span-5">
-              <div className="relative flex h-[300px] sm:h-[360px] lg:h-[430px] w-full max-w-[420px] items-end justify-center">
-                {/* Rotating circular STAR PLAYER / NPL ring */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <CircularHaloRing
-                    text={spotlightIsStar ? 'STAR PLAYER' : 'NEXTURN LEAGUE'}
-                  />
-                </div>
+          {/* Main Asymmetric Split Stage (Matches Image 1 Proportions & Placement) */}
+          <div className="relative z-10 my-auto flex w-full flex-col lg:flex-row items-center justify-between gap-6 lg:gap-0 py-2">
+            {/* LEFT SIDE (~42%): Huge Circular Player + Starburst Rating + STAR PLAYER */}
+            <div className="flex w-full lg:w-[42%] flex-col items-center justify-center pl-4 sm:pl-8 lg:pl-10 pr-2">
+              <CircularPlayerShowcase
+                name={spotlight.name}
+                photoUrl={spotlight.photoUrl}
+                rating={spotlight.points}
+                ringText={spotlightIsStar ? 'STAR PLAYER' : 'NEXTURN LEAGUE'}
+                circleTone="gold"
+                size="spotlight"
+              />
 
-                {/* Warm golden spotlight aura behind player */}
-                <div
-                  className="pointer-events-none absolute inset-4 rounded-full blur-2xl"
-                  style={{
-                    background:
-                      'radial-gradient(circle, rgba(250, 204, 21, 0.35) 0%, rgba(245, 175, 25, 0.1) 55%, transparent 75%)',
-                  }}
-                />
-
-                {/* Player Portrait */}
-                <div className="relative z-10 flex h-full w-full items-end justify-center pt-4 animate-presenter-player-in">
-                  <PresenterPlayerPhoto
-                    name={spotlight.name}
-                    photoUrl={spotlight.photoUrl}
-                  />
-                </div>
-
-                {/* Golden Starburst Rating Seal overlapping bottom-right */}
-                <div className="absolute -bottom-3 right-2 sm:right-6 z-20">
-                  <RatingStarburst rating={spotlight.points} label="RATING" />
-                </div>
-              </div>
-
-              {/* Below-player Star Player / Overseas Callout */}
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-3 animate-presenter-rise-2">
+              {/* Bottom-left Star Player / Overseas Callout (Matches Image 1: ⚠️ STAR PLAYER ⚠️) */}
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-4 min-h-[44px] animate-presenter-rise-2">
                 {spotlightIsStar ? (
-                  <div className="inline-flex items-center gap-2.5 rounded-xl border-2 border-amber-400/90 bg-gradient-to-r from-[#28080a] via-[#1a0b08] to-[#28080a] px-6 py-2 shadow-[0_0_25px_rgba(245,175,25,0.45)]">
-                    <Star className="size-5 fill-amber-300 text-amber-300 animate-pulse" />
-                    <span className="font-['Outfit',sans-serif] text-lg sm:text-xl font-black uppercase tracking-wider text-white">
+                  <div className="inline-flex items-center gap-3">
+                    <AlertTriangleBadge className="size-8 sm:size-10" />
+                    <span className="font-['Outfit',sans-serif] text-2xl sm:text-3xl lg:text-4xl font-black uppercase tracking-wide text-white drop-shadow-[0_3px_12px_rgba(0,0,0,0.85)]">
                       STAR PLAYER
                     </span>
-                    <Star className="size-5 fill-amber-300 text-amber-300 animate-pulse" />
+                    <AlertTriangleBadge className="size-8 sm:size-10" />
                   </div>
-                ) : null}
-
-                {spotlightIsOverseas ? (
-                  <div className="inline-flex items-center gap-2 rounded-xl border border-sky-400/70 bg-sky-950/70 px-4 py-2 shadow-[0_0_20px_rgba(56,189,248,0.3)]">
-                    <Plane className="size-4 text-sky-300" />
-                    <span className="font-['Outfit',sans-serif] text-sm sm:text-base font-black uppercase tracking-wider text-sky-200">
-                      OVERSEAS
+                ) : spotlightIsOverseas ? (
+                  <div className="inline-flex items-center gap-2.5 text-sky-300">
+                    <Plane className="size-7 sm:size-8" />
+                    <span className="font-['Outfit',sans-serif] text-2xl sm:text-3xl font-black uppercase tracking-wide">
+                      OVERSEAS PLAYER
                     </span>
                   </div>
                 ) : null}
               </div>
             </div>
 
-            {/* RIGHT COLUMN: Yellow-Gold Name Banner + Category + White Base Price Pill + Flag */}
-            <div className="flex flex-col items-center lg:items-start text-center lg:text-left lg:col-span-7 space-y-6">
-              {/* Giant Yellow-Gold Player Name Banner */}
+            {/* RIGHT SIDE (~58%): Full-Bleed Slanted Yellow Name Bar + Centered Role/Rating, Base Price Pill & Flag */}
+            <div className="flex w-full lg:w-[58%] flex-col items-center text-center space-y-6 sm:space-y-8">
+              {/* Slanted Full-Bleed Yellow Name Banner extending to right screen edge */}
               <div className="w-full animate-presenter-banner-in">
-                <div className="inline-block max-w-full rounded-2xl bg-gradient-to-r from-[#fde047] via-[#f5af19] to-[#facc15] px-7 sm:px-11 py-3.5 sm:py-4.5 shadow-[0_14px_40px_rgba(245,175,25,0.38)]">
-                  <h1 className="font-['Outfit',sans-serif] text-3xl sm:text-5xl lg:text-6xl font-black uppercase tracking-wide text-[#090b10] leading-none">
+                <div
+                  className="w-full bg-[#f5eb3b] py-3.5 sm:py-4.5 pl-10 sm:pl-14 pr-8 shadow-[0_14px_35px_rgba(0,0,0,0.65)] text-left"
+                  style={{
+                    clipPath: 'polygon(28px 0%, 100% 0%, 100% 100%, 0% 100%)',
+                  }}
+                >
+                  <h1
+                    className="font-['Outfit',sans-serif] font-black uppercase tracking-tight text-black leading-none truncate"
+                    style={{ fontSize: 'clamp(2.1rem, 4.4vw, 4.35rem)' }}
+                  >
                     {spotlight.name}
                   </h1>
                 </div>
               </div>
 
-              {/* Category / Role & Rating Row */}
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-10 gap-y-2 animate-presenter-rise-1">
-                <span className="font-['Outfit',sans-serif] text-2xl sm:text-3xl lg:text-4xl font-extrabold uppercase tracking-wider text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
-                  {(effectiveRole || 'PLAYER').toUpperCase()}
-                </span>
-                <span className="font-['Outfit',sans-serif] text-xl sm:text-2xl lg:text-3xl font-bold uppercase tracking-wider text-amber-300/90">
-                  RATING - {formatPoints(spotlight.points)}
-                </span>
-              </div>
-
-              {/* Prominent White Rounded Base Price Pill */}
-              <div className="w-full animate-presenter-rise-2">
-                <div className="inline-flex items-center justify-center rounded-[28px] bg-white px-8 sm:px-12 py-4 sm:py-5 shadow-[0_18px_45px_rgba(0,0,0,0.75)]">
-                  <span className="font-['Outfit',sans-serif] text-2xl sm:text-4xl lg:text-5xl font-black uppercase tracking-wide text-[#090b10] tabular-nums">
-                    BASE PRICE - {currency(spotlight.basePrice, currencyLabel).toUpperCase()}
+              {/* Centered Info Stack aligned cleanly beneath the yellow name banner */}
+              <div className="flex w-full max-w-[780px] flex-col items-center space-y-6 sm:space-y-8 px-6 lg:px-10">
+                {/* Role & Rating Line (Pure white bold uppercase, balanced spacing) */}
+                <div className="flex w-full flex-wrap items-center justify-around gap-x-10 gap-y-2 animate-presenter-rise-1">
+                  <span
+                    className="font-['Outfit',sans-serif] font-bold uppercase tracking-wide text-white"
+                    style={{ fontSize: 'clamp(1.6rem, 2.5vw, 2.5rem)' }}
+                  >
+                    {(effectiveRole || 'PLAYER').toUpperCase()}
+                  </span>
+                  <span
+                    className="font-['Outfit',sans-serif] font-bold uppercase tracking-wide text-white"
+                    style={{ fontSize: 'clamp(1.6rem, 2.5vw, 2.5rem)' }}
+                  >
+                    RATING - {formatPoints(spotlight.points)}
                   </span>
                 </div>
-              </div>
 
-              {/* Country / Nationality Badge */}
-              <div className="flex items-center justify-center lg:justify-start gap-4 pt-1 animate-presenter-rise-3">
-                {!spotlightIsOverseas ? (
-                  <div className="inline-flex items-center gap-3.5 rounded-xl border border-white/15 bg-white/5 px-5 py-2.5 backdrop-blur-sm">
-                    <IndiaFlag className="h-7 w-11" />
-                    <span className="font-['Outfit',sans-serif] text-2xl sm:text-3xl font-black uppercase tracking-widest text-white">
-                      INDIA
+                {/* Crisp Single-Line White Base Price Pill */}
+                <div className="w-full flex justify-center animate-presenter-rise-2">
+                  <div className="inline-flex max-w-full items-center justify-center rounded-[32px] bg-white px-10 sm:px-14 py-4 sm:py-5 shadow-[0_18px_45px_rgba(0,0,0,0.75)]">
+                    <span
+                      className="whitespace-nowrap font-['Outfit',sans-serif] font-black uppercase tracking-tight text-black leading-none tabular-nums"
+                      style={{ fontSize: 'clamp(1.6rem, 3.3vw, 3.35rem)' }}
+                    >
+                      BASE PRICE - {formatBroadcastPrice(spotlight.basePrice, currencyLabel)}
                     </span>
                   </div>
-                ) : (
-                  <div className="inline-flex items-center gap-3 rounded-xl border border-sky-400/35 bg-sky-950/50 px-5 py-2.5 backdrop-blur-sm">
-                    <Plane className="size-6 text-sky-300" />
-                    <span className="font-['Outfit',sans-serif] text-2xl sm:text-3xl font-black uppercase tracking-widest text-sky-200">
-                      {(effectiveNationality || 'OVERSEAS').toUpperCase()}
+                </div>
+
+                {/* Country / Flag Row (Centered cleanly beneath Base Price pill like Image 1) */}
+                <div className="flex flex-wrap items-center justify-center gap-5 pt-1 animate-presenter-rise-3">
+                  {!spotlightIsOverseas ? (
+                    <div className="inline-flex items-center gap-4">
+                      <IndiaFlag className="h-9 w-14 sm:h-11 sm:w-16" />
+                      <span
+                        className="font-['Outfit',sans-serif] font-black uppercase tracking-wider text-white"
+                        style={{ fontSize: 'clamp(1.75rem, 2.8vw, 2.75rem)' }}
+                      >
+                        INDIA
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-3.5">
+                      <Plane className="size-8 sm:size-10 text-sky-300" />
+                      <span
+                        className="font-['Outfit',sans-serif] font-black uppercase tracking-wider text-white"
+                        style={{ fontSize: 'clamp(1.75rem, 2.8vw, 2.75rem)' }}
+                      >
+                        {(effectiveNationality || 'OVERSEAS').toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+
+                  {spotlightIsStar && spotlightIsOverseas ? (
+                    <span className="rounded-full border border-amber-400/60 bg-black/50 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-amber-300">
+                      ★ Star Player
                     </span>
-                  </div>
-                )}
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Subtle Footer Strip */}
-          <footer className="relative z-10 flex items-center justify-between border-t border-white/10 pt-3 text-xs font-semibold uppercase tracking-widest text-ink-muted">
-            <span>{eventName} · Live Auction Stage</span>
-            <span>
-              {totals.sold} Sold · {totals.available} Remaining
-            </span>
-          </footer>
+          <div className="h-6" />
         </div>
       ) : event?.break?.active ? (
         /* ===================================================================
            VIEW 3: BREAK / INTERMISSION
            =================================================================== */
-        <div className="h-full p-4 sm:p-8 flex items-center justify-center">
-          <div className="w-full max-w-5xl">
+        <div className="relative h-full p-4 sm:p-8 flex items-center justify-center">
+          <BroadcastBackdrop variant="gold" />
+          <div className="relative z-10 w-full max-w-5xl">
             <AuctionBreakScreen breakState={event.break} eventName={eventName} />
           </div>
         </div>
@@ -859,24 +944,21 @@ export function PresenterPage() {
         /* ===================================================================
            VIEW 4: COUNTDOWN SCREEN
            =================================================================== */
-        <div className="h-full p-4 sm:p-8 flex items-center justify-center">
-          <div className="w-full max-w-5xl">
+        <div className="relative h-full p-4 sm:p-8 flex items-center justify-center">
+          <BroadcastBackdrop variant="gold" />
+          <div className="relative z-10 w-full max-w-5xl">
             <StartingInCountdownScreen countdown={event.countdown} eventName={eventName} />
           </div>
         </div>
       ) : (
         /* ===================================================================
-           VIEW 5: STANDBY BROADCAST STAGE (Waiting for next player)
+           VIEW 5: STANDBY BROADCAST STAGE (Matching Gold-Black Backdrop)
            =================================================================== */
-        <div
-          className="relative flex h-full min-h-[inherit] w-full flex-col justify-between px-6 py-8 sm:px-12 sm:py-10"
-          style={{
-            background:
-              'radial-gradient(ellipse 75% 60% at 50% 42%, rgba(245, 175, 25, 0.16) 0%, rgba(16, 20, 32, 0.7) 55%, #05060a 100%)',
-          }}
-        >
+        <div className="relative flex h-full min-h-[inherit] w-full flex-col justify-between px-6 py-8 sm:px-12 sm:py-10">
+          <BroadcastBackdrop variant="gold" />
+
           <header className="relative z-10 flex items-center justify-between">
-            <div className="inline-flex items-center gap-2.5 rounded-full border border-amber-400/40 bg-amber-500/10 px-4 py-1.5">
+            <div className="inline-flex items-center gap-2.5 rounded-full border border-amber-400/40 bg-black/60 px-4 py-1.5 backdrop-blur-md">
               <span className="relative flex size-2.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex size-2.5 rounded-full bg-emerald-400" />
@@ -885,68 +967,70 @@ export function PresenterPage() {
                 Presenter Connected · Live Sync Active
               </span>
             </div>
+            <p className="font-['Outfit',sans-serif] text-base sm:text-xl font-black uppercase tracking-wider text-white">
+              {eventName}
+            </p>
           </header>
 
           <div className="relative z-10 my-auto flex flex-col items-center text-center max-w-4xl mx-auto">
-            <p className="font-['Outfit',sans-serif] text-xs sm:text-sm font-black uppercase tracking-[0.35em] text-accent">
+            <p className="font-['Outfit',sans-serif] text-xs sm:text-sm font-black uppercase tracking-[0.35em] text-[#f5eb3b]">
               Official Auction Broadcast
             </p>
             <h1 className="mt-3 font-['Outfit',sans-serif] text-4xl sm:text-6xl lg:text-7xl font-black uppercase tracking-tight text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.9)]">
               {eventName}
             </h1>
-            <p className="mt-4 max-w-xl text-sm sm:text-base text-ink-muted">
+            <p className="mt-4 max-w-xl text-sm sm:text-base text-white/75">
               Select any player in <span className="font-semibold text-white">Record Purchase</span> on your controller laptop to present them live on this screen.
             </p>
 
-            {/* Live Auction Counters */}
             <div className="mt-10 grid w-full max-w-3xl grid-cols-2 gap-4 sm:grid-cols-4">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-md">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Teams</p>
+              <div className="rounded-2xl border border-white/10 bg-black/55 px-4 py-4 backdrop-blur-md">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-white/60">Teams</p>
                 <p className="mt-1 font-['Outfit',sans-serif] text-3xl font-black tabular-nums text-white">
                   {totals.teams}
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-md">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Sold</p>
-                <p className="mt-1 font-['Outfit',sans-serif] text-3xl font-black tabular-nums text-accent">
+              <div className="rounded-2xl border border-white/10 bg-black/55 px-4 py-4 backdrop-blur-md">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-white/60">Sold</p>
+                <p className="mt-1 font-['Outfit',sans-serif] text-3xl font-black tabular-nums text-[#f5eb3b]">
                   {totals.sold}
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-md">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Available</p>
+              <div className="rounded-2xl border border-white/10 bg-black/55 px-4 py-4 backdrop-blur-md">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-white/60">Available</p>
                 <p className="mt-1 font-['Outfit',sans-serif] text-3xl font-black tabular-nums text-white">
                   {totals.available}
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 backdrop-blur-md">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Total Spend</p>
+              <div className="rounded-2xl border border-white/10 bg-black/55 px-4 py-4 backdrop-blur-md">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-white/60">Total Spend</p>
                 <p className="mt-1 font-['Outfit',sans-serif] text-2xl sm:text-3xl font-black tabular-nums text-emerald-400">
-                  {currency(totals.spent, currencyLabel)}
+                  {formatBroadcastPrice(totals.spent, currencyLabel)}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Recent Sales Strip */}
           <footer className="relative z-10 border-t border-white/10 pt-4">
             {purchases.data.length > 0 ? (
               <div className="flex flex-wrap items-center justify-center gap-3">
-                <span className="text-[11px] font-bold uppercase tracking-widest text-ink-muted">
+                <span className="text-[11px] font-bold uppercase tracking-widest text-white/60">
                   Latest Sales:
                 </span>
                 {purchases.data.slice(0, 3).map((p) => (
                   <span
                     key={p.id}
-                    className="rounded-full border border-white/10 bg-white/5 px-3.5 py-1 text-xs font-semibold text-white"
+                    className="rounded-full border border-white/15 bg-black/60 px-3.5 py-1 text-xs font-semibold text-white"
                   >
-                    {p.playerNameSnapshot} → <span className="text-accent">{p.teamNameSnapshot}</span> (
-                    {currency(p.finalPrice, currencyLabel)})
+                    {p.playerNameSnapshot} → <span className="text-[#f5eb3b]">{p.teamNameSnapshot}</span> (
+                    {formatBroadcastPrice(p.finalPrice, currencyLabel)})
                   </span>
                 ))}
               </div>
             ) : (
-              <p className="text-center text-xs font-medium text-ink-muted">
-                Tip: Click <span className="font-bold text-white">Fullscreen</span> (or press <kbd className="rounded border border-white/20 px-1.5 py-0.5 text-[10px]">F</kbd>) on your projector laptop to enable sound and maximize the broadcast stage.
+              <p className="text-center text-xs font-medium text-white/60">
+                Tip: Click <span className="font-bold text-white">Fullscreen</span> (or press{' '}
+                <kbd className="rounded border border-white/20 px-1.5 py-0.5 text-[10px]">F</kbd>) on your projector laptop to enable sound and maximize the broadcast stage.
               </p>
             )}
           </footer>
@@ -955,4 +1039,3 @@ export function PresenterPage() {
     </div>
   )
 }
-
