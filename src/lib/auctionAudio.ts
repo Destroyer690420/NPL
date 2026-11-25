@@ -1,8 +1,8 @@
 /**
  * Audio playback controller for live auction broadcast cues.
  *
- * Uses the 4-second IPL fanfare clip (`/audio/ipl-sold.mp3`) looped continuously
- * during SOLD celebrations until the next player comes on screen.
+ * Uses the full IPL fanfare track (`/audio/ipl-sold.mp3`) looped continuously
+ * during SOLD celebrations until stopped when the next player comes on screen.
  */
 
 const SOLD_CLIP_URL = '/audio/ipl-sold.mp3'
