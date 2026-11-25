@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router'
 import {
+  Gavel,
   Maximize2,
   Minimize2,
   Music,
   Plane,
+  Sparkles,
   Volume2,
   VolumeX,
 } from 'lucide-react'
@@ -264,7 +266,7 @@ function CircularPlayerShowcase({
 
   const boxStyle =
     size === 'sold'
-      ? { width: 'clamp(280px, 48vh, 520px)', height: 'clamp(280px, 48vh, 520px)' }
+      ? { width: 'clamp(300px, 51vh, 540px)', height: 'clamp(300px, 51vh, 540px)' }
       : { width: 'clamp(340px, 64vh, 660px)', height: 'clamp(340px, 64vh, 660px)' }
 
   return (
@@ -341,6 +343,48 @@ function CircularPlayerShowcase({
       {/* Overlapping Starburst Rating Seal at Bottom-Right */}
       <div className="absolute -bottom-2 -right-2 sm:-bottom-3 sm:-right-3 z-20">
         <RatingStarburst rating={rating} label="RATING" />
+      </div>
+    </div>
+  )
+}
+
+const CELEBRATION_SPARKS = [
+  { left: '8%', bottom: '8%', size: 6, delay: '0s', dur: '4.2s', color: '#fde047' },
+  { left: '16%', bottom: '12%', size: 8, delay: '0.8s', dur: '5.1s', color: '#f5af19' },
+  { left: '24%', bottom: '6%', size: 5, delay: '1.6s', dur: '4.4s', color: '#ffffff' },
+  { left: '33%', bottom: '15%', size: 7, delay: '0.4s', dur: '4.8s', color: '#fde047' },
+  { left: '42%', bottom: '10%', size: 6, delay: '2.1s', dur: '5.3s', color: '#fbbf24' },
+  { left: '54%', bottom: '8%', size: 8, delay: '1.1s', dur: '4.5s', color: '#fde047' },
+  { left: '63%', bottom: '14%', size: 5, delay: '0.3s', dur: '4.9s', color: '#ffffff' },
+  { left: '72%', bottom: '7%', size: 7, delay: '1.9s', dur: '4.3s', color: '#f5af19' },
+  { left: '81%', bottom: '12%', size: 6, delay: '0.7s', dur: '5.0s', color: '#fde047' },
+  { left: '90%', bottom: '9%', size: 8, delay: '1.4s', dur: '4.6s', color: '#fbbf24' },
+  { left: '29%', bottom: '4%', size: 5, delay: '2.6s', dur: '4.7s', color: '#f5af19' },
+  { left: '68%', bottom: '5%', size: 6, delay: '2.9s', dur: '5.2s', color: '#fde047' },
+] as const
+
+/** Championship angled SOLD stamp badge with gavel icon & pulsing golden glow. */
+function SoldChampionshipStamp({ tilt = 'left' }: { tilt?: 'left' | 'right' }) {
+  return (
+    <div className="animate-presenter-stamp-slam">
+      <div
+        className={`flex flex-col items-center justify-center rounded-2xl border-2 border-[#f5eb3b]/90 bg-gradient-to-b from-[#2b0509]/90 via-[#160205]/95 to-black/95 px-7 py-3.5 backdrop-blur-md animate-presenter-sold-glow ${
+          tilt === 'left' ? '-rotate-6' : 'rotate-6'
+        }`}
+      >
+        <div className="flex items-center gap-2.5">
+          <Gavel className="size-7 lg:size-8 text-[#f5eb3b]" aria-hidden="true" />
+          <span className="font-['Outfit',sans-serif] text-4xl lg:text-5xl font-black uppercase tracking-[0.14em] text-white drop-shadow-[0_2px_12px_rgba(245,235,59,0.45)]">
+            SOLD
+          </span>
+        </div>
+        <div className="mt-1 flex items-center gap-1.5">
+          <span className="h-[1px] w-5 bg-[#f5eb3b]/60" />
+          <span className="font-['Outfit',sans-serif] text-[10px] font-extrabold uppercase tracking-[0.28em] text-[#f5eb3b]">
+            HAMMER DOWN
+          </span>
+          <span className="h-[1px] w-5 bg-[#f5eb3b]/60" />
+        </div>
       </div>
     </div>
   )
@@ -607,6 +651,7 @@ export function PresenterPage() {
   const soldData = soldAnnouncement
   const soldStar = isStar(soldData?.star ?? soldPlayerRecord?.star)
   const soldOverseas = isOverseas(soldData?.nationality ?? soldPlayerRecord?.nationality)
+  const soldRole = soldData?.role ?? soldPlayerRecord?.role ?? null
   const soldPoints = soldData?.playerPoints ?? soldPlayerRecord?.points ?? 0
 
   return (
@@ -691,98 +736,147 @@ export function PresenterPage() {
       </div>
 
       {/* =====================================================================
-          VIEW 1: PLAYER SOLD ANIMATION (Matches Video Frames 00:05 - 00:10)
+          VIEW 1: PLAYER SOLD ANIMATION (Championship Crimson Celebration)
          ===================================================================== */}
       {soldData ? (
         <div
           key={`sold-${soldData.purchaseId ?? soldData.playerName}`}
-          className="relative flex h-full min-h-[inherit] w-full flex-col justify-between px-6 py-6 sm:px-12 sm:py-8"
+          className="relative flex h-full min-h-[inherit] w-full flex-col justify-between overflow-hidden px-6 py-5 sm:px-10 sm:py-7"
         >
           <BroadcastBackdrop variant="crimson" />
 
-          {/* Top Bar */}
-          <header className="relative z-10 flex items-center justify-between">
+          {/* Floating Golden Celebration Sparks */}
+          <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+            {CELEBRATION_SPARKS.map((spark, idx) => (
+              <span
+                key={idx}
+                className="absolute rounded-full animate-presenter-float-spark"
+                style={{
+                  left: spark.left,
+                  bottom: spark.bottom,
+                  width: `${spark.size}px`,
+                  height: `${spark.size}px`,
+                  backgroundColor: spark.color,
+                  boxShadow: `0 0 12px ${spark.color}`,
+                  animationDelay: spark.delay,
+                  animationDuration: spark.dur,
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Top Bar (Consistent with Spotlight header) */}
+          <header className="relative z-10 flex items-start justify-between">
             <div className="flex flex-col leading-none">
-              <span className="font-['Outfit',sans-serif] text-2xl sm:text-3xl font-black tracking-tight text-white">
-                NPL <span className="text-amber-300">AUCTION</span>
+              <span className="font-['Outfit',sans-serif] text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white">
+                NPL <span className="text-[#f5eb3b]">2026</span>
               </span>
-              <span className="mt-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.26em] text-white/65">
+              <span className="mt-1 text-[8px] sm:text-[10px] font-bold uppercase tracking-[0.24em] text-white/75">
                 WHERE PASSION MEETS PRECISION
               </span>
             </div>
-            <p className="font-['Outfit',sans-serif] text-base sm:text-xl lg:text-2xl font-black uppercase tracking-wider text-white">
+            <p className="font-['Outfit',sans-serif] text-base sm:text-xl lg:text-2xl font-black uppercase tracking-wide text-white">
               {eventName}
             </p>
           </header>
 
           {/* Centerpiece SOLD Stage */}
           <div className="relative z-10 my-auto flex flex-col items-center justify-center py-2">
-            <div className="relative flex w-full max-w-6xl items-center justify-center gap-6 sm:gap-12 lg:gap-20">
-              {/* Left SOLD */}
-              <div className="hidden md:flex items-center gap-3 animate-presenter-stamp-slam">
-                <AlertTriangleBadge className="size-10 lg:size-12" />
-                <span className="font-['Outfit',sans-serif] text-4xl lg:text-5xl font-black uppercase tracking-wider text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)]">
-                  SOLD
-                </span>
-                <AlertTriangleBadge className="size-10 lg:size-12" />
+            <div className="relative flex w-full max-w-6xl items-center justify-center gap-6 sm:gap-12 lg:gap-16">
+              {/* Left Championship SOLD Stamp */}
+              <div className="hidden md:block">
+                <SoldChampionshipStamp tilt="left" />
               </div>
 
-              {/* Center Circular Player Showcase */}
-              <CircularPlayerShowcase
-                name={soldData.playerName}
-                photoUrl={soldData.playerPhotoUrl}
-                rating={soldPoints}
-                ringText={soldStar ? 'STAR PLAYER' : 'SOLD OUT'}
-                circleTone="crimson"
-                size="sold"
-              />
+              {/* Center Circular Player Showcase with Breathing Stadium Halo */}
+              <div className="relative flex items-center justify-center">
+                <div
+                  className="pointer-events-none absolute -inset-10 rounded-full blur-3xl animate-presenter-halo-breathe"
+                  style={{
+                    background:
+                      'radial-gradient(circle, rgba(245, 235, 59, 0.28) 0%, rgba(220, 38, 38, 0.32) 48%, transparent 72%)',
+                  }}
+                />
+                <CircularPlayerShowcase
+                  name={soldData.playerName}
+                  photoUrl={soldData.playerPhotoUrl}
+                  rating={soldPoints}
+                  ringText={soldStar ? 'STAR PLAYER' : 'SOLD OUT'}
+                  circleTone="crimson"
+                  size="sold"
+                />
+              </div>
 
-              {/* Right SOLD */}
-              <div className="hidden md:flex items-center gap-3 animate-presenter-stamp-slam">
-                <AlertTriangleBadge className="size-10 lg:size-12" />
-                <span className="font-['Outfit',sans-serif] text-4xl lg:text-5xl font-black uppercase tracking-wider text-white drop-shadow-[0_4px_16px_rgba(0,0,0,0.85)]">
-                  SOLD
-                </span>
-                <AlertTriangleBadge className="size-10 lg:size-12" />
+              {/* Right Championship SOLD Stamp */}
+              <div className="hidden md:block">
+                <SoldChampionshipStamp tilt="right" />
               </div>
             </div>
 
             {/* Mobile SOLD stamp */}
-            <div className="mt-3 flex md:hidden items-center gap-2 animate-presenter-stamp-slam">
-              <AlertTriangleBadge className="size-6" />
-              <span className="font-['Outfit',sans-serif] text-2xl font-black uppercase tracking-wider text-white">
+            <div className="mt-3 flex md:hidden items-center gap-2 rounded-full border border-[#f5eb3b]/80 bg-black/75 px-5 py-1.5 animate-presenter-stamp-slam">
+              <Gavel className="size-4 text-[#f5eb3b]" />
+              <span className="font-['Outfit',sans-serif] text-xl font-black uppercase tracking-widest text-white">
                 SOLD
               </span>
-              <AlertTriangleBadge className="size-6" />
             </div>
 
-            {/* Yellow-Gold Player Name Bar */}
-            <div className="mt-5 animate-presenter-banner-in">
-              <div className="bg-[#f5eb3b] px-10 sm:px-16 py-2 sm:py-2.5 shadow-[0_12px_35px_rgba(0,0,0,0.65)]">
-                <h1 className="text-center font-['Outfit',sans-serif] text-3xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-black leading-none">
+            {/* Slanted Yellow Player Name Bar with Shimmer Sweep */}
+            <div className="mt-5 flex justify-center w-full animate-presenter-banner-in">
+              <div
+                className="relative inline-flex w-fit max-w-full items-center justify-center overflow-hidden bg-[#f5eb3b] px-12 sm:px-16 py-2.5 sm:py-3.5 shadow-[0_14px_38px_rgba(0,0,0,0.7)]"
+                style={{
+                  clipPath: 'polygon(24px 0%, 100% 0%, calc(100% - 24px) 100%, 0% 100%)',
+                }}
+              >
+                <span
+                  className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-transparent via-white/55 to-transparent animate-presenter-shimmer-sweep"
+                  aria-hidden="true"
+                />
+                <h1
+                  className="relative whitespace-nowrap text-center font-['Outfit',sans-serif] font-black uppercase tracking-tight text-black leading-none"
+                  style={{ fontSize: 'clamp(2rem, 4.2vw, 4rem)' }}
+                >
                   {soldData.playerName}
                 </h1>
               </div>
             </div>
 
-            {/* White Rounded SOLD -> TEAM Pill */}
-            <div className="mt-4 animate-presenter-rise-1">
-              <div className="rounded-[28px] bg-white px-8 sm:px-14 py-2.5 sm:py-3.5 shadow-[0_14px_40px_rgba(0,0,0,0.75)]">
-                <p className="whitespace-nowrap text-center font-['Outfit',sans-serif] text-2xl sm:text-4xl lg:text-5xl font-black uppercase tracking-tight text-black leading-none">
-                  SOLD -&gt; {soldData.teamName}
-                </p>
+            {/* Unified Acquisition Banner: SOLD TO [TEAM] + [PRICE] */}
+            <div className="mt-4 flex justify-center w-full animate-presenter-rise-1">
+              <div className="inline-flex max-w-full flex-wrap items-center justify-center gap-3 sm:gap-4 rounded-[30px] bg-white px-5 sm:px-7 py-2.5 sm:py-3 shadow-[0_18px_45px_rgba(0,0,0,0.8)]">
+                <span className="rounded-full bg-[#8f0a14] px-4 py-1.5 font-['Outfit',sans-serif] text-xs sm:text-sm font-black uppercase tracking-[0.2em] text-[#f5eb3b]">
+                  SOLD TO
+                </span>
+                <span
+                  className="whitespace-nowrap font-['Outfit',sans-serif] font-black uppercase tracking-tight text-black leading-none"
+                  style={{ fontSize: 'clamp(1.65rem, 3.2vw, 3.1rem)' }}
+                >
+                  {soldData.teamName}
+                </span>
+                {soldData.finalPrice ? (
+                  <span className="rounded-full bg-[#090b10] px-5 py-1.5 font-['Outfit',sans-serif] text-xl sm:text-2xl lg:text-3xl font-black uppercase tracking-tight text-[#f5eb3b] tabular-nums shadow-inner">
+                    {formatBroadcastPrice(soldData.finalPrice, currencyLabel)}
+                  </span>
+                ) : null}
               </div>
             </div>
 
-            {/* Final Price Line */}
-            {soldData.finalPrice ? (
-              <div className="mt-3.5 flex items-center gap-3 animate-presenter-rise-2">
-                <span className="font-['Outfit',sans-serif] text-xl sm:text-2xl lg:text-3xl font-black uppercase tracking-wider text-amber-300 drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
-                  {formatBroadcastPrice(soldData.finalPrice, currencyLabel)}
-                </span>
+            {/* Subtle Role / Star / Overseas Metadata Strip */}
+            {(soldRole || soldStar || soldOverseas) ? (
+              <div className="mt-3.5 flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm font-bold uppercase tracking-[0.18em] text-white/80 animate-presenter-rise-2">
+                {soldRole ? <span>{soldRole}</span> : null}
+                {soldRole && (soldStar || soldOverseas) ? <span className="text-white/35">•</span> : null}
+                {soldStar ? (
+                  <span className="inline-flex items-center gap-1.5 text-[#f5eb3b]">
+                    <Sparkles className="size-3.5" />
+                    STAR PLAYER
+                  </span>
+                ) : null}
+                {soldStar && soldOverseas ? <span className="text-white/35">•</span> : null}
                 {soldOverseas ? (
-                  <span className="inline-flex items-center gap-1.5 text-sm sm:text-base font-extrabold uppercase tracking-wider text-sky-300">
-                    <Plane className="size-4" />
+                  <span className="inline-flex items-center gap-1.5 text-sky-300">
+                    <Plane className="size-3.5" />
                     OVERSEAS
                   </span>
                 ) : null}
