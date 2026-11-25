@@ -311,4 +311,30 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
+
+  /* Presenter is an intentional broadcast display stage; keep its animations running on PC */
+  [data-presenter-stage] .animate-presenter-spin-slow {
+    animation: presenter-spin-slow 22s linear infinite !important;
+  }
+  [data-presenter-stage] .animate-presenter-player-in {
+    animation: presenter-player-in 650ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+  }
+  [data-presenter-stage] .animate-presenter-banner-in {
+    animation: presenter-banner-in 550ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both !important;
+  }
+  [data-presenter-stage] .animate-presenter-rise-1 {
+    animation: presenter-rise-in 500ms cubic-bezier(0.16, 1, 0.3, 1) 240ms both !important;
+  }
+  [data-presenter-stage] .animate-presenter-rise-2 {
+    animation: presenter-rise-in 500ms cubic-bezier(0.16, 1, 0.3, 1) 340ms both !important;
+  }
+  [data-presenter-stage] .animate-presenter-rise-3 {
+    animation: presenter-rise-in 500ms cubic-bezier(0.16, 1, 0.3, 1) 440ms both !important;
+  }
+  [data-presenter-stage] .animate-presenter-seal-pop {
+    animation: presenter-seal-pop 650ms cubic-bezier(0.16, 1, 0.3, 1) 280ms both !important;
+  }
+  [data-presenter-stage] .animate-presenter-stamp-slam {
+    animation: presenter-stamp-slam 550ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both !important;
+  }
 }

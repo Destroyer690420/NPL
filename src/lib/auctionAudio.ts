@@ -1,9 +1,8 @@
 /**
  * Audio playback controller for live auction broadcast cues.
  *
- * Uses the trimmed 4-second IPL fanfare clip (`/audio/ipl-sold.mp3`) for SOLD
- * celebrations, decoded into the shared Web Audio context (with HTMLAudio
- * fallback) so playback starts instantaneously once the presenter unlocks audio.
+ * Uses the 4-second IPL fanfare clip (`/audio/ipl-sold.mp3`) looped continuously
+ * during SOLD celebrations until the next player comes on screen.
  */
 
 const SOLD_CLIP_URL = '/audio/ipl-sold.mp3'
@@ -75,8 +74,31 @@ export function subscribeAuctionAudioState(listener: (ready: boolean) => void): 
 }
 
 /**
+ * Stops any currently looping SOLD music immediately.
+ */
+export function stopIplSoldTune(): void {
+  if (activeSource) {
+    try {
+      activeSource.stop()
+    } catch {
+      // Ignore already-stopped source
+    }
+    activeSource.disconnect()
+    activeSource = null
+  }
+  if (fallbackAudio) {
+    try {
+      fallbackAudio.pause()
+      fallbackAudio.currentTime = 0
+    } catch {
+      // Ignore
+    }
+  }
+}
+
+/**
  * Unlocks / resumes the shared AudioContext during a user gesture (click/keydown)
- * and preloads the 4-second IPL sold clip so future sales play with zero lag.
+ * and preloads the IPL sold clip so future sales play with zero lag.
  */
 export async function unlockAuctionAudio(): Promise<boolean> {
   const ctx = getAudioContext()
@@ -103,9 +125,11 @@ export async function unlockAuctionAudio(): Promise<boolean> {
 }
 
 /**
- * Plays the first 4 seconds of the uploaded IPL fanfare clip when a player is SOLD.
+ * Plays the IPL fanfare clip in a continuous loop until `stopIplSoldTune()` is called.
  */
 export async function playIplSoldTune(): Promise<boolean> {
+  stopIplSoldTune()
+
   const ctx = getAudioContext()
   if (ctx) {
     try {
@@ -118,16 +142,9 @@ export async function playIplSoldTune(): Promise<boolean> {
 
         const buffer = await loadSoldBuffer(ctx)
         if (buffer) {
-          if (activeSource) {
-            try {
-              activeSource.stop()
-            } catch {
-              // Ignore already-stopped source
-            }
-            activeSource = null
-          }
           const source = ctx.createBufferSource()
           source.buffer = buffer
+          source.loop = true
           const gain = ctx.createGain()
           gain.gain.setValueAtTime(0.95, ctx.currentTime)
           source.connect(gain)
@@ -150,6 +167,7 @@ export async function playIplSoldTune(): Promise<boolean> {
   try {
     el.pause()
     el.currentTime = 0
+    el.loop = true
     await el.play()
     unlocked = true
     notifyUnlock()

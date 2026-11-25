@@ -18,6 +18,7 @@ import {
   isAuctionAudioUnlocked,
   playIplSoldTune,
   playPlayerIntroCue,
+  stopIplSoldTune,
   subscribeAuctionAudioState,
   unlockAuctionAudio,
 } from '@/lib/auctionAudio'
@@ -25,9 +26,6 @@ import { getSupabase } from '@/lib/supabase'
 import { StartingInCountdownScreen } from './StartingInCountdownScreen'
 import { AuctionBreakScreen } from './AuctionBreakScreen'
 import { Button } from '@/components/ui/Button'
-
-const SOLD_DISPLAY_MS = 5500
-const SOLD_FADE_MS = 400
 
 function resolvePhotoSrc(photoUrl: string | null | undefined): string | null {
   if (!photoUrl) return null
@@ -281,29 +279,34 @@ function CircularPlayerShowcase({
       />
 
       {/* Rotating yellow circular text ring (STAR PLAYER STAR PLAYER ...) */}
-      <svg
-        viewBox="0 0 400 400"
-        className="pointer-events-none absolute inset-0 size-full animate-presenter-spin-slow"
-        aria-hidden="true"
+      <div
+        className="pointer-events-none absolute inset-0 animate-presenter-spin-slow will-change-transform"
+        style={{ transformOrigin: 'center center' }}
       >
-        <defs>
-          <path
-            id={`ringTextPath-${circleTone}`}
-            d="M 200, 200 m -174, 0 a 174,174 0 1,1 348,0 a 174,174 0 1,1 -348,0"
-          />
-        </defs>
-        <text
-          fill="#fde047"
-          fontSize="24"
-          fontWeight="900"
-          letterSpacing="3.8"
-          fontFamily="Outfit, sans-serif"
+        <svg
+          viewBox="0 0 400 400"
+          className="size-full"
+          aria-hidden="true"
         >
-          <textPath href={`#ringTextPath-${circleTone}`} startOffset="0%">
-            {repeated}
-          </textPath>
-        </text>
-      </svg>
+          <defs>
+            <path
+              id={`ringTextPath-${circleTone}`}
+              d="M 200, 200 m -174, 0 a 174,174 0 1,1 348,0 a 174,174 0 1,1 -348,0"
+            />
+          </defs>
+          <text
+            fill="#fde047"
+            fontSize="24"
+            fontWeight="900"
+            letterSpacing="3.8"
+            fontFamily="Outfit, sans-serif"
+          >
+            <textPath href={`#ringTextPath-${circleTone}`} startOffset="0%">
+              {repeated}
+            </textPath>
+          </text>
+        </svg>
+      </div>
 
       {/* Player Portrait: bottom half clipped neatly to the inner circle, head unclipped at top */}
       <div
@@ -359,11 +362,8 @@ export function PresenterPage() {
   const [muted, setMuted] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
 
-  const [soldState, setSoldState] = useState<{
-    announcement: SoldPlayerAnnouncement
-    exiting: boolean
-  } | null>(null)
-  const soldTimersRef = useRef<{ exit?: number; clear?: number }>({})
+  const [soldAnnouncement, setSoldAnnouncement] = useState<SoldPlayerAnnouncement | null>(null)
+  const soldAtSpotlightIdRef = useRef<string | null>(null)
   const lastSpotlightIdRef = useRef<string | null>(null)
   const hideControlsTimerRef = useRef<number | null>(null)
 
@@ -442,29 +442,27 @@ export function PresenterPage() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [toggleFullscreen])
 
+  const spotlight: SpotlightPlayer | null = event?.spotlightPlayer ?? null
+  const spotlightRef = useRef<SpotlightPlayer | null>(spotlight)
+  spotlightRef.current = spotlight
+
   const showSoldCelebration = useCallback(
     (announcement: SoldPlayerAnnouncement) => {
-      if (soldTimersRef.current.exit) window.clearTimeout(soldTimersRef.current.exit)
-      if (soldTimersRef.current.clear) window.clearTimeout(soldTimersRef.current.clear)
-
-      setSoldState({ announcement, exiting: false })
+      soldAtSpotlightIdRef.current = spotlightRef.current?.spotlightId ?? null
+      setSoldAnnouncement(announcement)
       if (!muted) {
         void playIplSoldTune()
       }
-
-      soldTimersRef.current.exit = window.setTimeout(() => {
-        setSoldState((prev) => (prev ? { ...prev, exiting: true } : null))
-      }, SOLD_DISPLAY_MS)
-
-      soldTimersRef.current.clear = window.setTimeout(() => {
-        setSoldState(null)
-      }, SOLD_DISPLAY_MS + SOLD_FADE_MS)
     },
     [muted],
   )
 
+  const clearSoldCelebration = useCallback(() => {
+    setSoldAnnouncement(null)
+    stopIplSoldTune()
+  }, [])
+
   useEffect(() => {
-    const timers = soldTimersRef.current
     function onPlayerSold(e: Event) {
       const custom = e as CustomEvent<SoldPlayerAnnouncement>
       const detail = custom.detail
@@ -474,17 +472,19 @@ export function PresenterPage() {
     window.addEventListener('auction:player_sold', onPlayerSold)
     return () => {
       window.removeEventListener('auction:player_sold', onPlayerSold)
-      if (timers.exit) window.clearTimeout(timers.exit)
-      if (timers.clear) window.clearTimeout(timers.clear)
+      stopIplSoldTune()
     }
   }, [showSoldCelebration])
 
-  const spotlight: SpotlightPlayer | null = event?.spotlightPlayer ?? null
-
+  // Keep SOLD screen & music running until the next player appears (or break/countdown starts)
   useEffect(() => {
     const id = spotlight?.spotlightId ?? null
     if (id && id !== lastSpotlightIdRef.current) {
       lastSpotlightIdRef.current = id
+      if (id !== soldAtSpotlightIdRef.current) {
+        setSoldAnnouncement(null)
+        stopIplSoldTune()
+      }
       if (!muted) {
         void playPlayerIntroCue()
       }
@@ -492,6 +492,19 @@ export function PresenterPage() {
       lastSpotlightIdRef.current = null
     }
   }, [spotlight?.spotlightId, muted])
+
+  useEffect(() => {
+    if (event?.break?.active || event?.countdown?.targetTime) {
+      setSoldAnnouncement(null)
+      stopIplSoldTune()
+    }
+  }, [event?.break?.active, event?.countdown?.targetTime])
+
+  useEffect(() => {
+    if (muted) {
+      stopIplSoldTune()
+    }
+  }, [muted])
 
   useEffect(() => {
     if (!spotlight?.playerId) {
@@ -551,9 +564,9 @@ export function PresenterPage() {
   }, [players.data, teams.data])
 
   const soldPlayerRecord = useMemo(() => {
-    if (!soldState?.announcement.playerId) return null
-    return players.data.find((p) => p.id === soldState.announcement.playerId) ?? null
-  }, [soldState?.announcement.playerId, players.data])
+    if (!soldAnnouncement?.playerId) return null
+    return players.data.find((p) => p.id === soldAnnouncement.playerId) ?? null
+  }, [soldAnnouncement?.playerId, players.data])
 
   function handleTestSoldAnimation() {
     void unlockAuctionAudio().then(() => {
@@ -591,7 +604,7 @@ export function PresenterPage() {
   const spotlightIsStar = isStar(effectiveStar)
   const spotlightIsOverseas = isOverseas(effectiveNationality)
 
-  const soldData = soldState?.announcement ?? null
+  const soldData = soldAnnouncement
   const soldStar = isStar(soldData?.star ?? soldPlayerRecord?.star)
   const soldOverseas = isOverseas(soldData?.nationality ?? soldPlayerRecord?.nationality)
   const soldPoints = soldData?.playerPoints ?? soldPlayerRecord?.points ?? 0
@@ -599,6 +612,7 @@ export function PresenterPage() {
   return (
     <div
       ref={stageRef}
+      data-presenter-stage="true"
       onClick={() => void handleUnlockAudio()}
       className={`relative w-full overflow-hidden select-none bg-black text-white ${isFullscreen
           ? 'fixed inset-0 z-50 h-dvh w-screen'
@@ -645,6 +659,16 @@ export function PresenterPage() {
           )}
         </button>
 
+        {soldData && !isFullscreen ? (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={clearSoldCelebration}
+          >
+            Clear Sold
+          </Button>
+        ) : null}
+
         {!isFullscreen ? (
           <Button
             size="sm"
@@ -672,8 +696,7 @@ export function PresenterPage() {
       {soldData ? (
         <div
           key={`sold-${soldData.purchaseId ?? soldData.playerName}`}
-          className={`relative flex h-full min-h-[inherit] w-full flex-col justify-between px-6 py-6 sm:px-12 sm:py-8 transition-opacity duration-300 ${soldState?.exiting ? 'opacity-0' : 'opacity-100'
-            }`}
+          className="relative flex h-full min-h-[inherit] w-full flex-col justify-between px-6 py-6 sm:px-12 sm:py-8"
         >
           <BroadcastBackdrop variant="crimson" />
 
@@ -767,10 +790,7 @@ export function PresenterPage() {
             ) : null}
           </div>
 
-          {/* Bottom Progress Drain */}
-          <div className="relative z-10 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
-            <div className="h-full bg-gradient-to-r from-amber-300 via-yellow-400 to-white animate-presenter-progress-sold" />
-          </div>
+          <div className="h-4" />
         </div>
       ) : spotlight ? (
         /* ===================================================================
