@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useOutletContext, useSearchParams } from 'react-router'
 import {
   AlertTriangle,
@@ -56,6 +56,28 @@ function sameAttempt(a: Attempt, b: Attempt): boolean {
   return a.playerId === b.playerId && a.teamId === b.teamId && a.price === b.price
 }
 
+/** Formats a raw digit string with Indian grouping commas without stripping leading zeros. */
+function formatIndianDigits(digits: string): string {
+  if (!digits) return ''
+  if (digits.length <= 3) return digits
+  const lastThree = digits.slice(-3)
+  const rest = digits.slice(0, -3).replace(/\B(?=(\d{2})+(?!\d))/g, ',')
+  return `${rest},${lastThree}`
+}
+
+/** Finds the character index right after `digitCount` digits in a comma-formatted string. */
+function caretIndexForDigitCount(formatted: string, digitCount: number): number {
+  if (digitCount <= 0) return 0
+  let seen = 0
+  for (let i = 0; i < formatted.length; i += 1) {
+    if (/\d/.test(formatted[i]!)) {
+      seen += 1
+      if (seen === digitCount) return i + 1
+    }
+  }
+  return formatted.length
+}
+
 export function RecordPurchasePage() {
   const { eventId } = useOutletContext<AdminOutletContext>()
   const { event } = useAdminEvent()
@@ -73,6 +95,9 @@ export function RecordPurchasePage() {
   const [playerId, setPlayerId] = useState<string | null>(null)
   const [teamId, setTeamId] = useState<string | null>(null)
   const [priceText, setPriceText] = useState('')
+  const [priceEditRev, setPriceEditRev] = useState(0)
+  const priceInputRef = useRef<HTMLInputElement>(null)
+  const pendingPriceCaretDigitsRef = useRef<number | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [submit, setSubmit] = useState<SubmitState>({ kind: 'idle' })
   const [advancingQueue, setAdvancingQueue] = useState(false)
@@ -268,18 +293,62 @@ export function RecordPurchasePage() {
     }
   }, [selectedTeam, selectedPlayer, price])
 
+  useLayoutEffect(() => {
+    const targetDigits = pendingPriceCaretDigitsRef.current
+    if (targetDigits === null) return
+    pendingPriceCaretDigitsRef.current = null
+    const input = priceInputRef.current
+    if (!input || document.activeElement !== input) return
+    const pos = caretIndexForDigitCount(priceText, targetDigits)
+    input.setSelectionRange(pos, pos)
+  }, [priceText, priceEditRev])
+
   function handlePriceChange(event: React.ChangeEvent<HTMLInputElement>): void {
-    const raw = event.target.value
-    const digitsOnly = raw.replace(/\D/g, '')
+    const input = event.target
+    const raw = input.value
+    const selectionStart = input.selectionStart ?? raw.length
+    let digitsBeforeCaret = raw.slice(0, selectionStart).replace(/\D/g, '').length
+    let digitsOnly = raw.replace(/\D/g, '')
+
+    const prevDigits = priceText.replace(/\D/g, '')
+    const nativeInput = event.nativeEvent as InputEvent | undefined
+    const inputType = nativeInput?.inputType
+
+    // If Backspace/Delete removed only a comma without changing digits, delete the adjacent digit too.
+    if (digitsOnly === prevDigits && raw.length < priceText.length) {
+      if (inputType === 'deleteContentBackward' && digitsBeforeCaret > 0) {
+        digitsOnly =
+          digitsOnly.slice(0, digitsBeforeCaret - 1) + digitsOnly.slice(digitsBeforeCaret)
+        digitsBeforeCaret -= 1
+      } else if (inputType === 'deleteContentForward' && digitsBeforeCaret < digitsOnly.length) {
+        digitsOnly =
+          digitsOnly.slice(0, digitsBeforeCaret) + digitsOnly.slice(digitsBeforeCaret + 1)
+      }
+    }
+
     if (!digitsOnly) {
+      pendingPriceCaretDigitsRef.current = 0
       setPriceText('')
+      setPriceEditRev((r) => r + 1)
       setSubmit((current) => (current.kind === 'failed' ? { kind: 'idle' } : current))
       return
     }
+
     const trimmed = digitsOnly.slice(0, 12)
-    const num = Number(trimmed)
-    setPriceText(num.toLocaleString('en-IN'))
+    pendingPriceCaretDigitsRef.current = Math.min(digitsBeforeCaret, trimmed.length)
+    setPriceText(formatIndianDigits(trimmed))
+    setPriceEditRev((r) => r + 1)
     setSubmit((current) => (current.kind === 'failed' ? { kind: 'idle' } : current))
+  }
+
+  function handlePriceBlur(): void {
+    const digitsOnly = priceText.replace(/\D/g, '')
+    if (!digitsOnly) {
+      setPriceText('')
+      return
+    }
+    const num = Number(digitsOnly.slice(0, 12))
+    setPriceText(Number.isFinite(num) ? num.toLocaleString('en-IN') : '')
   }
 
   function addBidIncrement(increment: number): void {
@@ -608,11 +677,13 @@ export function RecordPurchasePage() {
 
             <div className="space-y-2.5">
               <InputField
+                ref={priceInputRef}
                 label={`Final sale price (${currencyLabel})`}
                 inputMode="numeric"
                 value={priceText}
                 placeholder="e.g. 1,00,00,000"
                 onChange={handlePriceChange}
+                onBlur={handlePriceBlur}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' && ready) {
                     event.preventDefault()

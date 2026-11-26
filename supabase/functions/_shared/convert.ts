@@ -158,6 +158,7 @@ export function toEventDoc(id: string, data: Data): EventDoc | null {
     round1Results: data.round1Results ? (data.round1Results as EventDoc['round1Results']) : null,
     round2Results: data.round2Results ? (data.round2Results as EventDoc['round2Results']) : null,
     presenterView: toPresenterView(data.presenterView),
+    captainSelectionEnabled: asBool(data.captainSelectionEnabled, false),
   }
 }
 
@@ -174,6 +175,8 @@ export function toTeamDoc(id: string, data: Data): TeamDoc | null {
     totalPoints: asNumber(data.totalPoints),
     playerCount: asInt(data.playerCount),
     active: asBool(data.active, true),
+    captainPlayerId: asNullableString(data.captainPlayerId),
+    captainBonusPoints: asNumber(data.captainBonusPoints, 0),
     createdAt: toTimestampValue(data.createdAt),
     updatedAt: toTimestampValue(data.updatedAt),
   }
@@ -234,6 +237,11 @@ export function toPurchaseDoc(id: string, data: Data): PurchaseDoc | null {
     playerNameSnapshot: asString(data.playerNameSnapshot),
     playerPointsSnapshot: asNumber(data.playerPointsSnapshot),
     playerPhotoUrlSnapshot: asNullableString(data.playerPhotoUrlSnapshot),
+    playerStarSnapshot:
+      data.playerStarSnapshot !== undefined && data.playerStarSnapshot !== null
+        ? String(data.playerStarSnapshot).trim() || null
+        : null,
+    playerRoleSnapshot: asNullableString(data.playerRoleSnapshot),
     teamId: asString(data.teamId),
     teamNameSnapshot: asString(data.teamNameSnapshot),
     finalPrice: asInt(data.finalPrice),

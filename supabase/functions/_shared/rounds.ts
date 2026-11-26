@@ -1,4 +1,4 @@
-import { addPoints } from './money.ts'
+import { addPoints, computeCaptainPoints, isStarPlayerFlag } from './money.ts'
 import type { PlayerDoc, RoundSnapshot, TeamDoc, TeamQualificationResult } from './types.ts'
 
 export type AuctionRole = 'BAT' | 'BOWL' | 'AR' | 'WK'
@@ -211,14 +211,16 @@ export function buildRoundPool<T extends PoolCandidatePlayer>(
  * - Wicket-Keepers (WK) >= 1
  */
 export function evaluateTeamQualification(
-  team: Pick<TeamDoc, 'id' | 'name' | 'totalSpent' | 'remainingPurse' | 'totalPoints' | 'playerCount'>,
-  squadPlayers: readonly Pick<PlayerDoc, 'role' | 'rating' | 'points'>[],
+  team: Pick<TeamDoc, 'id' | 'name' | 'totalSpent' | 'remainingPurse' | 'totalPoints' | 'playerCount' | 'captainPlayerId'>,
+  squadPlayers: readonly (Pick<PlayerDoc, 'role' | 'rating' | 'points'> & Partial<Pick<PlayerDoc, 'id' | 'name' | 'star'>>)[],
 ): TeamQualificationResult {
   let batCount = 0
   let bowlCount = 0
   let arCount = 0
   let wkCount = 0
   let computedPoints = 0
+  let captainPlayerName: string | null = null
+  let captainIsStar = false
 
   for (const player of squadPlayers) {
     const role = normalizeRole(player.role)
@@ -226,7 +228,16 @@ export function evaluateTeamQualification(
     else if (role === 'BOWL') bowlCount += 1
     else if (role === 'AR') arCount += 1
     else if (role === 'WK') wkCount += 1
-    computedPoints = addPoints(computedPoints, getPlayerRating(player))
+
+    const baseRating = getPlayerRating(player)
+    const isCap = Boolean(team.captainPlayerId && player.id && player.id === team.captainPlayerId)
+    if (isCap) {
+      captainIsStar = isStarPlayerFlag(player.star)
+      captainPlayerName = player.name ?? null
+      computedPoints = addPoints(computedPoints, computeCaptainPoints(baseRating, captainIsStar))
+    } else {
+      computedPoints = addPoints(computedPoints, baseRating)
+    }
   }
 
   const playerCount = squadPlayers.length
@@ -269,6 +280,9 @@ export function evaluateTeamQualification(
     missingWk,
     missingReasons,
     missingSummary,
+    captainPlayerId: team.captainPlayerId ?? null,
+    captainPlayerName,
+    captainIsStar,
   }
 }
 

@@ -1,6 +1,19 @@
 import { z } from 'zod'
-import { verifyTeamPinSchema } from '../../_shared/schemas.ts'
-import { getPlayerSortOrder, timestampToMillis } from '../../_shared/convert.ts'
+import { selectTeamCaptainSchema, verifyTeamPinSchema } from '../../_shared/schemas.ts'
+import {
+  getPlayerSortOrder,
+  timestampToMillis,
+  toPlayerDoc,
+  toPurchaseDoc,
+  toTeamDoc,
+} from '../../_shared/convert.ts'
+import {
+  addPoints,
+  computeCaptainBonusPoints,
+  computeCaptainPoints,
+  isStarPlayerFlag,
+} from '../../_shared/money.ts'
+import { buildRoundSnapshot } from '../../_shared/rounds.ts'
 import {
   PIN_ATTEMPT_LIMIT,
   PIN_ATTEMPT_WINDOW_MINUTES,
@@ -22,8 +35,9 @@ import {
   sessionTokenHash,
 } from '../lib/pin.ts'
 import { RateLimiter } from '../lib/rateLimit.ts'
-import { auditCollection, db, fetchDocById, fetchQueryRows, playersCollection, sessionRef } from '../lib/refs.ts'
+import { auditCollection, auditRef, db, fetchDocById, fetchQueryRows, playersCollection, sessionRef } from '../lib/refs.ts'
 import { getConfig, getEvent, getSecret, getSession, getTeam } from '../lib/store.ts'
+import { supabase } from '../lib/supabase.ts'
 
 /**
  * Team PIN verification.
@@ -298,6 +312,216 @@ export const getTeamLineup = teamCallable({
         if (orderA !== orderB) return orderA - orderB
         return a.name.localeCompare(b.name)
       })
+  },
+})
+
+/**
+ * Returns non-sensitive metadata (`star`, `role`) for players currently sold to the calling team
+ * so the Team Home page accurately shows Star Player badges & Captain multiplier previews.
+ */
+export const getTeamSquadMeta = teamCallable({
+  schema: z.object({}),
+  handler: async (_input, context) => {
+    const session = context.sessionId
+      ? await getSession(context.eventId, context.sessionId)
+      : null
+    if (!session || session.teamId !== context.teamId || session.revoked) {
+      fail('session-revoked', 'This session is no longer valid. Please sign in again.')
+    }
+    const expiresAtMs = timestampToMillis(session.expiresAt)
+    if (expiresAtMs !== null && expiresAtMs <= Date.now()) {
+      fail('session-expired', 'This session has expired. Please sign in again.')
+    }
+
+    const team = await getTeam(context.eventId, context.teamId)
+    if (!team || !team.active) {
+      fail('team-inactive', 'This team is deactivated. Ask the organizer to reactivate it.')
+    }
+
+    const rows = await fetchQueryRows(playersCollection(context.eventId))
+    return rows
+      .filter((r) => r.data.status === 'sold' && r.data.soldToTeamId === context.teamId)
+      .map((r) => ({
+        playerId: r.id,
+        star: r.data.star !== undefined && r.data.star !== null ? String(r.data.star).trim() || null : null,
+        role: typeof r.data.role === 'string' ? r.data.role : null,
+      }))
+  },
+})
+
+/**
+ * Allows an eligible Round 2 team to choose or change its squad Captain once the admin
+ * activates Captain selection on the Director panel.
+ *
+ * Points rule:
+ * - Regular Captain: 2x points (e.g. 9 -> 18)
+ * - Star Player Captain: 2.5x points (e.g. 9 -> 22.5)
+ * - All other squad players' points remain unchanged.
+ */
+export const selectTeamCaptain = teamCallable({
+  schema: selectTeamCaptainSchema,
+  handler: async (input, context) => {
+    const session = context.sessionId
+      ? await getSession(context.eventId, context.sessionId)
+      : null
+    if (!session || session.teamId !== context.teamId || session.revoked) {
+      fail('session-revoked', 'This session is no longer valid. Please sign in again.')
+    }
+    const expiresAtMs = timestampToMillis(session.expiresAt)
+    if (expiresAtMs !== null && expiresAtMs <= Date.now()) {
+      fail('session-expired', 'This session has expired. Please sign in again.')
+    }
+
+    const [{ data: eventRow }, { data: teamRow }, { data: playerRows }, { data: purchaseRows }] =
+      await Promise.all([
+        supabase.from('events').select('id, data').eq('id', context.eventId).maybeSingle(),
+        supabase
+          .from('teams')
+          .select('id, data')
+          .eq('event_id', context.eventId)
+          .eq('id', context.teamId)
+          .maybeSingle(),
+        supabase.from('players').select('id, data').eq('event_id', context.eventId),
+        supabase.from('purchases').select('id, data').eq('event_id', context.eventId),
+      ])
+
+    const event = eventRow ? (await getEvent(context.eventId)) : null
+    if (!event) fail('event-not-found')
+    if (event.status === 'finalized') fail('event-finalized')
+    if (!event.captainSelectionEnabled) {
+      fail('failed-precondition', 'Captain selection is currently locked by the organizer.')
+    }
+    if ((event.currentRound ?? 0) !== 2) {
+      fail('failed-precondition', 'Captain selection is only available in Round 2.')
+    }
+    if ((event.eliminatedTeamIds ?? []).includes(context.teamId)) {
+      fail('team-inactive', 'Eliminated teams cannot select a Round 2 captain.')
+    }
+
+    if (!teamRow) fail('team-not-found')
+    const rawTeamData = (teamRow.data ?? {}) as Record<string, unknown>
+    const team = toTeamDoc(teamRow.id, rawTeamData)
+    if (!team) fail('team-not-found')
+    if (!team.active) {
+      fail('team-inactive', 'This team is deactivated. Ask the organizer to reactivate it.')
+    }
+
+    const allPlayers = (playerRows ?? [])
+      .map((r) => toPlayerDoc(r.id, (r.data ?? {}) as Record<string, unknown>))
+      .filter((p): p is NonNullable<typeof p> => p !== null)
+    const targetPlayer = allPlayers.find((p) => p.id === input.playerId)
+    if (!targetPlayer) fail('player-not-found')
+    if (targetPlayer.status !== 'sold' || targetPlayer.soldToTeamId !== context.teamId) {
+      fail('failed-precondition', 'You can only choose a captain from your own current squad.')
+    }
+
+    const confirmedPurchases = (purchaseRows ?? [])
+      .map((r) => toPurchaseDoc(r.id, (r.data ?? {}) as Record<string, unknown>))
+      .filter((p): p is NonNullable<typeof p> => p !== null && p.status === 'confirmed' && p.teamId === context.teamId)
+
+    const capPurchase = confirmedPurchases.find((p) => p.playerId === targetPlayer.id)
+    if (!capPurchase) {
+      fail('failed-precondition', 'No confirmed purchase record found for this squad player.')
+    }
+
+    // Always recompute cleanly from base confirmed purchases + new captain bonus so switching
+    // captains multiple times never drifts or double-counts points.
+    let baseTotalPoints = 0
+    for (const p of confirmedPurchases) {
+      baseTotalPoints = addPoints(baseTotalPoints, p.playerPointsSnapshot)
+    }
+
+    const captainBasePoints = capPurchase.playerPointsSnapshot
+    const captainIsStar = isStarPlayerFlag(targetPlayer.star ?? capPurchase.playerStarSnapshot)
+    const captainPoints = computeCaptainPoints(captainBasePoints, captainIsStar)
+    const captainBonusPoints = computeCaptainBonusPoints(captainBasePoints, captainIsStar)
+    const newTotalPoints = addPoints(baseTotalPoints, captainBonusPoints)
+    const nowIso = new Date().toISOString()
+
+    await supabase
+      .from('teams')
+      .update({
+        data: {
+          ...rawTeamData,
+          captainPlayerId: targetPlayer.id,
+          captainBonusPoints,
+          totalPoints: newTotalPoints,
+          updatedAt: nowIso,
+        },
+      })
+      .eq('id', context.teamId)
+      .eq('event_id', context.eventId)
+
+    // Keep Round 2 Results synced if the round was already ended and results were snapshotted
+    if (event.roundPhase === 'round2_ended') {
+      const { data: allTeamRows } = await supabase
+        .from('teams')
+        .select('id, data')
+        .eq('event_id', context.eventId)
+      const allTeams = (allTeamRows ?? [])
+        .map((r) => toTeamDoc(r.id, (r.data ?? {}) as Record<string, unknown>))
+        .filter((t): t is NonNullable<typeof t> => t !== null)
+      const refreshedSnapshot = buildRoundSnapshot({
+        round: 2,
+        teams: allTeams,
+        players: allPlayers,
+        poolSize: event.roundPoolPlayerIds?.length ?? 0,
+        excludedTeamIds: event.eliminatedTeamIds ?? [],
+      })
+      const rawEventData = (eventRow?.data ?? {}) as Record<string, unknown>
+      await supabase
+        .from('events')
+        .update({
+          data: {
+            ...rawEventData,
+            round2Results: refreshedSnapshot,
+            updatedAt: nowIso,
+          },
+        })
+        .eq('id', context.eventId)
+    }
+
+    await supabase.from('audit_logs').insert({
+      id: auditRef(context.eventId).id,
+      event_id: context.eventId,
+      data: {
+        eventId: context.eventId,
+        actorUid: `team_${context.teamId}`,
+        actorRole: 'system',
+        actorEmail: null,
+        action: 'team.captain-selected',
+        targetType: 'team',
+        targetId: context.teamId,
+        reason: null,
+        metadata: {
+          teamName: team.name,
+          captainPlayerId: targetPlayer.id,
+          captainPlayerName: targetPlayer.name,
+          isStar: captainIsStar,
+          multiplier: captainIsStar ? 2.5 : 2,
+          basePoints: captainBasePoints,
+          captainPoints,
+          bonusPoints: captainBonusPoints,
+          totalPoints: newTotalPoints,
+        },
+        createdAt: {
+          seconds: Math.floor(Date.now() / 1000),
+          nanoseconds: 0,
+        },
+      },
+    })
+
+    return {
+      ok: true,
+      captainPlayerId: targetPlayer.id,
+      captainPlayerName: targetPlayer.name,
+      isStar: captainIsStar,
+      multiplier: captainIsStar ? 2.5 : 2,
+      basePoints: captainBasePoints,
+      captainPoints,
+      bonusPoints: captainBonusPoints,
+      totalPoints: newTotalPoints,
+    }
   },
 })
 

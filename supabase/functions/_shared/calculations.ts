@@ -1,4 +1,4 @@
-import { addInts, addPoints, subtractInts } from './money.ts'
+import { addInts, addPoints, computeCaptainBonusPoints, isStarPlayerFlag, subtractInts } from './money.ts'
 import type { EventDoc, PlayerDoc, PurchaseDoc, TeamDoc, TeamSummary } from './types.ts'
 
 /**
@@ -16,6 +16,7 @@ export interface PurchaseLite {
 export function computeTeamSummary(
   startingPurse: number,
   activePurchases: readonly PurchaseLite[],
+  captainBonusPoints = 0,
 ): TeamSummary {
   let totalSpent = 0
   let totalPoints = 0
@@ -24,6 +25,9 @@ export function computeTeamSummary(
     totalSpent = addInts(totalSpent, purchase.finalPrice)
     totalPoints = addPoints(totalPoints, purchase.points)
     playerCount += 1
+  }
+  if (captainBonusPoints > 0) {
+    totalPoints = addPoints(totalPoints, captainBonusPoints)
   }
   return {
     startingPurse,
@@ -246,9 +250,31 @@ export function validateEventConsistency(input: ConsistencyInput): ConsistencyRe
 
   for (const team of teams) {
     const teamPurchases = purchases.filter((p) => p.teamId === team.id && p.status === 'confirmed')
-    const expected = computeTeamSummary(team.startingPurse, [
-      ...teamPurchases.map((p) => ({ finalPrice: p.finalPrice, points: p.playerPointsSnapshot })),
-    ])
+    let expectedCaptainBonus = 0
+    if (team.captainPlayerId) {
+      const capPurchase = teamPurchases.find((p) => p.playerId === team.captainPlayerId)
+      const capPlayer = playersById.get(team.captainPlayerId)
+      if (!capPurchase || !capPlayer || capPlayer.soldToTeamId !== team.id) {
+        problems.push({
+          code: 'team-captain-invalid',
+          message: `Team ${team.name}: selected captain (${team.captainPlayerId}) is not in the confirmed squad.`,
+          targetType: 'team',
+          targetId: team.id,
+          targetName: team.name,
+        })
+      } else {
+        expectedCaptainBonus = computeCaptainBonusPoints(
+          capPurchase.playerPointsSnapshot,
+          isStarPlayerFlag(capPlayer.star ?? capPurchase.playerStarSnapshot),
+        )
+      }
+    }
+
+    const expected = computeTeamSummary(
+      team.startingPurse,
+      teamPurchases.map((p) => ({ finalPrice: p.finalPrice, points: p.playerPointsSnapshot })),
+      expectedCaptainBonus,
+    )
 
     const mismatches: string[] = []
     if (team.totalSpent !== expected.totalSpent) {

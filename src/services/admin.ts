@@ -523,3 +523,15 @@ export function sendPresenterCommand(eventId: string, command: PresenterCommandT
   broadcastPresenterCommand(eventId, command)
 }
 
+export async function setCaptainSelection(
+  eventId: string,
+  enabled: boolean,
+): Promise<{ ok: boolean; eventId: string; captainSelectionEnabled: boolean }> {
+  const result = await callFunction<
+    { eventId: string; enabled: boolean },
+    { ok: boolean; eventId: string; captainSelectionEnabled: boolean }
+  >('setCaptainSelection', { eventId, enabled })
+  broadcastRoundChange(eventId, enabled ? 'captain_unlocked' : 'captain_locked')
+  return result
+}
+

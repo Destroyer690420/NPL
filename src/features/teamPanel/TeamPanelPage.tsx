@@ -1,20 +1,29 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
-import { Coffee, Home, LogOut, Menu, RefreshCw, Trophy, Users, X } from 'lucide-react'
+import { BookOpen, Coffee, Crown, Home, LogOut, Menu, RefreshCw, Star, Trophy, Users, X } from 'lucide-react'
 import { useTeamAuth } from '@/auth/TeamAuthProvider'
-import { useTeamDoc, useTeamEvent, useTeamLineup, useTeamPurchases } from '@/data/hooks'
+import { useTeamDoc, useTeamEvent, useTeamLineup, useTeamPurchases, useTeamSquadMeta } from '@/data/hooks'
 import { currency, points as formatPoints } from '@/lib/format'
 import { cn } from '@/lib/cn'
+import { isStar } from '@/lib/playerBadges'
+import { computeCaptainPoints } from '@shared/money'
+import type { PurchaseDoc } from '@shared/types'
+import { selectTeamCaptain } from '@/services/team'
+import { isCallError } from '@/services/callables'
+import { errorMessage } from '@/lib/errors'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/Card'
+import { Dialog } from '@/components/ui/Dialog'
 import { EmptyState, LoadingBlock } from '@/components/ui/Feedback'
 import { Pill } from '@/components/ui/StatusPill'
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar'
+import { useToast } from '@/components/ui/Toast'
 import { SpotlightPlayerCard } from '@/features/auction/SpotlightPlayerCard'
 import { SoldPlayerCelebration } from '@/features/auction/SoldPlayerCelebration'
 import { StartingInCountdownScreen } from '@/features/auction/StartingInCountdownScreen'
 import { AuctionBreakScreen } from '@/features/auction/AuctionBreakScreen'
 import { TeamLineupView } from './TeamLineupView'
+import { TeamRulesView } from './TeamRulesView'
 import { subscribeToAuctionRealtime } from '@/lib/realtime'
 
 /**
@@ -25,16 +34,19 @@ import { subscribeToAuctionRealtime } from '@/lib/realtime'
 export function TeamPanelPage() {
   const auth = useTeamAuth()
   const context = auth.context
+  const toast = useToast()
 
   const [searchParams, setSearchParams] = useSearchParams()
-  const activeTab = searchParams.get('tab') === 'lineup' ? 'lineup' : 'home'
+  const rawTab = searchParams.get('tab')
+  const activeTab: 'home' | 'lineup' | 'rules' =
+    rawTab === 'lineup' ? 'lineup' : rawTab === 'rules' ? 'rules' : 'home'
 
-  function setActiveTab(tab: 'home' | 'lineup') {
+  function setActiveTab(tab: 'home' | 'lineup' | 'rules') {
     const next = new URLSearchParams(searchParams)
     if (tab === 'home') {
       next.delete('tab')
     } else {
-      next.set('tab', 'lineup')
+      next.set('tab', tab)
     }
     setSearchParams(next, { replace: true })
   }
@@ -43,7 +55,35 @@ export function TeamPanelPage() {
   const eventLive = useTeamEvent(context?.eventId ?? null)
   const purchases = useTeamPurchases(context?.eventId ?? null, context?.teamId ?? null, 200)
   const lineup = useTeamLineup(context?.eventId ?? null)
+  const squadMeta = useTeamSquadMeta(context?.eventId ?? null, context?.teamId ?? null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [captainCandidate, setCaptainCandidate] = useState<PurchaseDoc | null>(null)
+  const [savingCaptain, setSavingCaptain] = useState(false)
+  const [optimisticCaptain, setOptimisticCaptain] = useState<{
+    captainPlayerId: string
+    totalPoints: number
+  } | null>(null)
+
+  const squadMetaById = useMemo(
+    () => new Map(squadMeta.data.map((m) => [m.playerId, m])),
+    [squadMeta.data],
+  )
+
+  useEffect(() => {
+    if (
+      optimisticCaptain &&
+      team.data?.captainPlayerId === optimisticCaptain.captainPlayerId &&
+      team.data?.totalPoints === optimisticCaptain.totalPoints
+    ) {
+      setOptimisticCaptain(null)
+    }
+  }, [team.data?.captainPlayerId, team.data?.totalPoints, optimisticCaptain])
+
+  useEffect(() => {
+    if (!eventLive.data?.captainSelectionEnabled) {
+      setCaptainCandidate(null)
+    }
+  }, [eventLive.data?.captainSelectionEnabled])
 
   // Subscribes to real-time auction broadcasts for instantaneous card display
   useEffect(() => {
@@ -83,6 +123,47 @@ export function TeamPanelPage() {
   const fromCache = team.fromCache || purchases.fromCache
   const confirmed = purchases.data.filter((purchase) => purchase.status === 'confirmed')
   const teamDisplayName = teamData?.name || context.teamName
+
+  const isEliminated = Boolean(eventLive.data?.eliminatedTeamIds?.includes(context.teamId))
+  const isRound2Eligible =
+    (eventLive.data?.currentRound ?? 0) === 2 &&
+    !isEliminated &&
+    eventLive.data?.status !== 'finalized'
+  const canSelectCaptain = Boolean(eventLive.data?.captainSelectionEnabled && isRound2Eligible)
+  const effectiveCaptainId = optimisticCaptain?.captainPlayerId ?? teamData?.captainPlayerId ?? null
+  const displayedTeamPoints = optimisticCaptain?.totalPoints ?? teamData?.totalPoints ?? 0
+
+  function isPurchaseStar(purchase: PurchaseDoc): boolean {
+    const meta = squadMetaById.get(purchase.playerId)
+    return isStar(meta?.star ?? purchase.playerStarSnapshot)
+  }
+
+  function purchaseRoleLabel(purchase: PurchaseDoc): string | null {
+    const meta = squadMetaById.get(purchase.playerId)
+    return meta?.role ?? purchase.playerRoleSnapshot ?? null
+  }
+
+  async function handleConfirmCaptain() {
+    if (!captainCandidate) return
+    setSavingCaptain(true)
+    try {
+      const res = await selectTeamCaptain(captainCandidate.playerId)
+      setOptimisticCaptain({
+        captainPlayerId: res.captainPlayerId,
+        totalPoints: res.totalPoints,
+      })
+      setCaptainCandidate(null)
+      toast.push({
+        kind: 'success',
+        message: `${res.captainPlayerName} appointed Captain (${res.multiplier}×)!`,
+        detail: `Captain points: ${formatPoints(res.basePoints)} → ${formatPoints(res.captainPoints)} pts`,
+      })
+    } catch (err) {
+      toast.push({ kind: 'error', message: isCallError(err) ? err.message : errorMessage(err) })
+    } finally {
+      setSavingCaptain(false)
+    }
+  }
 
   return (
     <div className="mx-auto min-h-dvh w-full max-w-3xl px-4 py-6 sm:px-6">
@@ -224,6 +305,35 @@ export function TeamPanelPage() {
                     <span className="size-2 rounded-full bg-accent animate-pulse" />
                   ) : null}
                 </button>
+
+                {/* 3. Rules Page Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('rules')
+                    setSidebarOpen(false)
+                  }}
+                  className={cn(
+                    'flex w-full items-center justify-between rounded-xl px-3.5 py-2.5 text-left transition-all cursor-pointer border',
+                    activeTab === 'rules'
+                      ? 'border-accent/50 bg-accent/15 text-accent shadow-[0_0_15px_rgba(245,175,25,0.15)] font-bold'
+                      : 'border-line/60 bg-surface-muted/40 text-ink-muted hover:border-line-strong hover:bg-surface-muted hover:text-white',
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <BookOpen
+                      className={cn('size-4.5', activeTab === 'rules' ? 'text-accent' : 'text-ink-muted')}
+                      aria-hidden
+                    />
+                    <div>
+                      <p className="text-sm font-bold text-white leading-tight">Rules</p>
+                      <p className="text-[11px] text-ink-muted leading-tight mt-0.5">Round, elimination &amp; captain rules</p>
+                    </div>
+                  </div>
+                  {activeTab === 'rules' ? (
+                    <span className="size-2 rounded-full bg-accent animate-pulse" />
+                  ) : null}
+                </button>
               </div>
             </div>
 
@@ -287,6 +397,8 @@ export function TeamPanelPage() {
           ) : null}
           <TeamLineupView players={lineup.data} loading={lineup.loading} />
         </>
+      ) : activeTab === 'rules' ? (
+        <TeamRulesView />
       ) : (
         <>
           {eventLive.data?.eliminatedTeamIds?.includes(context.teamId) ? (
@@ -336,7 +448,7 @@ export function TeamPanelPage() {
                 <div className="px-3 py-3.5 text-center sm:px-4">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Points</p>
                   <p className="mt-0.5 text-xl font-bold tabular-nums text-white sm:text-2xl">
-                    {formatPoints(teamData.totalPoints)}
+                    {formatPoints(displayedTeamPoints)}
                   </p>
                 </div>
                 <div className="px-3 py-3.5 text-center sm:px-4">
@@ -359,6 +471,24 @@ export function TeamPanelPage() {
             </Card>
           )}
 
+          {canSelectCaptain ? (
+            <div className="mt-6 flex items-start gap-3 rounded-2xl border border-accent/60 bg-gradient-to-r from-accent/15 via-amber-500/10 to-transparent px-4 py-3.5 shadow-[0_0_24px_rgba(245,175,25,0.14)]">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-accent/50 bg-accent/20 text-accent">
+                <Crown className="size-4.5" aria-hidden />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm font-black uppercase tracking-wide text-accent">
+                  Captain Selection Unlocked
+                </p>
+                <p className="mt-0.5 text-xs text-ink-muted leading-relaxed">
+                  Click any player&apos;s photo in your squad below to choose your Round 2 Captain (
+                  <strong className="text-white">2×</strong> points, or{' '}
+                  <strong className="text-amber-300">2.5×</strong> for ★ Star players).
+                </p>
+              </div>
+            </div>
+          ) : null}
+
           <Card className="mt-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -379,27 +509,193 @@ export function TeamPanelPage() {
               />
             ) : (
               <ul className="divide-y divide-line">
-                {confirmed.map((purchase) => (
-                  <li key={purchase.id} className="flex items-center gap-3.5 px-4 py-3.5 transition-colors hover:bg-surface-muted/20 sm:px-5">
-                    <PlayerAvatar
-                      name={purchase.playerNameSnapshot}
-                      photoUrl={purchase.playerPhotoUrlSnapshot}
-                      size="md"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-white">{purchase.playerNameSnapshot}</p>
-                      <p className="mt-0.5 text-xs text-ink-muted">
-                        <span className="font-semibold text-sky-400">{formatPoints(purchase.playerPointsSnapshot)} pts</span>
+                {confirmed.map((purchase) => {
+                  const isCaptain = Boolean(effectiveCaptainId && purchase.playerId === effectiveCaptainId)
+                  const starPlayer = isPurchaseStar(purchase)
+                  const roleLabel = purchaseRoleLabel(purchase)
+                  const displayPoints = isCaptain
+                    ? computeCaptainPoints(purchase.playerPointsSnapshot, starPlayer)
+                    : purchase.playerPointsSnapshot
+
+                  return (
+                    <li
+                      key={purchase.id}
+                      className={cn(
+                        'flex items-center gap-3.5 px-4 py-3.5 transition-colors sm:px-5',
+                        isCaptain ? 'bg-accent/10' : 'hover:bg-surface-muted/20',
+                      )}
+                    >
+                      {canSelectCaptain ? (
+                        <button
+                          type="button"
+                          onClick={() => setCaptainCandidate(purchase)}
+                          aria-label={`Choose ${purchase.playerNameSnapshot} as captain`}
+                          title="Tap photo to choose as Captain"
+                          className={cn(
+                            'group relative shrink-0 rounded-full p-0.5 transition-transform active:scale-95 cursor-pointer',
+                            isCaptain
+                              ? 'ring-2 ring-accent shadow-[0_0_15px_rgba(245,175,25,0.5)]'
+                              : 'hover:ring-2 hover:ring-accent/70',
+                          )}
+                        >
+                          <PlayerAvatar
+                            name={purchase.playerNameSnapshot}
+                            photoUrl={purchase.playerPhotoUrlSnapshot}
+                            size="md"
+                          />
+                          <span
+                            className={cn(
+                              'absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full border text-[10px] font-black shadow',
+                              isCaptain
+                                ? 'border-black bg-accent text-black'
+                                : 'border-accent/70 bg-[#121620] text-accent opacity-90 group-hover:opacity-100',
+                            )}
+                          >
+                            {isCaptain ? 'C' : <Crown className="size-2.5" aria-hidden />}
+                          </span>
+                        </button>
+                      ) : (
+                        <div className="relative shrink-0">
+                          <PlayerAvatar
+                            name={purchase.playerNameSnapshot}
+                            photoUrl={purchase.playerPhotoUrlSnapshot}
+                            size="md"
+                          />
+                          {isCaptain ? (
+                            <span
+                              title="Team Captain"
+                              className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full border border-black bg-accent text-[10px] font-black text-black shadow"
+                            >
+                              C
+                            </span>
+                          ) : null}
+                        </div>
+                      )}
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <p className="truncate text-sm font-bold text-white">{purchase.playerNameSnapshot}</p>
+                          {isCaptain ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-black">
+                              <Crown className="size-2.5" aria-hidden />
+                              Captain ({starPlayer ? '2.5×' : '2×'})
+                            </span>
+                          ) : null}
+                          {starPlayer ? (
+                            <span className="inline-flex items-center gap-0.5 rounded-full border border-amber-500/35 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+                              <Star className="size-2.5 fill-amber-300" aria-hidden />
+                              Star
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="mt-0.5 text-xs text-ink-muted">
+                          <span className={cn('font-semibold', isCaptain ? 'text-accent' : 'text-sky-400')}>
+                            {formatPoints(displayPoints)} pts
+                          </span>
+                          {isCaptain ? (
+                            <span className="ml-1.5 text-[11px] text-ink-muted">
+                              (base {formatPoints(purchase.playerPointsSnapshot)})
+                            </span>
+                          ) : null}
+                          {roleLabel ? <span className="ml-1.5 text-ink-muted">· {roleLabel}</span> : null}
+                        </p>
+                      </div>
+                      <p className="text-base font-extrabold tabular-nums text-accent">
+                        {currency(purchase.finalPrice, currencyLabel)}
                       </p>
-                    </div>
-                    <p className="text-base font-extrabold tabular-nums text-accent">
-                      {currency(purchase.finalPrice, currencyLabel)}
-                    </p>
-                  </li>
-                ))}
+                    </li>
+                  )
+                })}
               </ul>
             )}
           </Card>
+
+          {/* Choose Captain Modal (only reachable when admin unlocks Captain Selection in Round 2) */}
+          <Dialog
+            open={captainCandidate !== null && canSelectCaptain}
+            onClose={() => !savingCaptain && setCaptainCandidate(null)}
+            title="Appoint Team Captain"
+            description="Only your Captain receives the points multiplier (2× regular, 2.5× Star Player). All other players keep their base points."
+            size="sm"
+            footer={
+              captainCandidate ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    disabled={savingCaptain}
+                    onClick={() => setCaptainCandidate(null)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    loading={savingCaptain}
+                    icon={<Crown className="size-4" aria-hidden />}
+                    onClick={() => void handleConfirmCaptain()}
+                  >
+                    {effectiveCaptainId === captainCandidate.playerId
+                      ? 'Keep as Captain'
+                      : 'Choose as Captain'}
+                  </Button>
+                </>
+              ) : undefined
+            }
+          >
+            {captainCandidate ? (
+              (() => {
+                const candStar = isPurchaseStar(captainCandidate)
+                const candMult = candStar ? '2.5×' : '2×'
+                const boosted = computeCaptainPoints(captainCandidate.playerPointsSnapshot, candStar)
+                return (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3.5 rounded-xl border border-line-strong bg-surface-muted/50 p-3.5">
+                      <PlayerAvatar
+                        name={captainCandidate.playerNameSnapshot}
+                        photoUrl={captainCandidate.playerPhotoUrlSnapshot}
+                        size="lg"
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate text-base font-extrabold text-white">
+                          {captainCandidate.playerNameSnapshot}
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          {candStar ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/50 bg-amber-500/20 px-2 py-0.5 text-[11px] font-bold text-amber-200">
+                              <Star className="size-3 fill-amber-300" aria-hidden />
+                              Star Player ({candMult})
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-line bg-black/40 px-2 py-0.5 text-[11px] font-semibold text-ink-muted">
+                              Regular Captain ({candMult})
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 rounded-xl border border-accent/35 bg-accent/10 p-3.5 text-center">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">
+                          Base Points
+                        </p>
+                        <p className="mt-0.5 font-['Outfit',sans-serif] text-2xl font-black text-white tabular-nums">
+                          {formatPoints(captainCandidate.playerPointsSnapshot)}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-accent">
+                          Captain Points ({candMult})
+                        </p>
+                        <p className="mt-0.5 font-['Outfit',sans-serif] text-2xl font-black text-accent tabular-nums">
+                          {formatPoints(boosted)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()
+            ) : null}
+          </Dialog>
         </>
       )}
 

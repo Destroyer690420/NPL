@@ -225,6 +225,15 @@ export const setPresenterViewSchema = z.object({
   view: z.enum(['auto', 'standby', 'standings', 'round1_results', 'round2_results']),
 })
 
+export const setCaptainSelectionSchema = z.object({
+  eventId: idSchema,
+  enabled: z.boolean(),
+})
+
+export const selectTeamCaptainSchema = z.object({
+  playerId: idSchema,
+})
+
 export const setSpotlightPlayerSchema = z.object({
   eventId: idSchema,
   playerId: z.union([idSchema, z.null()]),

@@ -165,3 +165,42 @@ export function subtractPoints(a: number, b: number): number {
   }
   return result
 }
+
+export const REGULAR_CAPTAIN_MULTIPLIER = 2
+export const STAR_CAPTAIN_MULTIPLIER = 2.5
+
+/** Determines whether a player's `star` field marks them as a Star Player. */
+export function isStarPlayerFlag(star: string | boolean | null | undefined): boolean {
+  if (star === null || star === undefined) return false
+  if (typeof star === 'boolean') return star
+  const clean = String(star).trim().toLowerCase()
+  if (!clean) return false
+  return !['no', 'false', '0', 'none', 'n', '-', 'na', 'null'].includes(clean)
+}
+
+/** Rounds points to 2 decimal places safely. */
+export function roundPoints(value: number): number {
+  const result = Math.round((value + Number.EPSILON) * 100) / 100
+  if (!Number.isFinite(result) || result < 0) {
+    throw new RangeError('points overflow')
+  }
+  return result
+}
+
+/**
+ * Returns a Captain's multiplied points:
+ * - Regular player as Captain: 2x (e.g. 9 -> 18)
+ * - Star player as Captain: 2.5x (e.g. 9 -> 22.5)
+ */
+export function computeCaptainPoints(basePoints: number, starPlayer: boolean): number {
+  const multiplier = starPlayer ? STAR_CAPTAIN_MULTIPLIER : REGULAR_CAPTAIN_MULTIPLIER
+  return roundPoints(basePoints * multiplier)
+}
+
+/**
+ * Returns only the extra bonus points added on top of `basePoints` for being Captain
+ * (`effectiveCaptainPoints - basePoints`), keeping 2-decimal precision exact.
+ */
+export function computeCaptainBonusPoints(basePoints: number, starPlayer: boolean): number {
+  return subtractPoints(computeCaptainPoints(basePoints, starPlayer), basePoints)
+}

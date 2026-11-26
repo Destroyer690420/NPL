@@ -1,18 +1,17 @@
 /**
  * Audio playback controller for live auction broadcast cues.
  *
- * Uses the full IPL fanfare track (`/audio/ipl-sold.mp3`) looped continuously
- * during SOLD celebrations until stopped when the next player comes on screen.
+ * Manages:
+ * - Sold celebration fanfare (`/audio/ipl-sold.mp3`) looped during SOLD displays.
+ * - Stage ambient music (`/audio/stage-ambient.mp3`) looped during Start Timer & Break screens.
+ * - Short WebAudio chime when a new player enters spotlight.
  */
 
 const SOLD_CLIP_URL = '/audio/ipl-sold.mp3'
+const STAGE_AMBIENT_URL = '/audio/stage-ambient.mp3'
 
 let sharedCtx: AudioContext | null = null
 let unlocked = false
-let soldBuffer: AudioBuffer | null = null
-let soldBufferPromise: Promise<AudioBuffer | null> | null = null
-let activeSource: AudioBufferSourceNode | null = null
-let fallbackAudio: HTMLAudioElement | null = null
 const listeners = new Set<(ready: boolean) => void>()
 
 function getAudioContext(): AudioContext | null {
@@ -27,38 +26,160 @@ function getAudioContext(): AudioContext | null {
   return sharedCtx
 }
 
-function getFallbackAudio(): HTMLAudioElement | null {
-  if (typeof window === 'undefined' || typeof Audio === 'undefined') return null
-  if (!fallbackAudio) {
-    fallbackAudio = new Audio(SOLD_CLIP_URL)
-    fallbackAudio.preload = 'auto'
-  }
-  return fallbackAudio
-}
-
-async function loadSoldBuffer(ctx: AudioContext): Promise<AudioBuffer | null> {
-  if (soldBuffer) return soldBuffer
-  if (!soldBufferPromise) {
-    soldBufferPromise = fetch(SOLD_CLIP_URL)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.arrayBuffer()
-      })
-      .then((arr) => ctx.decodeAudioData(arr))
-      .then((decoded) => {
-        soldBuffer = decoded
-        return decoded
-      })
-      .catch(() => null)
-  }
-  return soldBufferPromise
-}
-
 function notifyUnlock(): void {
   for (const listener of listeners) {
     listener(unlocked)
   }
 }
+
+class LoopingAudioTrack {
+  private readonly url: string
+  private readonly gainValue: number
+  private buffer: AudioBuffer | null = null
+  private bufferPromise: Promise<AudioBuffer | null> | null = null
+  private activeSource: AudioBufferSourceNode | null = null
+  private fallbackAudio: HTMLAudioElement | null = null
+  private playSeq = 0
+
+  constructor(url: string, gainValue = 0.95) {
+    this.url = url
+    this.gainValue = gainValue
+  }
+
+  private getFallbackAudio(): HTMLAudioElement | null {
+    if (typeof window === 'undefined' || typeof Audio === 'undefined') return null
+    if (!this.fallbackAudio) {
+      this.fallbackAudio = new Audio(this.url)
+      this.fallbackAudio.preload = 'auto'
+    }
+    return this.fallbackAudio
+  }
+
+  preload(ctx: AudioContext): Promise<AudioBuffer | null> {
+    if (this.buffer) return Promise.resolve(this.buffer)
+    if (!this.bufferPromise) {
+      this.bufferPromise = fetch(this.url)
+        .then((res) => {
+          if (!res.ok) throw new Error(`HTTP ${res.status}`)
+          return res.arrayBuffer()
+        })
+        .then((arr) => ctx.decodeAudioData(arr))
+        .then((decoded) => {
+          this.buffer = decoded
+          return decoded
+        })
+        .catch(() => {
+          this.bufferPromise = null
+          return null
+        })
+    }
+    return this.bufferPromise
+  }
+
+  prepareFallback(): void {
+    this.getFallbackAudio()
+  }
+
+  isPlaying(): boolean {
+    if (this.activeSource) return true
+    return Boolean(this.fallbackAudio && !this.fallbackAudio.paused)
+  }
+
+  private stopNodesOnly(): void {
+    if (this.activeSource) {
+      try {
+        this.activeSource.stop()
+      } catch {
+        // Ignore already-stopped source
+      }
+      this.activeSource.disconnect()
+      this.activeSource = null
+    }
+    if (this.fallbackAudio) {
+      try {
+        this.fallbackAudio.pause()
+        this.fallbackAudio.currentTime = 0
+      } catch {
+        // Ignore
+      }
+    }
+  }
+
+  stop(): void {
+    this.playSeq += 1
+    this.stopNodesOnly()
+  }
+
+  async play(options?: { restart?: boolean }): Promise<boolean> {
+    if (!options?.restart && this.isPlaying()) {
+      return true
+    }
+
+    const seq = ++this.playSeq
+    this.stopNodesOnly()
+
+    const ctx = getAudioContext()
+    if (ctx) {
+      try {
+        if (ctx.state === 'suspended' && unlocked) {
+          await ctx.resume()
+        }
+        if (seq !== this.playSeq) return false
+
+        if (ctx.state === 'running') {
+          unlocked = true
+          notifyUnlock()
+
+          const buffer = await this.preload(ctx)
+          if (seq !== this.playSeq) return false
+
+          if (buffer) {
+            const source = ctx.createBufferSource()
+            source.buffer = buffer
+            source.loop = true
+            const gain = ctx.createGain()
+            gain.gain.setValueAtTime(this.gainValue, ctx.currentTime)
+            source.connect(gain)
+            gain.connect(ctx.destination)
+            source.onended = () => {
+              if (this.activeSource === source) this.activeSource = null
+            }
+            this.activeSource = source
+            source.start(0)
+            return true
+          }
+        }
+      } catch {
+        // Fall through to HTMLAudio fallback
+      }
+    }
+
+    if (seq !== this.playSeq) return false
+
+    const el = this.getFallbackAudio()
+    if (!el) return false
+    try {
+      el.pause()
+      el.currentTime = 0
+      el.loop = true
+      el.volume = Math.min(1, Math.max(0, this.gainValue))
+      await el.play()
+      if (seq !== this.playSeq) {
+        el.pause()
+        el.currentTime = 0
+        return false
+      }
+      unlocked = true
+      notifyUnlock()
+      return true
+    } catch {
+      return false
+    }
+  }
+}
+
+const soldTrack = new LoopingAudioTrack(SOLD_CLIP_URL, 0.95)
+const stageAmbientTrack = new LoopingAudioTrack(STAGE_AMBIENT_URL, 0.85)
 
 export function isAuctionAudioUnlocked(): boolean {
   const ctx = sharedCtx
@@ -77,32 +198,24 @@ export function subscribeAuctionAudioState(listener: (ready: boolean) => void): 
  * Stops any currently looping SOLD music immediately.
  */
 export function stopIplSoldTune(): void {
-  if (activeSource) {
-    try {
-      activeSource.stop()
-    } catch {
-      // Ignore already-stopped source
-    }
-    activeSource.disconnect()
-    activeSource = null
-  }
-  if (fallbackAudio) {
-    try {
-      fallbackAudio.pause()
-      fallbackAudio.currentTime = 0
-    } catch {
-      // Ignore
-    }
-  }
+  soldTrack.stop()
+}
+
+/**
+ * Stops the Start Timer / Break Screen ambient music immediately.
+ */
+export function stopStageAmbientMusic(): void {
+  stageAmbientTrack.stop()
 }
 
 /**
  * Unlocks / resumes the shared AudioContext during a user gesture (click/keydown)
- * and preloads the IPL sold clip so future sales play with zero lag.
+ * and preloads broadcast audio tracks so cues play cleanly.
  */
 export async function unlockAuctionAudio(): Promise<boolean> {
   const ctx = getAudioContext()
-  getFallbackAudio()
+  soldTrack.prepareFallback()
+  stageAmbientTrack.prepareFallback()
   if (!ctx) return false
   try {
     if (ctx.state === 'suspended') {
@@ -116,7 +229,8 @@ export async function unlockAuctionAudio(): Promise<boolean> {
     unlocked = ctx.state === 'running'
     notifyUnlock()
     if (unlocked) {
-      void loadSoldBuffer(ctx)
+      void soldTrack.preload(ctx)
+      void stageAmbientTrack.preload(ctx)
     }
     return unlocked
   } catch {
@@ -128,53 +242,16 @@ export async function unlockAuctionAudio(): Promise<boolean> {
  * Plays the IPL fanfare clip in a continuous loop until `stopIplSoldTune()` is called.
  */
 export async function playIplSoldTune(): Promise<boolean> {
-  stopIplSoldTune()
+  stageAmbientTrack.stop()
+  return soldTrack.play({ restart: true })
+}
 
-  const ctx = getAudioContext()
-  if (ctx) {
-    try {
-      if (ctx.state === 'suspended') {
-        await ctx.resume()
-      }
-      if (ctx.state === 'running') {
-        unlocked = true
-        notifyUnlock()
-
-        const buffer = await loadSoldBuffer(ctx)
-        if (buffer) {
-          const source = ctx.createBufferSource()
-          source.buffer = buffer
-          source.loop = true
-          const gain = ctx.createGain()
-          gain.gain.setValueAtTime(0.95, ctx.currentTime)
-          source.connect(gain)
-          gain.connect(ctx.destination)
-          source.onended = () => {
-            if (activeSource === source) activeSource = null
-          }
-          activeSource = source
-          source.start(0)
-          return true
-        }
-      }
-    } catch {
-      // Fall through to HTMLAudio fallback
-    }
-  }
-
-  const el = getFallbackAudio()
-  if (!el) return false
-  try {
-    el.pause()
-    el.currentTime = 0
-    el.loop = true
-    await el.play()
-    unlocked = true
-    notifyUnlock()
-    return true
-  } catch {
-    return false
-  }
+/**
+ * Plays the Start Timer / Break Screen music in a continuous loop until `stopStageAmbientMusic()` is called.
+ */
+export async function playStageAmbientMusic(): Promise<boolean> {
+  soldTrack.stop()
+  return stageAmbientTrack.play({ restart: false })
 }
 
 /**

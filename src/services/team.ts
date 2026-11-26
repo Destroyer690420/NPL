@@ -63,3 +63,31 @@ export function getTeamLineup(): Promise<TeamLineupPlayer[]> {
   return callFunction('getTeamLineup', {})
 }
 
+export interface TeamSquadPlayerMeta {
+  playerId: string
+  star: string | null
+  role: string | null
+}
+
+/** Fetches role & Star Player status for players currently sold to this team. */
+export function getTeamSquadMeta(): Promise<TeamSquadPlayerMeta[]> {
+  return callFunction('getTeamSquadMeta', {})
+}
+
+export interface SelectCaptainResult {
+  ok: boolean
+  captainPlayerId: string
+  captainPlayerName: string
+  isStar: boolean
+  multiplier: number
+  basePoints: number
+  captainPoints: number
+  bonusPoints: number
+  totalPoints: number
+}
+
+/** Appoints or updates this Round 2 team's squad Captain while unlocked by admin. */
+export function selectTeamCaptain(playerId: string): Promise<SelectCaptainResult> {
+  return callFunction('selectTeamCaptain', { playerId })
+}
+

@@ -28,6 +28,8 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'round.started': 'Round started',
   'round.ended': 'Round ended',
   'player.unsold': 'Player marked unsold',
+  'event.captain-selection-toggled': 'Captain selection toggled',
+  'team.captain-selected': 'Team captain selected',
 }
 
 export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {

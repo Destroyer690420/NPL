@@ -308,13 +308,18 @@ export function Round2FinalResultsStage({
                           #{idx + 1}
                         </td>
                         <td className="py-3 px-3">
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <span className="font-['Outfit',sans-serif] text-base font-extrabold text-white">
                               {team.teamName}
                             </span>
                             {isFirst ? (
                               <span className="rounded-full bg-[#f5eb3b] px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-black">
                                 Winner
+                              </span>
+                            ) : null}
+                            {team.captainPlayerName ? (
+                              <span className="rounded-full border border-[#f5eb3b]/45 bg-[#f5eb3b]/10 px-2 py-0.5 text-[10px] font-bold text-[#f5eb3b]">
+                                C · {team.captainPlayerName} ({team.captainIsStar ? '2.5×' : '2×'})
                               </span>
                             ) : null}
                           </div>

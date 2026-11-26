@@ -169,6 +169,8 @@ export function planPurchase(
     playerNameSnapshot: player.name,
     playerPointsSnapshot: player.points,
     playerPhotoUrlSnapshot: player.photoUrl ?? null,
+    playerStarSnapshot: player.star ?? null,
+    playerRoleSnapshot: player.role ?? null,
     teamId: team.id,
     teamNameSnapshot: team.name,
     finalPrice: command.finalPrice,
@@ -331,9 +333,13 @@ export function planReversal(
     )
   }
 
+  const wasCaptain = Boolean(team.captainPlayerId && team.captainPlayerId === player.id)
+  const captainBonusToRemove = wasCaptain ? (team.captainBonusPoints ?? 0) : 0
+  const pointsToRemove = addPoints(purchase.playerPointsSnapshot, captainBonusToRemove)
+
   if (
     team.totalSpent < purchase.finalPrice ||
-    team.totalPoints < purchase.playerPointsSnapshot ||
+    team.totalPoints < pointsToRemove ||
     team.playerCount < 1
   ) {
     return fail('team-state-inconsistent', 'Team totals are lower than the purchase being reversed.')
@@ -342,15 +348,27 @@ export function planReversal(
   const now = SERVER_TIMESTAMP
   const totalSpent = subtractInts(team.totalSpent, purchase.finalPrice)
   const remainingPurse = addInts(team.remainingPurse, purchase.finalPrice)
-  const totalPoints = subtractPoints(team.totalPoints, purchase.playerPointsSnapshot)
+  const totalPoints = subtractPoints(team.totalPoints, pointsToRemove)
   const playerCount = team.playerCount - 1
+
+  const teamUpdate: Record<string, unknown> = {
+    totalSpent,
+    remainingPurse,
+    totalPoints,
+    playerCount,
+    updatedAt: now,
+  }
+  if (wasCaptain) {
+    teamUpdate.captainPlayerId = null
+    teamUpdate.captainBonusPoints = 0
+  }
 
   const writes: PlannedWrite[] = [
     {
       kind: 'team',
       id: team.id,
       op: 'update',
-      data: { totalSpent, remainingPurse, totalPoints, playerCount, updatedAt: now },
+      data: teamUpdate,
     },
     {
       kind: 'player',

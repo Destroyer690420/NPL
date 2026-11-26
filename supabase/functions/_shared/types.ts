@@ -44,6 +44,9 @@ export interface TeamQualificationResult {
   missingWk: number
   missingReasons: string[]
   missingSummary: string
+  captainPlayerId?: string | null
+  captainPlayerName?: string | null
+  captainIsStar?: boolean
 }
 
 export interface RoundSnapshot {
@@ -140,6 +143,8 @@ export interface EventDoc {
   round2Results?: RoundSnapshot | null
   /** Optional Director Screen override for what the Presenter displays. */
   presenterView?: PresenterViewOverride
+  /** When true, Round 2 qualified teams may select their squad Captain on Home page. */
+  captainSelectionEnabled?: boolean
 }
 
 export interface TeamDoc {
@@ -153,6 +158,8 @@ export interface TeamDoc {
   totalPoints: number
   playerCount: number
   active: boolean
+  captainPlayerId?: string | null
+  captainBonusPoints?: number
   createdAt: TimestampValue
   updatedAt: TimestampValue
 }
@@ -185,6 +192,8 @@ export interface PurchaseDoc {
   playerNameSnapshot: string
   playerPointsSnapshot: number
   playerPhotoUrlSnapshot: string | null
+  playerStarSnapshot?: string | null
+  playerRoleSnapshot?: string | null
   teamId: string
   teamNameSnapshot: string
   finalPrice: number
@@ -223,6 +232,8 @@ export type AuditAction =
   | 'round.started'
   | 'round.ended'
   | 'player.unsold'
+  | 'event.captain-selection-toggled'
+  | 'team.captain-selected'
 
 export type AuditTargetType = 'event' | 'team' | 'player' | 'purchase' | 'session' | 'config'
 

@@ -9,9 +9,11 @@ import type {
 } from '@shared/types'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
+export type RoundBroadcastPhase = RoundPhase | 'captain_unlocked' | 'captain_locked'
+
 export interface RoundBroadcastPayload {
   eventId: string
-  roundPhase: RoundPhase
+  roundPhase: RoundBroadcastPhase
 }
 
 export interface PresenterViewBroadcastPayload {
@@ -457,7 +459,7 @@ export function broadcastBreak(eventId: string, breakState: AuctionBreak | null)
 /**
  * Broadcasts a 2-round auction phase transition to all connected screens.
  */
-export function broadcastRoundChange(eventId: string, roundPhase: RoundPhase): void {
+export function broadcastRoundChange(eventId: string, roundPhase: RoundBroadcastPhase): void {
   if (!eventId) return
 
   const payload: RoundBroadcastPayload = { eventId, roundPhase }

@@ -4,6 +4,7 @@ import {
   markPlayerUnsoldSchema,
   setAuctionBreakSchema,
   setAuctionCountdownSchema,
+  setCaptainSelectionSchema,
   setPresenterViewSchema,
   setSpotlightPlayerSchema,
   updateEventSchema,
@@ -662,7 +663,7 @@ async function writeRoundAudit(
   eventId: string,
   actorUid: string,
   actorEmail: string | null,
-  action: 'round.started' | 'round.ended' | 'player.unsold',
+  action: 'round.started' | 'round.ended' | 'player.unsold' | 'event.captain-selection-toggled',
   targetId: string,
   metadata: Record<string, string | number | boolean | null>,
 ): Promise<void> {
@@ -856,6 +857,7 @@ export const startRound1 = adminCallable({
         round2Results: null,
         spotlightPlayer: null,
         lastSoldPlayer: null,
+        captainSelectionEnabled: false,
         updatedAt: nowIso,
       },
     }).eq('id', input.eventId)
@@ -984,6 +986,8 @@ export const startRound2 = adminCallable({
             totalSpent: 0,
             totalPoints: 0,
             playerCount: 0,
+            captainPlayerId: null,
+            captainBonusPoints: 0,
             updatedAt: nowIso,
           },
         }
@@ -1011,6 +1015,7 @@ export const startRound2 = adminCallable({
         round2Results: null,
         spotlightPlayer: null,
         lastSoldPlayer: null,
+        captainSelectionEnabled: false,
         updatedAt: nowIso,
       },
     }).eq('id', input.eventId)
@@ -1240,6 +1245,42 @@ export const markPlayerUnsold = adminCallable({
       roundPhase: phase,
       activePoolIndex: nextIdx >= 0 ? nextIdx : (event.activePoolIndex ?? 0),
     }
+  },
+})
+
+/**
+ * Unlocks or locks Round 2 team captain selection from the Director Panel.
+ * Only teams participating in Round 2 (non-eliminated) may pick their captain while unlocked.
+ */
+export const setCaptainSelection = adminCallable({
+  schema: setCaptainSelectionSchema,
+  handler: async (input, context) => {
+    const { rawEventData, event } = await loadEventAndEntities(input.eventId)
+    if (event.status === 'finalized') {
+      fail('event-finalized')
+    }
+    if (input.enabled && (event.currentRound ?? 0) !== 2) {
+      fail('failed-precondition', 'Captain selection can only be unlocked during Round 2.')
+    }
+
+    await supabase.from('events').update({
+      data: {
+        ...rawEventData,
+        captainSelectionEnabled: input.enabled,
+        updatedAt: new Date().toISOString(),
+      },
+    }).eq('id', input.eventId)
+
+    await writeRoundAudit(
+      input.eventId,
+      context.uid,
+      context.email,
+      'event.captain-selection-toggled',
+      input.eventId,
+      { enabled: input.enabled, currentRound: event.currentRound ?? 0 },
+    )
+
+    return { ok: true, eventId: input.eventId, captainSelectionEnabled: input.enabled }
   },
 })
 

@@ -20,7 +20,9 @@ import {
   isAuctionAudioUnlocked,
   playIplSoldTune,
   playPlayerIntroCue,
+  playStageAmbientMusic,
   stopIplSoldTune,
+  stopStageAmbientMusic,
   subscribeAuctionAudioState,
   unlockAuctionAudio,
 } from '@/lib/auctionAudio'
@@ -578,6 +580,7 @@ export function PresenterPage() {
   useEffect(() => {
     if (muted) {
       stopIplSoldTune()
+      stopStageAmbientMusic()
     }
   }, [muted])
 
@@ -686,6 +689,27 @@ export function PresenterPage() {
   const soldPoints = soldData?.playerPoints ?? soldPlayerRecord?.points ?? 0
 
   const presenterView = event?.presenterView ?? 'auto'
+  const isBreakOrCountdownVisible =
+    !soldData &&
+    presenterView === 'auto' &&
+    !spotlight &&
+    Boolean(event?.break?.active || event?.countdown?.targetTime)
+
+  // Start ambient stage music when the Break or Start Timer screen is active on Presenter,
+  // and stop it immediately when those screens are closed or muted.
+  useEffect(() => {
+    if (isBreakOrCountdownVisible && !muted) {
+      void playStageAmbientMusic()
+    } else {
+      stopStageAmbientMusic()
+    }
+  }, [isBreakOrCountdownVisible, muted, audioUnlocked])
+
+  useEffect(() => {
+    return () => {
+      stopStageAmbientMusic()
+    }
+  }, [])
   const liveRound1Snapshot = useMemo(
     () =>
       event?.round1Results ??

@@ -22,6 +22,7 @@ vi.mock('@/services/admin', () => ({
   resumeRound2: vi.fn(),
   setPresenterView: (...args: unknown[]) => mockSetPresenterView(...args),
   sendPresenterCommand: (...args: unknown[]) => mockSendPresenterCommand(...args),
+  setCaptainSelection: vi.fn(),
   setAuctionBreak: vi.fn(),
   setAuctionCountdown: vi.fn(),
   setSpotlightPlayer: vi.fn(),
@@ -293,6 +294,7 @@ describe('Director Screen (DashboardPage)', () => {
     expect(screen.getByRole('button', { name: /Show R1 Results/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Show R2 Results/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Live Auction View/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Choose Captain/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Clear Sold/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Pick Player/i })).not.toBeInTheDocument()
 

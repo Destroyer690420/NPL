@@ -21,7 +21,12 @@ import { toFriendlyError, type FriendlyError } from '@/lib/errors'
 import { getSupabase } from '@/lib/supabase'
 import { readAdminResource, readPublicConfig, readTeamResource } from '@/services/reads'
 import { readStoredSession } from '@/services/session'
-import { getTeamLineup, type TeamLineupPlayer } from '@/services/team'
+import {
+  getTeamLineup,
+  getTeamSquadMeta,
+  type TeamLineupPlayer,
+  type TeamSquadPlayerMeta,
+} from '@/services/team'
 
 /**
  * Live data hooks backed by polling.
@@ -403,6 +408,7 @@ export function useTeamEvent(eventId: string | null): LiveResult<EventDoc | null
 }
 
 const NO_LINEUP: TeamLineupPlayer[] = []
+const NO_SQUAD_META: TeamSquadPlayerMeta[] = []
 
 /**
  * Returns available auction players for team members.
@@ -412,5 +418,17 @@ export function useTeamLineup(eventId: string | null): LiveResult<TeamLineupPlay
   return usePolled(eventId ? `teamLineup:${eventId}` : null, NO_LINEUP, async () => {
     return getTeamLineup()
   })
+}
+
+/** Returns role & Star Player metadata for players owned by the team session. */
+export function useTeamSquadMeta(
+  eventId: string | null,
+  teamId: string | null,
+): LiveResult<TeamSquadPlayerMeta[]> {
+  return usePolled(
+    eventId && teamId ? `teamSquadMeta:${eventId}:${teamId}` : null,
+    NO_SQUAD_META,
+    async () => getTeamSquadMeta(),
+  )
 }
 

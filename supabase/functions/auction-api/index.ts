@@ -3,7 +3,14 @@ import { invokeCallable, type Descriptor } from './lib/callables.ts'
 import { logger } from './lib/logger.ts'
 import { ensurePinSecret } from './lib/pin.ts'
 import { adminLogin } from './handlers/adminAuth.ts'
-import { getTeamContext, getTeamLineup, logoutTeamSession, verifyTeamPin } from './handlers/teamAuth.ts'
+import {
+  getTeamContext,
+  getTeamLineup,
+  getTeamSquadMeta,
+  logoutTeamSession,
+  selectTeamCaptain,
+  verifyTeamPin,
+} from './handlers/teamAuth.ts'
 import { createTeam, getTeamPinStatus, resetTeamPin, revokeSessions, updateTeam } from './handlers/teams.ts'
 import { createPlayer, importPlayers, setPlayerStatus, updatePlayer } from './handlers/players.ts'
 import { recordPurchase, reversePurchase } from './handlers/purchases.ts'
@@ -21,6 +28,7 @@ import {
   resumeRound2,
   setAuctionBreak,
   setAuctionCountdown,
+  setCaptainSelection,
   setDefaultEvent,
   setPresenterView,
   setSpotlightPlayer,
@@ -46,6 +54,8 @@ const registry: Record<string, Descriptor> = {
   getTeamContext,
   logoutTeamSession,
   getTeamLineup,
+  getTeamSquadMeta,
+  selectTeamCaptain,
   // teams
   createTeam,
   updateTeam,
@@ -81,6 +91,7 @@ const registry: Record<string, Descriptor> = {
   endRound2,
   resumeRound2,
   markPlayerUnsold,
+  setCaptainSelection,
 }
 
 function buildCorsHeaders(request: Request): Record<string, string> {

@@ -1,7 +1,14 @@
 import { MAX_NOTES_LENGTH, MAX_REASON_LENGTH, MAX_ROSTER_SIZE_LIMIT, MAX_URL_LENGTH } from './constants.ts'
 import type { ConsistencyReport } from './calculations.ts'
 import type { AppErrorCode } from './errors.ts'
-import { addPoints, isValidAmount, isValidPoints, subtractPoints } from './money.ts'
+import {
+  addPoints,
+  computeCaptainBonusPoints,
+  isStarPlayerFlag,
+  isValidAmount,
+  isValidPoints,
+  subtractPoints,
+} from './money.ts'
 import { SERVER_TIMESTAMP, type PlannedWrite, type PlanResult } from './plan.ts'
 import { cleanOptionalText, cleanDisplayName, isValidHttpUrl, normalizeName } from './text.ts'
 import type { AuditAction, EventDoc, EventStatus, PlayerDoc, PlayerStatus, PurchaseDoc, TeamDoc } from './types.ts'
@@ -267,7 +274,10 @@ export function planUpdatePlayer(
   let pointsDelta = 0
   let corrected = false
 
-  if (sold && pointsChanged) {
+  const effectiveStar = command.patch.star !== undefined ? command.patch.star : player.star
+  const starChanged = sold && isStarPlayerFlag(effectiveStar) !== isStarPlayerFlag(player.star)
+
+  if (sold && (pointsChanged || starChanged)) {
     const team = state.team
     if (!team) return fail('team-not-found', 'The owning team could not be found.')
     const purchase = state.purchase
@@ -277,18 +287,40 @@ export function planUpdatePlayer(
         'The linked purchase could not be verified, so team totals were left untouched.',
       )
     }
-    pointsDelta = subtractPoints(validated.value.points, player.points)
-    const nextTotalPoints = addPoints(team.totalPoints, pointsDelta)
-    if (nextTotalPoints < 0) {
-      return fail('team-state-inconsistent', 'The correction would make team points negative.')
+    const baseDelta = subtractPoints(validated.value.points, player.points)
+    const isCaptain = Boolean(team.captainPlayerId && team.captainPlayerId === player.id)
+    if (isCaptain) {
+      const prevBonus = team.captainBonusPoints ?? computeCaptainBonusPoints(player.points, isStarPlayerFlag(player.star))
+      const nextBonus = computeCaptainBonusPoints(validated.value.points, isStarPlayerFlag(effectiveStar))
+      pointsDelta = subtractPoints(addPoints(baseDelta, nextBonus), prevBonus)
+      const nextTotalPoints = addPoints(team.totalPoints, pointsDelta)
+      if (nextTotalPoints < 0) {
+        return fail('team-state-inconsistent', 'The correction would make team points negative.')
+      }
+      writes.push({
+        kind: 'team',
+        id: team.id,
+        op: 'update',
+        data: {
+          totalPoints: nextTotalPoints,
+          captainBonusPoints: nextBonus,
+          updatedAt: now,
+        },
+      })
+    } else if (pointsChanged) {
+      pointsDelta = baseDelta
+      const nextTotalPoints = addPoints(team.totalPoints, pointsDelta)
+      if (nextTotalPoints < 0) {
+        return fail('team-state-inconsistent', 'The correction would make team points negative.')
+      }
+      writes.push({
+        kind: 'team',
+        id: team.id,
+        op: 'update',
+        data: { totalPoints: nextTotalPoints, updatedAt: now },
+      })
     }
-    writes.push({
-      kind: 'team',
-      id: team.id,
-      op: 'update',
-      data: { totalPoints: nextTotalPoints, updatedAt: now },
-    })
-    corrected = true
+    corrected = corrected || pointsChanged
   }
 
   // Keep the sale snapshot in sync for display-only fields so team panels show

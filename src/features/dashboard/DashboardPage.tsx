@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Coffee,
+  Crown,
   Flag,
   Play,
   PlayCircle,
@@ -28,6 +29,7 @@ import {
   resumeRound2,
   setAuctionBreak,
   setAuctionCountdown,
+  setCaptainSelection,
   setPresenterView,
   startRound1,
   startRound2,
@@ -335,6 +337,19 @@ export function DashboardPage() {
     })
   }
 
+  async function handleToggleCaptainSelection() {
+    const nextEnabled = !event?.captainSelectionEnabled
+    await runAction('captain', async () => {
+      await setCaptainSelection(eventId, nextEnabled)
+      toast.push({
+        kind: nextEnabled ? 'success' : 'info',
+        message: nextEnabled
+          ? 'Captain selection unlocked for Round 2 teams!'
+          : 'Captain selection locked.',
+      })
+    })
+  }
+
   const canStartAuction = Boolean(event?.status === 'setup' && teams.data.length > 0 && players.data.length > 0)
   const canStartRound1 = roundPhase === 'not_started' && teams.data.length > 0 && players.data.length > 0
   const canResumeRound1 = roundPhase === 'round1_ended' && event?.status !== 'finalized'
@@ -551,6 +566,22 @@ export function DashboardPage() {
           tone={presenterView === 'auto' ? 'active' : 'default'}
           loading={actionBusy === 'view-auto'}
           onClick={() => void handleSwitchView('auto', 'Live Auction View')}
+        />
+
+        <DirectorSquareTile
+          icon={<Crown className="size-6" aria-hidden />}
+          label={event?.captainSelectionEnabled ? 'Captain Unlocked' : 'Choose Captain'}
+          statusText={
+            currentRound !== 2
+              ? 'Round 2 only'
+              : event?.captainSelectionEnabled
+                ? 'Click to lock'
+                : 'Unlock for R2 teams'
+          }
+          tone={event?.captainSelectionEnabled ? 'active' : currentRound === 2 ? 'primary' : 'default'}
+          disabled={event?.status === 'finalized' || (currentRound !== 2 && !event?.captainSelectionEnabled)}
+          loading={actionBusy === 'captain'}
+          onClick={() => void handleToggleCaptainSelection()}
         />
       </div>
 
