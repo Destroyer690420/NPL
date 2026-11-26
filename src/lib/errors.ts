@@ -76,7 +76,8 @@ export function toFriendlyError(error: unknown): FriendlyError {
   const serverMessage =
     rawMessage !== '' && !isAppErrorCode(rawMessage) && rawMessage.length < 200 ? rawMessage : undefined
 
-  const useServerMessage = code === 'invalid-argument' || code === 'failed-precondition'
+  const useServerMessage =
+    code === 'invalid-argument' || code === 'failed-precondition' || code === 'not-found'
 
   return {
     code,
