@@ -44,6 +44,8 @@ import {
   endRound1,
   endRound2,
   markPlayerUnsold,
+  resumeRound1,
+  resumeRound2,
   sendPresenterCommand,
   setAuctionBreak,
   setAuctionCountdown,
@@ -297,6 +299,16 @@ export function DashboardPage() {
     })
   }
 
+  async function handleResumeRound1() {
+    await runAction('start-r1', async () => {
+      await resumeRound1(eventId)
+      toast.push({
+        kind: 'success',
+        message: 'Round 1 resumed! Live bidding is active again.',
+      })
+    })
+  }
+
   async function handleStartRound2() {
     await runAction('start-r2', async () => {
       const res = await startRound2(eventId)
@@ -304,6 +316,16 @@ export function DashboardPage() {
         kind: 'success',
         message: `Round 2 started (${res.poolSize} players)!`,
         detail: `${res.qualifiedTeamIds?.length ?? 0} qualified teams reset to ${currency(ROUND_2_STARTING_PURSE, currencyLabel)}. ${res.eliminatedTeamIds?.length ?? 0} eliminated teams locked out.`,
+      })
+    })
+  }
+
+  async function handleResumeRound2() {
+    await runAction('start-r2', async () => {
+      await resumeRound2(eventId)
+      toast.push({
+        kind: 'success',
+        message: 'Round 2 resumed! Live bidding is active again.',
       })
     })
   }
@@ -455,7 +477,9 @@ export function DashboardPage() {
 
   const canStartAuction = Boolean(event?.status === 'setup' && teams.data.length > 0 && players.data.length > 0)
   const canStartRound1 = roundPhase === 'not_started' && teams.data.length > 0 && players.data.length > 0
+  const canResumeRound1 = roundPhase === 'round1_ended' && event?.status !== 'finalized'
   const canStartRound2 = roundPhase === 'round1_ended' && (event?.qualifiedTeamIds?.length ?? 0) > 0
+  const canResumeRound2 = roundPhase === 'round2_ended' && event?.status !== 'finalized'
 
   return (
     <div className="space-y-6">
@@ -542,25 +566,30 @@ export function DashboardPage() {
 
           <DirectorSquareTile
             icon={<Play className="size-5" aria-hidden />}
-            label="Start Round 1"
+            label={canResumeRound1 ? 'Resume Round 1' : 'Start Round 1'}
             badge="187"
             statusText={
               roundPhase === 'not_started'
                 ? 'Build R1 pool'
-                : currentRound >= 1
-                  ? `${poolStats.total || 187} players`
-                  : 'Ready'
+                : canResumeRound1
+                  ? 'Continue R1'
+                  : currentRound >= 1
+                    ? `${poolStats.total || 187} players`
+                    : 'Ready'
             }
             tone={
               roundPhase === 'round1_active'
                 ? 'active'
-                : canStartRound1
+                : canStartRound1 || canResumeRound1
                   ? 'primary'
                   : 'default'
             }
-            disabled={!canStartRound1}
+            disabled={!canStartRound1 && !canResumeRound1}
             loading={actionBusy === 'start-r1'}
-            onClick={() => void handleStartRound1()}
+            onClick={() => {
+              if (canResumeRound1) void handleResumeRound1()
+              else void handleStartRound1()
+            }}
           />
 
           <DirectorSquareTile
@@ -581,25 +610,30 @@ export function DashboardPage() {
 
           <DirectorSquareTile
             icon={<Play className="size-5" aria-hidden />}
-            label="Start Round 2"
+            label={canResumeRound2 ? 'Resume Round 2' : 'Start Round 2'}
             badge="132"
             statusText={
               roundPhase === 'round1_ended'
                 ? '₹125 Cr reset'
-                : roundPhase === 'round2_active'
-                  ? 'Live now'
-                  : 'After Round 1'
+                : canResumeRound2
+                  ? 'Continue R2'
+                  : roundPhase === 'round2_active'
+                    ? 'Live now'
+                    : 'After Round 1'
             }
             tone={
               roundPhase === 'round2_active'
                 ? 'active'
-                : canStartRound2
+                : canStartRound2 || canResumeRound2
                   ? 'primary'
                   : 'default'
             }
-            disabled={!canStartRound2}
+            disabled={!canStartRound2 && !canResumeRound2}
             loading={actionBusy === 'start-r2'}
-            onClick={() => void handleStartRound2()}
+            onClick={() => {
+              if (canResumeRound2) void handleResumeRound2()
+              else void handleStartRound2()
+            }}
           />
 
           <DirectorSquareTile

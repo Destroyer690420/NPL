@@ -464,6 +464,14 @@ export async function endRound1(eventId: string): Promise<EndRoundResult> {
   return result
 }
 
+export async function resumeRound1(eventId: string): Promise<StartRoundResult> {
+  const result = await callFunction<{ eventId: string }, StartRoundResult>('resumeRound1', { eventId })
+  broadcastSpotlight(eventId, null)
+  broadcastPresenterView(eventId, 'auto')
+  broadcastRoundChange(eventId, result.roundPhase)
+  return result
+}
+
 export async function startRound2(eventId: string): Promise<StartRoundResult> {
   const result = await callFunction<{ eventId: string }, StartRoundResult>('startRound2', { eventId })
   broadcastSpotlight(eventId, null)
@@ -474,6 +482,14 @@ export async function startRound2(eventId: string): Promise<StartRoundResult> {
 export async function endRound2(eventId: string): Promise<EndRoundResult> {
   const result = await callFunction<{ eventId: string }, EndRoundResult>('endRound2', { eventId })
   broadcastSpotlight(eventId, null)
+  broadcastRoundChange(eventId, result.roundPhase)
+  return result
+}
+
+export async function resumeRound2(eventId: string): Promise<StartRoundResult> {
+  const result = await callFunction<{ eventId: string }, StartRoundResult>('resumeRound2', { eventId })
+  broadcastSpotlight(eventId, null)
+  broadcastPresenterView(eventId, 'auto')
   broadcastRoundChange(eventId, result.roundPhase)
   return result
 }

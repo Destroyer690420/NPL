@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { Pill } from '@/components/ui/StatusPill'
 import { useToast } from '@/components/ui/Toast'
-import { endRound1, endRound2, startRound1, startRound2 } from '@/services/admin'
+import { endRound1, endRound2, resumeRound1, resumeRound2, startRound1, startRound2 } from '@/services/admin'
 import { isCallError } from '@/services/callables'
 import { errorMessage } from '@/lib/errors'
 
@@ -133,6 +133,23 @@ export function RoundControlsBar({
     }
   }
 
+  async function handleResumeRound(round: 1 | 2) {
+    setBusy(true)
+    try {
+      if (round === 1) {
+        await resumeRound1(eventId)
+        toast.push({ kind: 'success', message: 'Round 1 resumed!' })
+      } else {
+        await resumeRound2(eventId)
+        toast.push({ kind: 'success', message: 'Round 2 resumed!' })
+      }
+    } catch (err) {
+      toast.push({ kind: 'error', message: isCallError(err) ? err.message : errorMessage(err) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const r1Results = event.round1Results
   const r2Results = event.round2Results
   const r2Winner = useMemo(
@@ -211,6 +228,18 @@ export function RoundControlsBar({
               </Button>
             ) : null}
 
+            {roundPhase === 'round1_ended' ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                loading={busy}
+                icon={<Play className="size-3.5" aria-hidden />}
+                onClick={() => void handleResumeRound(1)}
+              >
+                Resume Round 1
+              </Button>
+            ) : null}
+
             <Button
               size="sm"
               variant={roundPhase === 'round1_ended' ? 'primary' : 'secondary'}
@@ -238,6 +267,18 @@ export function RoundControlsBar({
                 onClick={() => setConfirmEndRound(2)}
               >
                 End Round 2
+              </Button>
+            ) : null}
+
+            {roundPhase === 'round2_ended' ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                loading={busy}
+                icon={<Play className="size-3.5" aria-hidden />}
+                onClick={() => void handleResumeRound(2)}
+              >
+                Resume Round 2
               </Button>
             ) : null}
 

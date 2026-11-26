@@ -16,8 +16,10 @@ const mockSendPresenterCommand = vi.fn()
 vi.mock('@/services/admin', () => ({
   startRound1: vi.fn(),
   endRound1: vi.fn(),
+  resumeRound1: vi.fn(),
   startRound2: vi.fn(),
   endRound2: vi.fn(),
+  resumeRound2: vi.fn(),
   setPresenterView: (...args: unknown[]) => mockSetPresenterView(...args),
   sendPresenterCommand: (...args: unknown[]) => mockSendPresenterCommand(...args),
   setAuctionBreak: vi.fn(),
@@ -244,6 +246,26 @@ describe('RoundControlsBar', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Start Round 2' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Resume Round 1' })).toBeEnabled()
+
+    rerender(
+      <MemoryRouter>
+        <ToastProvider>
+          <RoundControlsBar
+            eventId="default"
+            event={makeEvent({
+              roundPhase: 'round2_ended',
+              currentRound: 2,
+              qualifiedTeamIds: ['t1'],
+            })}
+            players={players}
+            teams={teams}
+          />
+        </ToastProvider>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('button', { name: 'Resume Round 2' })).toBeEnabled()
   })
 })
 

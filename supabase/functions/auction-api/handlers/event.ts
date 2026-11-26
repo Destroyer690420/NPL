@@ -1063,6 +1063,88 @@ export const endRound2 = adminCallable({
   },
 })
 
+async function resumeRoundState(params: {
+  eventId: string
+  round: 1 | 2
+  actorUid: string
+  actorEmail: string | null
+}) {
+  const { rawEventData, event, players } = await loadEventAndEntities(params.eventId)
+  if (event.status === 'finalized') {
+    fail('event-finalized')
+  }
+  const endedPhase: RoundPhase = params.round === 1 ? 'round1_ended' : 'round2_ended'
+  const activePhase: RoundPhase = params.round === 1 ? 'round1_active' : 'round2_active'
+  if (event.roundPhase !== endedPhase && event.roundPhase !== activePhase) {
+    fail(
+      'failed-precondition',
+      `Round ${params.round} can only be resumed after it has ended.`,
+    )
+  }
+
+  const poolIds = event.roundPoolPlayerIds ?? []
+  const unsoldSet = new Set(event.unsoldPlayerIds ?? [])
+  const playersById = new Map(players.map((p) => [p.id, p]))
+  const startSearch = Math.min(event.activePoolIndex ?? 0, Math.max(0, poolIds.length - 1))
+  const nextIdx = findNextUnprocessedIndex(poolIds, playersById, unsoldSet, startSearch)
+
+  await supabase.from('events').update({
+    data: {
+      ...rawEventData,
+      status: 'active',
+      purchasesEnabled: true,
+      currentRound: params.round,
+      roundPhase: activePhase,
+      presenterView: 'auto',
+      spotlightPlayer: null,
+      activePoolIndex: nextIdx >= 0 ? nextIdx : 0,
+      updatedAt: new Date().toISOString(),
+    },
+  }).eq('id', params.eventId)
+
+  await syncPublicConfigStatus(params.eventId, 'active')
+  await writeRoundAudit(params.eventId, params.actorUid, params.actorEmail, 'round.started', params.eventId, {
+    round: params.round,
+    resumed: true,
+    poolSize: poolIds.length,
+  })
+
+  return {
+    ok: true,
+    eventId: params.eventId,
+    currentRound: params.round,
+    roundPhase: activePhase,
+    poolSize: poolIds.length,
+    roundPoolPlayerIds: poolIds,
+    qualifiedTeamIds: event.qualifiedTeamIds ?? [],
+    eliminatedTeamIds: event.eliminatedTeamIds ?? [],
+  }
+}
+
+/** Resumes Round 1 after it was ended, preserving squads, purchases, and pool queue. */
+export const resumeRound1 = adminCallable({
+  schema: eventIdSchema,
+  handler: async (input, context) =>
+    resumeRoundState({
+      eventId: input.eventId,
+      round: 1,
+      actorUid: context.uid,
+      actorEmail: context.email,
+    }),
+})
+
+/** Resumes Round 2 after it was ended, preserving Round 2 squads, purses, and pool queue. */
+export const resumeRound2 = adminCallable({
+  schema: eventIdSchema,
+  handler: async (input, context) =>
+    resumeRoundState({
+      eventId: input.eventId,
+      round: 2,
+      actorUid: context.uid,
+      actorEmail: context.email,
+    }),
+})
+
 /**
  * Marks a player in the active round pool as Unsold, clears the spotlight,
  * advances `activePoolIndex`, and auto-ends the round if all pool players are processed.

@@ -17,6 +17,8 @@ import {
   endRound2,
   markPlayerUnsold,
   resetEventData,
+  resumeRound1,
+  resumeRound2,
   setAuctionBreak,
   setAuctionCountdown,
   setDefaultEvent,
@@ -74,8 +76,10 @@ const registry: Record<string, Descriptor> = {
   // 2-round auction
   startRound1,
   endRound1,
+  resumeRound1,
   startRound2,
   endRound2,
+  resumeRound2,
   markPlayerUnsold,
 }
 
