@@ -280,6 +280,8 @@ export const deleteTransactionsData = adminCallable({
             totalSpent: 0,
             totalPoints: 0,
             playerCount: 0,
+            captainPlayerId: null,
+            captainBonusPoints: 0,
             updatedAt: new Date().toISOString(),
           },
         }
@@ -295,6 +297,7 @@ export const deleteTransactionsData = adminCallable({
           ...(eventRow.data as Record<string, unknown>),
           spotlightPlayer: null,
           lastSoldPlayer: null,
+          captainSelectionEnabled: false,
           currentRound: 0,
           roundPhase: 'not_started',
           roundPoolPlayerIds: [],
@@ -343,6 +346,8 @@ export const deletePlayersData = adminCallable({
             totalSpent: 0,
             totalPoints: 0,
             playerCount: 0,
+            captainPlayerId: null,
+            captainBonusPoints: 0,
             updatedAt: new Date().toISOString(),
           },
         }
@@ -358,6 +363,7 @@ export const deletePlayersData = adminCallable({
           ...(eventRow.data as Record<string, unknown>),
           spotlightPlayer: null,
           lastSoldPlayer: null,
+          captainSelectionEnabled: false,
           currentRound: 0,
           roundPhase: 'not_started',
           roundPoolPlayerIds: [],
@@ -1281,6 +1287,110 @@ export const setCaptainSelection = adminCallable({
     )
 
     return { ok: true, eventId: input.eventId, captainSelectionEnabled: input.enabled }
+  },
+})
+
+/**
+ * Restarts the auction from scratch while keeping all teams (names, logos, PINs,
+ * and active team sessions) and all master players intact.
+ * Clears all purchases/transactions, audit logs, rounds, captain picks, timers,
+ * breaks, and restores team purses and player availability.
+ */
+export const restartAuction = adminCallable({
+  schema: eventIdSchema,
+  handler: async (input) => {
+    const { eventId } = input
+    const nowIso = new Date().toISOString()
+
+    const { rawEventData, event } = await loadEventAndEntities(eventId)
+
+    // 1. Delete all purchases/transactions and audit logs for a clean slate
+    await Promise.all([
+      supabase.from('purchases').delete().eq('event_id', eventId),
+      supabase.from('audit_logs').delete().eq('event_id', eventId),
+    ])
+
+    // 2. Restore every master player to available (clears sold/withdrawn status)
+    const { data: playerRows } = await supabase
+      .from('players')
+      .select('id, data')
+      .eq('event_id', eventId)
+    if (playerRows && playerRows.length > 0) {
+      const playerUpdates = playerRows.map((r) => {
+        const d = (r.data ?? {}) as Record<string, unknown>
+        return {
+          id: r.id,
+          event_id: eventId,
+          data: {
+            ...d,
+            status: 'available',
+            soldToTeamId: null,
+            purchaseId: null,
+            updatedAt: nowIso,
+          },
+        }
+      })
+      await supabase.from('players').upsert(playerUpdates)
+    }
+
+    // 3. Reset all teams (keeping id, name, normalizedName, logoUrl, PINs & sessions)
+    const { data: teamRows } = await supabase
+      .from('teams')
+      .select('id, data')
+      .eq('event_id', eventId)
+    if (teamRows && teamRows.length > 0) {
+      const teamUpdates = teamRows.map((r) => {
+        const d = (r.data ?? {}) as Record<string, unknown>
+        const fallbackPurse = Number(d.startingPurse ?? 0)
+        const basePurse = event.defaultStartingPurse > 0 ? event.defaultStartingPurse : fallbackPurse
+        return {
+          id: r.id,
+          event_id: eventId,
+          data: {
+            ...d,
+            startingPurse: basePurse,
+            remainingPurse: basePurse,
+            totalSpent: 0,
+            totalPoints: 0,
+            playerCount: 0,
+            active: true,
+            captainPlayerId: null,
+            captainBonusPoints: 0,
+            updatedAt: nowIso,
+          },
+        }
+      })
+      await supabase.from('teams').upsert(teamUpdates)
+    }
+
+    // 4. Reset event lifecycle, rounds, presenter screens, timers, breaks & captain toggle
+    await supabase.from('events').update({
+      data: {
+        ...rawEventData,
+        status: 'setup',
+        purchasesEnabled: true,
+        spotlightPlayer: null,
+        lastSoldPlayer: null,
+        countdown: null,
+        break: null,
+        presenterView: 'auto',
+        captainSelectionEnabled: false,
+        currentRound: 0,
+        roundPhase: 'not_started',
+        roundPoolPlayerIds: [],
+        activePoolIndex: 0,
+        unsoldPlayerIds: [],
+        eliminatedTeamIds: [],
+        qualifiedTeamIds: [],
+        round1Results: null,
+        round2Results: null,
+        updatedAt: nowIso,
+      },
+    }).eq('id', eventId)
+
+    await syncPublicConfigStatus(eventId, 'setup')
+
+    return { ok: true, eventId }
   },
 })
 

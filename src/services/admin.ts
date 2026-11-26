@@ -535,3 +535,22 @@ export async function setCaptainSelection(
   return result
 }
 
+/**
+ * Starts the entire auction all over again: reverses/clears all purchases,
+ * transactions, rounds, timers, breaks, and captain picks while keeping team names & PIN codes intact.
+ */
+export async function restartAuction(
+  eventId: string,
+): Promise<{ ok: boolean; eventId: string }> {
+  const result = await callFunction<{ eventId: string }, { ok: boolean; eventId: string }>(
+    'restartAuction',
+    { eventId },
+  )
+  broadcastSpotlight(eventId, null)
+  broadcastCountdown(eventId, null)
+  broadcastBreak(eventId, null)
+  broadcastPresenterView(eventId, 'auto')
+  broadcastRoundChange(eventId, 'not_started')
+  return result
+}
+

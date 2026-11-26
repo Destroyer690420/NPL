@@ -33,6 +33,7 @@ import {
   deleteTeamsData,
   deleteTransactionsData,
   resetEventData,
+  restartAuction,
   setDefaultEvent,
   updateEvent,
 } from '@/services/admin'
@@ -76,7 +77,7 @@ export function SettingsPage() {
   const [playerSubmitting, setPlayerSubmitting] = useState(false)
   const [playerFormError, setPlayerFormError] = useState<string | null>(null)
 
-  type DeleteTarget = 'transactions' | 'players' | 'teams' | 'all'
+  type DeleteTarget = 'restart' | 'transactions' | 'players' | 'teams' | 'all'
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null)
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [deleteBusy, setDeleteBusy] = useState(false)
@@ -284,10 +285,19 @@ export function SettingsPage() {
   }
 
   async function handleDeleteData(): Promise<void> {
-    if (!eventId || deleteConfirmText.trim() !== 'DELETE' || !deleteTarget) return
+    if (!eventId || !deleteTarget) return
+    const requiredWord = deleteTarget === 'restart' ? 'RESTART' : 'DELETE'
+    if (deleteConfirmText.trim() !== requiredWord) return
     try {
       setDeleteBusy(true)
-      if (deleteTarget === 'transactions') {
+      if (deleteTarget === 'restart') {
+        await restartAuction(eventId)
+        toast.push({
+          kind: 'success',
+          message: 'Auction restarted from scratch.',
+          detail: 'All purchases, transactions, rounds, and captain picks reset. Team names & PINs kept.',
+        })
+      } else if (deleteTarget === 'transactions') {
         await deleteTransactionsData(eventId)
         toast.push({
           kind: 'success',
@@ -677,6 +687,27 @@ export function SettingsPage() {
               </p>
 
               <div className="divide-y divide-danger/20 rounded-xl border border-danger/20 bg-surface/60 overflow-hidden">
+                {/* 0. Restart Auction (Keep Team Names & PINs) */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 bg-amber-500/10">
+                  <div>
+                    <p className="text-xs font-bold text-amber-200">Start auction all over again</p>
+                    <p className="text-[11px] text-muted">
+                      Reverses all purchases, transactions, rounds, and captain picks back to Round 0 while keeping all team names and PIN codes.
+                    </p>
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={<RefreshCw className="size-3.5" aria-hidden />}
+                    onClick={() => {
+                      setDeleteConfirmText('')
+                      setDeleteTarget('restart')
+                    }}
+                  >
+                    Restart auction
+                  </Button>
+                </div>
+
                 {/* 1. Delete Team Data */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5">
                   <div>
@@ -831,22 +862,26 @@ export function SettingsPage() {
         open={deleteTarget !== null}
         onClose={() => !deleteBusy && setDeleteTarget(null)}
         title={
-          deleteTarget === 'teams'
-            ? 'Delete all team data'
-            : deleteTarget === 'players'
-              ? 'Delete all player data'
-              : deleteTarget === 'transactions'
-                ? 'Delete all transaction data'
-                : 'Delete all event data'
+          deleteTarget === 'restart'
+            ? 'Start auction all over again?'
+            : deleteTarget === 'teams'
+              ? 'Delete all team data'
+              : deleteTarget === 'players'
+                ? 'Delete all player data'
+                : deleteTarget === 'transactions'
+                  ? 'Delete all transaction data'
+                  : 'Delete all event data'
         }
         description={
-          deleteTarget === 'teams'
-            ? 'This will permanently remove all teams, their PIN access codes, active sessions, and associated purchase records.'
-            : deleteTarget === 'players'
-              ? 'This will permanently delete all players in the auction pool and remove any purchases made for them.'
-              : deleteTarget === 'transactions'
-                ? 'This will permanently delete all purchase records. Team budgets will be restored to their starting purse, and all players will be made available again.'
-                : 'This will permanently delete all teams, players, purchases, PINs, and audit logs for this event. There is no recovery.'
+          deleteTarget === 'restart'
+            ? 'Reverses all transactions, purchases, Round 1 & Round 2 state, and captain selections. All team names, PIN codes, and players remain intact.'
+            : deleteTarget === 'teams'
+              ? 'This will permanently remove all teams, their PIN access codes, active sessions, and associated purchase records.'
+              : deleteTarget === 'players'
+                ? 'This will permanently delete all players in the auction pool and remove any purchases made for them.'
+                : deleteTarget === 'transactions'
+                  ? 'This will permanently delete all purchase records. Team budgets will be restored to their starting purse, and all players will be made available again.'
+                  : 'This will permanently delete all teams, players, purchases, PINs, and audit logs for this event. There is no recovery.'
         }
         size="sm"
         footer={
@@ -857,16 +892,18 @@ export function SettingsPage() {
             <Button
               variant="danger"
               loading={deleteBusy}
-              disabled={deleteConfirmText.trim() !== 'DELETE'}
+              disabled={deleteConfirmText.trim() !== (deleteTarget === 'restart' ? 'RESTART' : 'DELETE')}
               onClick={() => void handleDeleteData()}
             >
-              {deleteTarget === 'teams'
-                ? 'Delete teams'
-                : deleteTarget === 'players'
-                  ? 'Delete players'
-                  : deleteTarget === 'transactions'
-                    ? 'Delete transactions'
-                    : 'Delete everything'}
+              {deleteTarget === 'restart'
+                ? 'Restart auction'
+                : deleteTarget === 'teams'
+                  ? 'Delete teams'
+                  : deleteTarget === 'players'
+                    ? 'Delete players'
+                    : deleteTarget === 'transactions'
+                      ? 'Delete transactions'
+                      : 'Delete everything'}
             </Button>
           </>
         }
@@ -875,18 +912,20 @@ export function SettingsPage() {
           <div className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-xs text-danger">
             <p className="font-semibold">Warning: This action cannot be undone.</p>
             <p className="mt-1 text-ink-soft">
-              {deleteTarget === 'teams'
-                ? 'All team portfolios and login credentials will be permanently erased.'
-                : deleteTarget === 'players'
-                  ? 'All player records will be permanently removed from the database.'
-                  : deleteTarget === 'transactions'
-                    ? 'All purchase history will be wiped and auction rosters cleared.'
-                    : 'All rosters, sold player records, team balances, and PINs will be permanently wiped.'}
+              {deleteTarget === 'restart'
+                ? 'All sales, transactions, round pools, and captain picks will be reset cleanly. Your team names and 4-digit PINs are preserved.'
+                : deleteTarget === 'teams'
+                  ? 'All team portfolios and login credentials will be permanently erased.'
+                  : deleteTarget === 'players'
+                    ? 'All player records will be permanently removed from the database.'
+                    : deleteTarget === 'transactions'
+                      ? 'All purchase history will be wiped and auction rosters cleared.'
+                      : 'All rosters, sold player records, team balances, and PINs will be permanently wiped.'}
             </p>
           </div>
           <InputField
-            label="Type DELETE to confirm"
-            placeholder="DELETE"
+            label={deleteTarget === 'restart' ? 'Type RESTART to confirm' : 'Type DELETE to confirm'}
+            placeholder={deleteTarget === 'restart' ? 'RESTART' : 'DELETE'}
             value={deleteConfirmText}
             autoFocus
             onChange={(e) => setDeleteConfirmText(e.target.value)}
