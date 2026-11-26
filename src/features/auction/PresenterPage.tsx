@@ -345,33 +345,6 @@ const CELEBRATION_SPARKS = [
   { left: '68%', bottom: '5%', size: 6, delay: '2.9s', dur: '5.2s', color: '#fde047' },
 ] as const
 
-/** Championship angled SOLD stamp badge with gavel icon & pulsing golden glow. */
-function SoldChampionshipStamp({ tilt = 'left' }: { tilt?: 'left' | 'right' }) {
-  return (
-    <div className="animate-presenter-stamp-slam">
-      <div
-        className={`flex flex-col items-center justify-center rounded-2xl border-2 border-[#f5eb3b]/90 bg-gradient-to-b from-[#2b0509]/90 via-[#160205]/95 to-black/95 px-7 py-3.5 backdrop-blur-md animate-presenter-sold-glow ${
-          tilt === 'left' ? '-rotate-6' : 'rotate-6'
-        }`}
-      >
-        <div className="flex items-center gap-2.5">
-          <Gavel className="size-7 lg:size-8 text-[#f5eb3b]" aria-hidden="true" />
-          <span className="font-['Outfit',sans-serif] text-4xl lg:text-5xl font-black uppercase tracking-[0.14em] text-white drop-shadow-[0_2px_12px_rgba(245,235,59,0.45)]">
-            SOLD
-          </span>
-        </div>
-        <div className="mt-1 flex items-center gap-1.5">
-          <span className="h-[1px] w-5 bg-[#f5eb3b]/60" />
-          <span className="font-['Outfit',sans-serif] text-[10px] font-extrabold uppercase tracking-[0.28em] text-[#f5eb3b]">
-            HAMMER DOWN
-          </span>
-          <span className="h-[1px] w-5 bg-[#f5eb3b]/60" />
-        </div>
-      </div>
-    </div>
-  )
-}
-
 /**
  * Full-screen widescreen Presenter stage matching the reference broadcast design.
  */
@@ -871,35 +844,23 @@ export function PresenterPage() {
 
           {/* Centerpiece SOLD Stage */}
           <div className="relative z-10 my-auto flex flex-col items-center justify-center py-2">
-            <div className="relative flex w-full max-w-6xl items-center justify-center gap-6 sm:gap-12 lg:gap-16">
-              {/* Left Championship SOLD Stamp */}
-              <div className="hidden md:block">
-                <SoldChampionshipStamp tilt="left" />
-              </div>
-
-              {/* Center Circular Player Showcase with Breathing Stadium Halo */}
-              <div className="relative flex items-center justify-center">
-                <div
-                  className="pointer-events-none absolute -inset-10 rounded-full blur-3xl animate-presenter-halo-breathe"
-                  style={{
-                    background:
-                      'radial-gradient(circle, rgba(245, 235, 59, 0.28) 0%, rgba(220, 38, 38, 0.32) 48%, transparent 72%)',
-                  }}
-                />
-                <CircularPlayerShowcase
-                  name={soldData.playerName}
-                  photoUrl={soldData.playerPhotoUrl}
-                  rating={soldPoints}
-                  ringText={soldStar ? 'STAR PLAYER' : 'SOLD OUT'}
-                  circleTone="crimson"
-                  size="sold"
-                />
-              </div>
-
-              {/* Right Championship SOLD Stamp */}
-              <div className="hidden md:block">
-                <SoldChampionshipStamp tilt="right" />
-              </div>
+            {/* Center Circular Player Showcase with Breathing Stadium Halo */}
+            <div className="relative flex items-center justify-center">
+              <div
+                className="pointer-events-none absolute -inset-10 rounded-full blur-3xl animate-presenter-halo-breathe"
+                style={{
+                  background:
+                    'radial-gradient(circle, rgba(245, 235, 59, 0.28) 0%, rgba(220, 38, 38, 0.32) 48%, transparent 72%)',
+                }}
+              />
+              <CircularPlayerShowcase
+                name={soldData.playerName}
+                photoUrl={soldData.playerPhotoUrl}
+                rating={soldPoints}
+                ringText={soldStar ? 'STAR PLAYER' : 'SOLD OUT'}
+                circleTone="crimson"
+                size="sold"
+              />
             </div>
 
             {/* Mobile SOLD stamp */}
