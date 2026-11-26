@@ -1,6 +1,6 @@
 import { CheckCircle2, Crown, ShieldAlert, Trophy, Users, XCircle } from 'lucide-react'
-import type { RoundSnapshot } from '@shared/types'
-import { rankQualifiedTeams } from '@shared/rounds'
+import type { PlayerDoc, RoundSnapshot, TeamDoc } from '@shared/types'
+import { evaluateTeamQualification, rankQualifiedTeams } from '@shared/rounds'
 import { currency, points as formatPoints } from '@/lib/format'
 
 function RoleCountsPills({
@@ -392,3 +392,128 @@ export function Round2FinalResultsStage({
     </div>
   )
 }
+
+export function LiveStandingsStage({
+  teams,
+  players,
+  eliminatedTeamIds = [],
+  currentRound = 0,
+  eventName,
+  currencyLabel = '₹',
+}: {
+  teams: readonly TeamDoc[]
+  players: readonly PlayerDoc[]
+  eliminatedTeamIds?: readonly string[]
+  currentRound?: 0 | 1 | 2
+  eventName: string
+  currencyLabel?: string
+}) {
+  const eliminatedSet = new Set(eliminatedTeamIds)
+  const squadByTeam = new Map<string, PlayerDoc[]>()
+  for (const player of players) {
+    if (player.status === 'sold' && player.soldToTeamId) {
+      const list = squadByTeam.get(player.soldToTeamId) ?? []
+      list.push(player)
+      squadByTeam.set(player.soldToTeamId, list)
+    }
+  }
+
+  const rows = teams
+    .filter((t) => !(currentRound === 2 && eliminatedSet.has(t.id)))
+    .map((team) => ({
+      ...evaluateTeamQualification(team, squadByTeam.get(team.id) ?? []),
+      eliminated: eliminatedSet.has(team.id),
+    }))
+    .sort((a, b) => {
+      if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints
+      if (b.remainingPurse !== a.remainingPurse) return b.remainingPurse - a.remainingPurse
+      return a.teamName.localeCompare(b.teamName)
+    })
+
+  return (
+    <div className="relative z-10 flex h-full min-h-[inherit] w-full flex-col justify-between px-6 py-5 sm:px-10 sm:py-7 overflow-y-auto">
+      <header className="flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-4">
+        <div className="flex flex-col leading-none">
+          <span className="font-['Outfit',sans-serif] text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white">
+            NPL <span className="text-[#f5eb3b]">2026</span>
+          </span>
+          <span className="mt-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-[0.24em] text-white/75">
+            LIVE TEAM STANDINGS &amp; SQUAD TRACKER
+          </span>
+        </div>
+        <p className="font-['Outfit',sans-serif] text-base sm:text-xl lg:text-2xl font-black uppercase tracking-wide text-white">
+          {eventName}
+        </p>
+      </header>
+
+      <div className="my-5 flex-1">
+        <div className="rounded-3xl border border-white/15 bg-black/70 p-5 sm:p-6 backdrop-blur-md">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <h1 className="font-['Outfit',sans-serif] text-xl sm:text-2xl font-black uppercase tracking-wide text-white">
+              {currentRound > 0 ? `Round ${currentRound} Standings` : 'Team Standings'} ({rows.length})
+            </h1>
+            <span className="text-xs font-semibold text-white/65">
+              Min Rule: 11 Players (3 BAT · 3 BOWL · 1 AR · 1 WK)
+            </span>
+          </div>
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10 text-left text-[11px] font-bold uppercase tracking-wider text-white/60">
+                  <th className="py-2.5 pr-3">#</th>
+                  <th className="py-2.5 px-3">Team</th>
+                  <th className="py-2.5 px-3 text-center">Squad</th>
+                  <th className="py-2.5 px-3">Composition</th>
+                  <th className="py-2.5 px-3">Qualification</th>
+                  <th className="py-2.5 px-3 text-right">Purse Left</th>
+                  <th className="py-2.5 pl-3 text-right">Points</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10">
+                {rows.map((team, idx) => (
+                  <tr key={team.teamId} className="hover:bg-white/5">
+                    <td className="py-2.5 pr-3 font-['Outfit',sans-serif] text-sm font-black text-[#f5eb3b] tabular-nums">
+                      #{idx + 1}
+                    </td>
+                    <td className="py-2.5 px-3 font-['Outfit',sans-serif] text-base font-bold text-white">
+                      {team.teamName}
+                    </td>
+                    <td className="py-2.5 px-3 text-center font-bold tabular-nums text-white/90">
+                      {team.playerCount}
+                    </td>
+                    <td className="py-2.5 px-3">
+                      <RoleCountsPills
+                        bat={team.batCount}
+                        bowl={team.bowlCount}
+                        ar={team.arCount}
+                        wk={team.wkCount}
+                      />
+                    </td>
+                    <td className="py-2.5 px-3 text-xs font-bold">
+                      {team.qualified ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-emerald-300">
+                          <CheckCircle2 className="size-3.5" aria-hidden />
+                          Qualified
+                        </span>
+                      ) : (
+                        <span className="text-amber-300">{team.missingSummary}</span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-3 text-right font-bold tabular-nums text-emerald-400">
+                      {currency(team.remainingPurse, currencyLabel)}
+                    </td>
+                    <td className="py-2.5 pl-3 text-right font-['Outfit',sans-serif] text-base font-black tabular-nums text-[#f5eb3b]">
+                      {formatPoints(team.totalPoints)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+

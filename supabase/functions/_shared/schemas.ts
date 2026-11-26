@@ -220,6 +220,11 @@ export const markPlayerUnsoldSchema = z.object({
   playerId: idSchema,
 })
 
+export const setPresenterViewSchema = z.object({
+  eventId: idSchema,
+  view: z.enum(['auto', 'standby', 'standings', 'round1_results', 'round2_results']),
+})
+
 export const setSpotlightPlayerSchema = z.object({
   eventId: idSchema,
   playerId: z.union([idSchema, z.null()]),

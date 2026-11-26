@@ -18,6 +18,13 @@ export type RoundPhase =
   | 'round2_active'
   | 'round2_ended'
 
+export type PresenterViewOverride =
+  | 'auto'
+  | 'standby'
+  | 'standings'
+  | 'round1_results'
+  | 'round2_results'
+
 export interface TeamQualificationResult {
   teamId: string
   teamName: string
@@ -131,6 +138,8 @@ export interface EventDoc {
   qualifiedTeamIds?: string[]
   round1Results?: RoundSnapshot | null
   round2Results?: RoundSnapshot | null
+  /** Optional Director Screen override for what the Presenter displays. */
+  presenterView?: PresenterViewOverride
 }
 
 export interface TeamDoc {

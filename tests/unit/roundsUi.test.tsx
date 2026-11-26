@@ -1,18 +1,45 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router'
-import { Round1ResultsStage, Round2FinalResultsStage } from '@/features/auction/RoundResultsViews'
+import { MemoryRouter, Route, Routes } from 'react-router'
+import { LiveStandingsStage, Round1ResultsStage, Round2FinalResultsStage } from '@/features/auction/RoundResultsViews'
 import { RoundControlsBar } from '@/features/auction/RoundControlsBar'
+import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { ToastProvider } from '@/components/ui/Toast'
 import { makeEvent, makePlayer, makeTeam } from '@shared/fixtures'
 import type { RoundSnapshot } from '@shared/types'
+
+const mockSetPresenterView = vi.fn().mockResolvedValue({ ok: true, eventId: 'default', presenterView: 'round1_results' })
+const mockSendPresenterCommand = vi.fn()
 
 vi.mock('@/services/admin', () => ({
   startRound1: vi.fn(),
   endRound1: vi.fn(),
   startRound2: vi.fn(),
   endRound2: vi.fn(),
+  setPresenterView: (...args: unknown[]) => mockSetPresenterView(...args),
+  sendPresenterCommand: (...args: unknown[]) => mockSendPresenterCommand(...args),
+  setAuctionBreak: vi.fn(),
+  setAuctionCountdown: vi.fn(),
+  setSpotlightPlayer: vi.fn(),
+  clearSpotlightPlayer: vi.fn(),
+  markPlayerUnsold: vi.fn(),
+  updateEvent: vi.fn(),
+}))
+
+vi.mock('@/app/AdminEventProvider', () => ({
+  useAdminEvent: () => ({
+    event: makeEvent({ status: 'setup', currentRound: 0, roundPhase: 'not_started' }),
+    eventId: 'default',
+    loading: false,
+    error: null,
+    fromCache: false,
+  }),
+}))
+
+vi.mock('@/data/hooks', () => ({
+  useTeams: () => ({ data: [makeTeam('t1', { name: 'Team 01' })], loading: false, error: null, fromCache: false }),
+  usePlayers: () => ({ data: [makePlayer('p1', { name: 'Rohit Sharma', role: 'Batter', points: 9 })], loading: false, error: null, fromCache: false }),
 }))
 
 describe('Round1ResultsStage', () => {
@@ -216,5 +243,50 @@ describe('RoundControlsBar', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Start Round 2' })).toBeEnabled()
+  })
+})
+
+describe('Director Screen (DashboardPage)', () => {
+  it('renders square director buttons for auction, rounds, and presentation controls', async () => {
+    const { Outlet } = await import('react-router')
+    render(
+      <MemoryRouter initialEntries={['/admin']}>
+        <ToastProvider>
+          <Routes>
+            <Route path="/admin" element={<Outlet context={{ eventId: 'default' }} />}>
+              <Route index element={<DashboardPage />} />
+            </Route>
+          </Routes>
+        </ToastProvider>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText(/Director Control Console/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Start Auction/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Start Round 1/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Start Round 2/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Start Timer/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Break Screen/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Show R1 Results/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Show R2 Results/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Live Standings/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Standby Screen/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Clear Sold/i })).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: /Show R1 Results/i }))
+    expect(mockSetPresenterView).toHaveBeenCalledWith('default', 'round1_results')
+  })
+
+  it('renders LiveStandingsStage with qualification status', () => {
+    render(
+      <LiveStandingsStage
+        teams={[makeTeam('t1', { name: 'Team 01', remainingPurse: 100_000_000 })]}
+        players={[makePlayer('p1', { status: 'sold', soldToTeamId: 't1', role: 'Batter', points: 9 })]}
+        eventName="NPL 2026"
+        currencyLabel="₹"
+      />,
+    )
+    expect(screen.getByRole('heading', { name: /Team Standings/i })).toBeInTheDocument()
+    expect(screen.getByText('Team 01')).toBeInTheDocument()
   })
 })

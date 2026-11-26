@@ -3,6 +3,7 @@ import type {
   AuditTargetType,
   EventDoc,
   PlayerDoc,
+  PresenterViewOverride,
   PublicConfigDoc,
   PurchaseDoc,
   RoundPhase,
@@ -114,6 +115,18 @@ function toRoundPhase(value: unknown): RoundPhase {
   return 'not_started'
 }
 
+function toPresenterView(value: unknown): PresenterViewOverride {
+  if (
+    value === 'standby' ||
+    value === 'standings' ||
+    value === 'round1_results' ||
+    value === 'round2_results'
+  ) {
+    return value
+  }
+  return 'auto'
+}
+
 export function toEventDoc(id: string, data: Data): EventDoc | null {
   if (!data) return null
   const currentRound = data.currentRound === 1 || data.currentRound === 2 ? data.currentRound : 0
@@ -144,6 +157,7 @@ export function toEventDoc(id: string, data: Data): EventDoc | null {
     qualifiedTeamIds: asStringArray(data.qualifiedTeamIds),
     round1Results: data.round1Results ? (data.round1Results as EventDoc['round1Results']) : null,
     round2Results: data.round2Results ? (data.round2Results as EventDoc['round2Results']) : null,
+    presenterView: toPresenterView(data.presenterView),
   }
 }
 

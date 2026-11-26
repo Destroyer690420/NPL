@@ -2,6 +2,7 @@ import { getSupabase } from './supabase'
 import type {
   AuctionBreak,
   AuctionCountdown,
+  PresenterViewOverride,
   RoundPhase,
   SoldPlayerAnnouncement,
   SpotlightPlayer,
@@ -11,6 +12,18 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 export interface RoundBroadcastPayload {
   eventId: string
   roundPhase: RoundPhase
+}
+
+export interface PresenterViewBroadcastPayload {
+  eventId: string
+  presenterView: PresenterViewOverride
+}
+
+export type PresenterCommandType = 'clear_sold' | 'replay_last_sold' | 'toggle_mute'
+
+export interface PresenterCommandBroadcastPayload {
+  eventId: string
+  command: PresenterCommandType
 }
 
 export interface SpotlightBroadcastPayload {
@@ -147,6 +160,36 @@ export function subscribeToAuctionRealtime(eventId: string): () => void {
       },
     )
 
+    // Listen for Presenter view override broadcasts
+    channel.on(
+      'broadcast',
+      { event: 'presenter_view_change' },
+      ({ payload }: { payload: PresenterViewBroadcastPayload }) => {
+        if (payload?.eventId === eventId) {
+          window.dispatchEvent(
+            new CustomEvent('auction:presenter_view_change', {
+              detail: payload,
+            }),
+          )
+        }
+      },
+    )
+
+    // Listen for remote Presenter commands (clear_sold, replay_last_sold, toggle_mute)
+    channel.on(
+      'broadcast',
+      { event: 'presenter_command' },
+      ({ payload }: { payload: PresenterCommandBroadcastPayload }) => {
+        if (payload?.eventId === eventId) {
+          window.dispatchEvent(
+            new CustomEvent('auction:presenter_command', {
+              detail: payload,
+            }),
+          )
+        }
+      },
+    )
+
     // Also listen for Postgres table updates as a fallback
     channel.on(
       'postgres_changes',
@@ -165,6 +208,7 @@ export function subscribeToAuctionRealtime(eventId: string): () => void {
               countdown?: AuctionCountdown | null
               break?: AuctionBreak | null
               roundPhase?: RoundPhase
+              presenterView?: PresenterViewOverride
             }
           }
         )?.data
@@ -213,6 +257,16 @@ export function subscribeToAuctionRealtime(eventId: string): () => void {
                 detail: {
                   eventId,
                   roundPhase: newData.roundPhase,
+                },
+              }),
+            )
+          }
+          if (newData.presenterView) {
+            window.dispatchEvent(
+              new CustomEvent('auction:presenter_view_change', {
+                detail: {
+                  eventId,
+                  presenterView: newData.presenterView,
                 },
               }),
             )
@@ -435,6 +489,66 @@ export function broadcastRoundChange(eventId: string, roundPhase: RoundPhase): v
     })
   } catch (err) {
     console.warn('[realtime] broadcast round_change error:', err)
+  }
+}
+
+export function broadcastPresenterView(eventId: string, presenterView: PresenterViewOverride): void {
+  if (!eventId) return
+
+  const payload: PresenterViewBroadcastPayload = { eventId, presenterView }
+  window.dispatchEvent(new CustomEvent('auction:presenter_view_change', { detail: payload }))
+
+  try {
+    const supabase = getSupabase()
+    if (!supabase) return
+
+    const topic = `auction-spotlight:${eventId}`
+    let channel = activeChannels.get(topic)
+    if (!channel) {
+      channel = supabase.channel(topic, {
+        config: { broadcast: { self: true } },
+      })
+      channel.subscribe()
+      activeChannels.set(topic, channel)
+    }
+
+    void channel.send({
+      type: 'broadcast',
+      event: 'presenter_view_change',
+      payload,
+    })
+  } catch (err) {
+    console.warn('[realtime] broadcast presenter_view_change error:', err)
+  }
+}
+
+export function broadcastPresenterCommand(eventId: string, command: PresenterCommandType): void {
+  if (!eventId) return
+
+  const payload: PresenterCommandBroadcastPayload = { eventId, command }
+  window.dispatchEvent(new CustomEvent('auction:presenter_command', { detail: payload }))
+
+  try {
+    const supabase = getSupabase()
+    if (!supabase) return
+
+    const topic = `auction-spotlight:${eventId}`
+    let channel = activeChannels.get(topic)
+    if (!channel) {
+      channel = supabase.channel(topic, {
+        config: { broadcast: { self: true } },
+      })
+      channel.subscribe()
+      activeChannels.set(topic, channel)
+    }
+
+    void channel.send({
+      type: 'broadcast',
+      event: 'presenter_command',
+      payload,
+    })
+  } catch (err) {
+    console.warn('[realtime] broadcast presenter_command error:', err)
   }
 }
 

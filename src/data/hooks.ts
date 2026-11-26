@@ -243,12 +243,36 @@ function usePolled<T>(key: string | null, initial: T, fetcher: () => Promise<T>)
       void load()
     }
 
+    const onPresenterViewChange = (e: Event): void => {
+      const custom = e as CustomEvent<{
+        eventId: string
+        presenterView: import('@shared/types').PresenterViewOverride
+      }>
+      if (!active) return
+      setState((previous) => {
+        if (!previous.data || typeof previous.data !== 'object') return previous
+        const doc = previous.data as Record<string, unknown>
+        if ('presenterView' in doc || 'status' in doc) {
+          return {
+            ...previous,
+            data: {
+              ...doc,
+              presenterView: custom.detail?.presenterView ?? 'auto',
+            } as T,
+          }
+        }
+        return previous
+      })
+      void load()
+    }
+
     document.addEventListener('visibilitychange', refresh)
     window.addEventListener('focus', refresh)
     window.addEventListener('auction:spotlight_change', onSpotlightChange)
     window.addEventListener('auction:countdown_change', onCountdownChange)
     window.addEventListener('auction:break_change', onBreakChange)
     window.addEventListener('auction:round_change', onRoundChange)
+    window.addEventListener('auction:presenter_view_change', onPresenterViewChange)
 
     return () => {
       active = false
@@ -259,6 +283,7 @@ function usePolled<T>(key: string | null, initial: T, fetcher: () => Promise<T>)
       window.removeEventListener('auction:countdown_change', onCountdownChange)
       window.removeEventListener('auction:break_change', onBreakChange)
       window.removeEventListener('auction:round_change', onRoundChange)
+      window.removeEventListener('auction:presenter_view_change', onPresenterViewChange)
     }
     // The fetcher closes over the same parameters as `key`.
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -4,6 +4,7 @@ import {
   markPlayerUnsoldSchema,
   setAuctionBreakSchema,
   setAuctionCountdownSchema,
+  setPresenterViewSchema,
   setSpotlightPlayerSchema,
   updateEventSchema,
 } from '../../_shared/schemas.ts'
@@ -484,6 +485,7 @@ export const setSpotlightPlayer = adminCallable({
         data: {
           ...currentData,
           spotlightPlayer,
+          ...(playerId ? { presenterView: 'auto' } : {}),
           ...(poolIdx >= 0 ? { activePoolIndex: poolIdx } : {}),
           updatedAt: new Date().toISOString(),
         },
@@ -527,6 +529,7 @@ export const setAuctionCountdown = adminCallable({
           data: {
             ...currentData,
             countdown,
+            ...(countdown ? { presenterView: 'auto' } : {}),
             updatedAt: new Date().toISOString(),
           },
         })
@@ -570,6 +573,7 @@ export const setAuctionBreak = adminCallable({
           data: {
             ...currentData,
             break: breakState,
+            ...(breakState ? { presenterView: 'auto' } : {}),
             updatedAt: new Date().toISOString(),
           },
         })
@@ -577,6 +581,43 @@ export const setAuctionBreak = adminCallable({
     }
 
     return { ok: true, eventId, break: breakState }
+  },
+})
+
+/**
+ * Sets or clears the Director Screen override for what the Presenter displays.
+ * When forcing a view (standby, standings, round1_results, round2_results),
+ * clears spotlightPlayer so the requested screen appears immediately.
+ */
+export const setPresenterView = adminCallable({
+  schema: setPresenterViewSchema,
+  handler: async (input) => {
+    const { eventId, view } = input
+
+    const { data: eventRow } = await supabase
+      .from('events')
+      .select('data')
+      .eq('id', eventId)
+      .maybeSingle()
+
+    if (!eventRow) {
+      fail('event-not-found')
+    }
+
+    const currentData = (eventRow.data ?? {}) as Record<string, unknown>
+    await supabase
+      .from('events')
+      .update({
+        data: {
+          ...currentData,
+          presenterView: view,
+          ...(view !== 'auto' ? { spotlightPlayer: null } : {}),
+          updatedAt: new Date().toISOString(),
+        },
+      })
+      .eq('id', eventId)
+
+    return { ok: true, eventId, presenterView: view }
   },
 })
 
@@ -688,6 +729,7 @@ async function finalizeRoundState(params: {
     ...rawEventData,
     ...(extraPatch ?? {}),
     roundPhase: nextPhase,
+    presenterView: 'auto',
     spotlightPlayer: null,
     lastSoldPlayer: null,
     updatedAt: nowIso,
@@ -803,6 +845,7 @@ export const startRound1 = adminCallable({
         purchasesEnabled: true,
         currentRound: 1,
         roundPhase: 'round1_active',
+        presenterView: 'auto',
         roundPoolPlayerIds: poolIds,
         activePoolIndex: 0,
         unsoldPlayerIds: [],
@@ -958,6 +1001,7 @@ export const startRound2 = adminCallable({
         purchasesEnabled: true,
         currentRound: 2,
         roundPhase: 'round2_active',
+        presenterView: 'auto',
         roundPoolPlayerIds: poolIds,
         activePoolIndex: 0,
         unsoldPlayerIds: [],

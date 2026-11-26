@@ -20,6 +20,7 @@ import {
   setAuctionBreak,
   setAuctionCountdown,
   setDefaultEvent,
+  setPresenterView,
   setSpotlightPlayer,
   startRound1,
   startRound2,
@@ -69,6 +70,7 @@ const registry: Record<string, Descriptor> = {
   setSpotlightPlayer,
   setAuctionCountdown,
   setAuctionBreak,
+  setPresenterView,
   // 2-round auction
   startRound1,
   endRound1,

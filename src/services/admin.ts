@@ -3,14 +3,18 @@ import {
   broadcastBreak,
   broadcastCountdown,
   broadcastPlayerSold,
+  broadcastPresenterCommand,
+  broadcastPresenterView,
   broadcastRoundChange,
   broadcastSpotlight,
+  type PresenterCommandType,
 } from '@/lib/realtime'
 import type {
   AuctionBreak,
   AuctionCountdown,
   EventStatus,
   PlayerStatus,
+  PresenterViewOverride,
   RoundPhase,
   RoundSnapshot,
   TeamSummary,
@@ -482,5 +486,24 @@ export async function markPlayerUnsold(eventId: string, playerId: string): Promi
   broadcastSpotlight(eventId, null)
   broadcastRoundChange(eventId, result.roundPhase)
   return result
+}
+
+export async function setPresenterView(
+  eventId: string,
+  view: PresenterViewOverride,
+): Promise<{ ok: boolean; eventId: string; presenterView: PresenterViewOverride }> {
+  const result = await callFunction<
+    { eventId: string; view: PresenterViewOverride },
+    { ok: boolean; eventId: string; presenterView: PresenterViewOverride }
+  >('setPresenterView', { eventId, view })
+  if (view !== 'auto') {
+    broadcastSpotlight(eventId, null)
+  }
+  broadcastPresenterView(eventId, result.presenterView)
+  return result
+}
+
+export function sendPresenterCommand(eventId: string, command: PresenterCommandType): void {
+  broadcastPresenterCommand(eventId, command)
 }
 

@@ -22,7 +22,7 @@ import { useToast } from '@/components/ui/Toast'
 import { cn } from '@/lib/cn'
 
 const NAV_ITEMS = [
-  { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/admin', label: 'Director', icon: LayoutDashboard, end: true },
   { to: '/admin/purchases/new', label: 'Record purchase', icon: ShoppingCart },
   { to: '/admin/presenter', label: 'Presenter', icon: MonitorPlay },
   { to: '/admin/players', label: 'Players', icon: Users },

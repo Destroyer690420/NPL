@@ -27,7 +27,9 @@ import {
 import { getSupabase } from '@/lib/supabase'
 import { StartingInCountdownScreen } from './StartingInCountdownScreen'
 import { AuctionBreakScreen } from './AuctionBreakScreen'
-import { Round1ResultsStage, Round2FinalResultsStage } from './RoundResultsViews'
+import { LiveStandingsStage, Round1ResultsStage, Round2FinalResultsStage } from './RoundResultsViews'
+import { buildRoundSnapshot } from '@shared/rounds'
+import type { PresenterCommandType } from '@/lib/realtime'
 import { Button } from '@/components/ui/Button'
 
 function resolvePhotoSrc(photoUrl: string | null | undefined): string | null {
@@ -574,6 +576,39 @@ export function PresenterPage() {
   }, [])
 
   useEffect(() => {
+    function onPresenterViewChange(e: Event) {
+      const custom = e as CustomEvent<{ presenterView?: string }>
+      if (custom.detail?.presenterView && custom.detail.presenterView !== 'auto') {
+        setSoldAnnouncement(null)
+        stopIplSoldTune()
+      }
+    }
+    window.addEventListener('auction:presenter_view_change', onPresenterViewChange)
+    return () => window.removeEventListener('auction:presenter_view_change', onPresenterViewChange)
+  }, [])
+
+  const lastSoldRef = useRef(event?.lastSoldPlayer ?? null)
+  lastSoldRef.current = event?.lastSoldPlayer ?? null
+
+  useEffect(() => {
+    function onPresenterCommand(e: Event) {
+      const custom = e as CustomEvent<{ command?: PresenterCommandType }>
+      const cmd = custom.detail?.command
+      if (cmd === 'clear_sold') {
+        clearSoldCelebration()
+      } else if (cmd === 'replay_last_sold') {
+        if (lastSoldRef.current) {
+          showSoldCelebration(lastSoldRef.current)
+        }
+      } else if (cmd === 'toggle_mute') {
+        setMuted((m) => !m)
+      }
+    }
+    window.addEventListener('auction:presenter_command', onPresenterCommand)
+    return () => window.removeEventListener('auction:presenter_command', onPresenterCommand)
+  }, [clearSoldCelebration, showSoldCelebration])
+
+  useEffect(() => {
     if (muted) {
       stopIplSoldTune()
     }
@@ -682,6 +717,37 @@ export function PresenterPage() {
   const soldOverseas = isOverseas(soldData?.nationality ?? soldPlayerRecord?.nationality)
   const soldRole = soldData?.role ?? soldPlayerRecord?.role ?? null
   const soldPoints = soldData?.playerPoints ?? soldPlayerRecord?.points ?? 0
+
+  const presenterView = event?.presenterView ?? 'auto'
+  const liveRound1Snapshot = useMemo(
+    () =>
+      event?.round1Results ??
+      buildRoundSnapshot({
+        round: 1,
+        teams: teams.data,
+        players: players.data,
+        poolSize: event?.roundPoolPlayerIds?.length ?? 0,
+      }),
+    [event?.round1Results, event?.roundPoolPlayerIds?.length, teams.data, players.data],
+  )
+  const liveRound2Snapshot = useMemo(
+    () =>
+      event?.round2Results ??
+      buildRoundSnapshot({
+        round: 2,
+        teams: teams.data,
+        players: players.data,
+        poolSize: event?.roundPoolPlayerIds?.length ?? 0,
+        excludedTeamIds: event?.eliminatedTeamIds ?? [],
+      }),
+    [
+      event?.round2Results,
+      event?.roundPoolPlayerIds?.length,
+      event?.eliminatedTeamIds,
+      teams.data,
+      players.data,
+    ],
+  )
 
   return (
     <div
@@ -915,7 +981,42 @@ export function PresenterPage() {
 
           <div className="h-4" />
         </div>
-      ) : spotlight ? (
+      ) : presenterView === 'standings' ? (
+        /* ===================================================================
+           DIRECTOR OVERRIDE: LIVE TEAM STANDINGS
+           =================================================================== */
+        <div className="relative flex h-full min-h-[inherit] w-full flex-col overflow-hidden">
+          <BroadcastBackdrop variant="gold" />
+          <LiveStandingsStage
+            teams={teams.data}
+            players={players.data}
+            eliminatedTeamIds={event?.eliminatedTeamIds ?? []}
+            currentRound={event?.currentRound ?? 0}
+            eventName={eventName}
+            currencyLabel={currencyLabel}
+          />
+        </div>
+      ) : presenterView === 'round1_results' ? (
+        /* ===================================================================
+           DIRECTOR OVERRIDE: ROUND 1 RESULTS
+           =================================================================== */
+        <div className="relative flex h-full min-h-[inherit] w-full flex-col overflow-hidden">
+          <BroadcastBackdrop variant="crimson" />
+          <Round1ResultsStage snapshot={liveRound1Snapshot} eventName={eventName} />
+        </div>
+      ) : presenterView === 'round2_results' ? (
+        /* ===================================================================
+           DIRECTOR OVERRIDE: ROUND 2 FINAL RESULTS
+           =================================================================== */
+        <div className="relative flex h-full min-h-[inherit] w-full flex-col overflow-hidden">
+          <BroadcastBackdrop variant="gold" />
+          <Round2FinalResultsStage
+            snapshot={liveRound2Snapshot}
+            eventName={eventName}
+            currencyLabel={currencyLabel}
+          />
+        </div>
+      ) : presenterView === 'auto' && spotlight ? (
         /* ===================================================================
            VIEW 2: LIVE PLAYER SPOTLIGHT (Exact Match to Image 1)
            =================================================================== */
@@ -1054,7 +1155,7 @@ export function PresenterPage() {
 
           <div className="h-6" />
         </div>
-      ) : event?.break?.active ? (
+      ) : presenterView === 'auto' && event?.break?.active ? (
         /* ===================================================================
            VIEW 3: BREAK / INTERMISSION
            =================================================================== */
@@ -1064,7 +1165,7 @@ export function PresenterPage() {
             <AuctionBreakScreen breakState={event.break} eventName={eventName} />
           </div>
         </div>
-      ) : event?.countdown?.targetTime ? (
+      ) : presenterView === 'auto' && event?.countdown?.targetTime ? (
         /* ===================================================================
            VIEW 4: COUNTDOWN SCREEN
            =================================================================== */
@@ -1074,22 +1175,22 @@ export function PresenterPage() {
             <StartingInCountdownScreen countdown={event.countdown} eventName={eventName} />
           </div>
         </div>
-      ) : event?.roundPhase === 'round1_ended' ? (
+      ) : presenterView === 'auto' && event?.roundPhase === 'round1_ended' ? (
         /* ===================================================================
            VIEW 5A: ROUND 1 RESULTS (Eliminated & Qualified Teams)
            =================================================================== */
         <div className="relative flex h-full min-h-[inherit] w-full flex-col overflow-hidden">
           <BroadcastBackdrop variant="crimson" />
-          <Round1ResultsStage snapshot={event.round1Results} eventName={eventName} />
+          <Round1ResultsStage snapshot={liveRound1Snapshot} eventName={eventName} />
         </div>
-      ) : event?.roundPhase === 'round2_ended' ? (
+      ) : presenterView === 'auto' && event?.roundPhase === 'round2_ended' ? (
         /* ===================================================================
            VIEW 5B: ROUND 2 FINAL RESULTS LEADERBOARD & NPL WINNER
            =================================================================== */
         <div className="relative flex h-full min-h-[inherit] w-full flex-col overflow-hidden">
           <BroadcastBackdrop variant="gold" />
           <Round2FinalResultsStage
-            snapshot={event.round2Results}
+            snapshot={liveRound2Snapshot}
             eventName={eventName}
             currencyLabel={currencyLabel}
           />
