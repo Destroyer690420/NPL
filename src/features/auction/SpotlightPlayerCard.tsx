@@ -6,6 +6,7 @@ import { isOverseas, isStar } from '@/lib/playerBadges'
 import { Button } from '@/components/ui/Button'
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar'
 import { getSupabase } from '@/lib/supabase'
+import { usePlayerImage } from '@/lib/playerImages'
 
 export interface SpotlightPlayerCardProps {
   spotlight: SpotlightPlayer | null
@@ -37,12 +38,6 @@ function getPriceParts(basePrice: number | null | undefined, currencyLabel = 'â‚
   return { primary: formatted, secondary: null }
 }
 
-function resolvePhotoSrc(photoUrl: string | null | undefined): string | null {
-  if (!photoUrl) return null
-  const trimmed = photoUrl.trim()
-  return trimmed || null
-}
-
 /**
  * Live auction player card.
  *
@@ -64,20 +59,18 @@ export function SpotlightPlayerCard({
   const [dismissedId, setDismissedId] = useState<string | null>(null)
   const [adminClosing, setAdminClosing] = useState(false)
 
-  const [imgSrc, setImgSrc] = useState<string | null>(() => resolvePhotoSrc(spotlight?.photoUrl))
-  const [hasTriedLocal, setHasTriedLocal] = useState(false)
-  const [imgFailed, setImgFailed] = useState(false)
+  const { src: imgSrc, onError: handleImageError } = usePlayerImage(
+    spotlight?.name,
+    spotlight?.photoUrl,
+  )
   const [playerMeta, setPlayerMeta] = useState<{ nationality?: string | null; star?: string | null }>({})
 
-  // Reset local dismissal and image state whenever a new player is spotlighted
+  // Reset local dismissal whenever a new player is spotlighted
   useEffect(() => {
     if (spotlight?.spotlightId && spotlight.spotlightId !== dismissedId) {
       setDismissedId(null)
     }
-    setImgSrc(resolvePhotoSrc(spotlight?.photoUrl))
-    setHasTriedLocal(false)
-    setImgFailed(false)
-  }, [spotlight?.spotlightId, spotlight?.photoUrl])
+  }, [spotlight?.spotlightId])
 
   // Fallback: If nationality/star are not pre-populated on the spotlight object, fetch from players table
   useEffect(() => {
@@ -133,19 +126,6 @@ export function SpotlightPlayerCard({
     } finally {
       setAdminClosing(false)
     }
-  }
-
-  function handleImageError() {
-    // If remote image fails, attempt local public/player-images fallback if filename is found
-    if (!hasTriedLocal && imgSrc) {
-      const match = imgSrc.match(/(P\d+\.(?:png|jpg|jpeg|webp))$/i)
-      if (match) {
-        setHasTriedLocal(true)
-        setImgSrc(`/player-images/${match[1]}`)
-        return
-      }
-    }
-    setImgFailed(true)
   }
 
   const priceParts = getPriceParts(spotlight.basePrice, currencyLabel)
@@ -388,10 +368,11 @@ export function SpotlightPlayerCard({
 
           {/* Player Photo with Golden Contour Rim Light Filter */}
           <div className="relative z-10 flex h-full w-full items-end justify-center pt-3">
-            {imgSrc && !imgFailed ? (
+            {imgSrc ? (
               <img
                 src={imgSrc}
                 alt={spotlight.name}
+                referrerPolicy="no-referrer"
                 onError={handleImageError}
                 className="h-full w-auto max-w-[88%] object-contain object-bottom select-none transition-transform duration-300 hover:scale-[1.03]"
                 style={{

@@ -25,23 +25,13 @@ import {
   unlockAuctionAudio,
 } from '@/lib/auctionAudio'
 import { getSupabase } from '@/lib/supabase'
+import { usePlayerImage } from '@/lib/playerImages'
 import { StartingInCountdownScreen } from './StartingInCountdownScreen'
 import { AuctionBreakScreen } from './AuctionBreakScreen'
 import { LiveStandingsStage, Round1ResultsStage, Round2FinalResultsStage } from './RoundResultsViews'
 import { buildRoundSnapshot } from '@shared/rounds'
 import type { PresenterCommandType } from '@/lib/realtime'
 import { Button } from '@/components/ui/Button'
-
-function resolvePhotoSrc(photoUrl: string | null | undefined): string | null {
-  if (!photoUrl) return null
-  const trimmed = photoUrl.trim()
-  return trimmed || null
-}
-
-function tryLocalImageFallback(currentSrc: string): string | null {
-  const match = currentSrc.match(/(P\d+\.(?:png|jpg|jpeg|webp))$/i)
-  return match ? `/player-images/${match[1]}` : null
-}
 
 /** Formats base/sold price compactly on one crisp line like broadcast graphics (e.g. ₹2 CR, ₹75 LAKH). */
 function formatBroadcastPrice(amount: number | null | undefined, currencyLabel = '₹'): string {
@@ -238,27 +228,7 @@ function CircularPlayerShowcase({
   circleTone?: 'gold' | 'crimson'
   size?: 'spotlight' | 'sold'
 }) {
-  const [src, setSrc] = useState<string | null>(() => resolvePhotoSrc(photoUrl))
-  const [triedLocal, setTriedLocal] = useState(false)
-  const [failed, setFailed] = useState(false)
-
-  useEffect(() => {
-    setSrc(resolvePhotoSrc(photoUrl))
-    setTriedLocal(false)
-    setFailed(false)
-  }, [photoUrl, name])
-
-  function onError() {
-    if (!triedLocal && src) {
-      const local = tryLocalImageFallback(src)
-      if (local) {
-        setTriedLocal(true)
-        setSrc(local)
-        return
-      }
-    }
-    setFailed(true)
-  }
+  const { src, onError } = usePlayerImage(name, photoUrl)
 
   const initials = (name.trim().slice(0, 2) || '??').toUpperCase()
   const unit = `${ringText} • `
@@ -331,7 +301,7 @@ function CircularPlayerShowcase({
         <div
           className="flex h-[92%] w-[88%] items-end justify-center"
         >
-          {!src || failed ? (
+          {!src ? (
             <div className="mb-10 flex size-60 sm:size-72 lg:size-80 items-center justify-center rounded-full border-4 border-amber-300/70 bg-black/50">
               <span className="font-['Outfit',sans-serif] text-7xl sm:text-8xl font-black text-amber-200">
                 {initials}
@@ -341,6 +311,7 @@ function CircularPlayerShowcase({
             <img
               src={src}
               alt={name}
+              referrerPolicy="no-referrer"
               onError={onError}
               className="h-full w-full object-contain object-bottom scale-[1.14] origin-bottom"
               style={{

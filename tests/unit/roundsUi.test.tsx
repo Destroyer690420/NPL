@@ -5,6 +5,7 @@ import { MemoryRouter, Route, Routes } from 'react-router'
 import { LiveStandingsStage, Round1ResultsStage, Round2FinalResultsStage } from '@/features/auction/RoundResultsViews'
 import { RoundControlsBar } from '@/features/auction/RoundControlsBar'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
+import { resolvePlayerImageCandidates } from '@/lib/playerImages'
 import { ToastProvider } from '@/components/ui/Toast'
 import { makeEvent, makePlayer, makeTeam } from '@shared/fixtures'
 import type { RoundSnapshot } from '@shared/types'
@@ -288,5 +289,16 @@ describe('Director Screen (DashboardPage)', () => {
     )
     expect(screen.getByRole('heading', { name: /Team Standings/i })).toBeInTheDocument()
     expect(screen.getByText('Team 01')).toBeInTheDocument()
+  })
+})
+
+describe('resolvePlayerImageCandidates', () => {
+  it('provides local player-images fallback when external URL like Travis Head fails', () => {
+    const candidates = resolvePlayerImageCandidates(
+      'Travis Head',
+      'https://documents.iplt20.com/ipl/IPLHeadshot2026/37.png',
+    )
+    expect(candidates[0]).toBe('https://documents.iplt20.com/ipl/IPLHeadshot2026/37.png')
+    expect(candidates).toContain('/player-images/P158.png')
   })
 })

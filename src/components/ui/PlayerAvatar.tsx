@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { usePlayerImage } from '@/lib/playerImages'
 
 export interface PlayerAvatarProps {
   name: string
@@ -21,23 +21,19 @@ export function PlayerAvatar({
   size = 'md',
   className = '',
 }: PlayerAvatarProps) {
-  const [failed, setFailed] = useState(false)
-
-  // Reset failure state whenever photoUrl changes
-  useEffect(() => {
-    setFailed(false)
-  }, [photoUrl])
+  const { src, onError } = usePlayerImage(name, photoUrl)
 
   const sizeClass = SIZE_CLASSES[size] ?? SIZE_CLASSES.md
   const cleanName = (name ?? '').trim()
   const initials = (cleanName.slice(0, 2) || '??').toUpperCase()
 
-  if (photoUrl && !failed) {
+  if (src) {
     return (
       <img
-        src={photoUrl}
+        src={src}
         alt={cleanName}
-        onError={() => setFailed(true)}
+        referrerPolicy="no-referrer"
+        onError={onError}
         className={`${sizeClass} shrink-0 border border-line-strong bg-surface-muted object-cover shadow-sm ${className}`}
       />
     )

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Plane, Search, Star, Users, X } from 'lucide-react'
 import type { TeamLineupPlayer } from '@/services/team'
 import { isOverseas, isStar } from '@/lib/playerBadges'
+import { usePlayerImage } from '@/lib/playerImages'
 import { LoadingBlock } from '@/components/ui/Feedback'
 
 export interface TeamLineupViewProps {
@@ -9,45 +10,25 @@ export interface TeamLineupViewProps {
   loading?: boolean
 }
 
-function resolvePlayerImage(photoUrl: string | null | undefined): string | null {
-  if (!photoUrl) return null
-  const trimmed = photoUrl.trim()
-  return trimmed || null
-}
-
 function LineupPlayerCard({ player }: { player: TeamLineupPlayer }) {
-  const [imgSrc, setImgSrc] = useState<string | null>(() => resolvePlayerImage(player.photoUrl))
-  const [hasTriedLocal, setHasTriedLocal] = useState(false)
-  const [imgFailed, setImgFailed] = useState(false)
+  const { src: imgSrc, onError: handleImageError } = usePlayerImage(player.name, player.photoUrl)
 
   const cleanName = player.name.trim()
   const initials = (cleanName.slice(0, 2) || '??').toUpperCase()
   const overseas = isOverseas(player.nationality)
   const starPlayer = isStar(player.star)
 
-  function handleImageError() {
-    if (!hasTriedLocal && imgSrc) {
-      const match = imgSrc.match(/(P\d+\.(?:png|jpg|jpeg|webp))$/i)
-      if (match) {
-        setHasTriedLocal(true)
-        setImgSrc(`/player-images/${match[1]}`)
-        return
-      }
-    }
-    setImgFailed(true)
-  }
-
   return (
     <div className="group flex flex-col items-center rounded-2xl border border-line-strong bg-gradient-to-b from-[#141926] via-[#10141e] to-[#0c0f18] p-3 text-center shadow-lg transition-all duration-200 hover:-translate-y-1 hover:border-accent/50 hover:shadow-[0_8px_25px_rgba(245,175,25,0.15)]">
       {/* Player Photo / PFP */}
       <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-line/60 bg-[#090d18] shadow-inner flex items-center justify-center">
-        {imgSrc && !imgFailed ? (
+        {imgSrc ? (
           <img
             src={imgSrc}
             alt={cleanName}
+            referrerPolicy="no-referrer"
             onError={handleImageError}
             className="size-full object-cover object-top select-none transition-transform duration-300 group-hover:scale-105"
-            loading="lazy"
           />
         ) : (
           <div className="flex size-full items-center justify-center bg-gradient-to-br from-[#161d2d] to-[#0a0f1b] text-center select-none">
