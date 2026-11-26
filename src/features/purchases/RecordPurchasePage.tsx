@@ -65,8 +65,9 @@ export function RecordPurchasePage() {
   const teams = useTeams(eventId)
   const purchases = usePurchases(eventId, 10)
 
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const queryPlayerId = searchParams.get('playerId')
+  const consumedQueryPlayerRef = useRef<string | null>(null)
   const [closingSpotlight, setClosingSpotlight] = useState(false)
 
   const [playerId, setPlayerId] = useState<string | null>(null)
@@ -117,17 +118,25 @@ export function RecordPurchasePage() {
     }
   }, [isRound2, teamId, eliminatedTeamSet])
 
-  // Auto-fill player from query parameter or live spotlight player if unselected
+  // Auto-fill player from query parameter (consumed once) or live spotlight player if unselected
   useEffect(() => {
-    if (queryPlayerId) {
+    if (queryPlayerId && consumedQueryPlayerRef.current !== queryPlayerId) {
+      consumedQueryPlayerRef.current = queryPlayerId
       setPlayerId(queryPlayerId)
-      if (event?.spotlightPlayer?.playerId !== queryPlayerId) {
+      const targetPlayer = playersById.get(queryPlayerId)
+      if (
+        (!targetPlayer || targetPlayer.status === 'available') &&
+        event?.spotlightPlayer?.playerId !== queryPlayerId
+      ) {
         void setSpotlightPlayer(eventId, queryPlayerId).catch(() => {})
       }
-    } else if (event?.spotlightPlayer?.playerId && !playerId) {
+      const nextParams = new URLSearchParams(searchParams)
+      nextParams.delete('playerId')
+      setSearchParams(nextParams, { replace: true })
+    } else if (!queryPlayerId && event?.spotlightPlayer?.playerId && !playerId) {
       setPlayerId(event.spotlightPlayer.playerId)
     }
-  }, [queryPlayerId, event?.spotlightPlayer?.playerId])
+  }, [queryPlayerId, event?.spotlightPlayer?.playerId, eventId, playerId, playersById, searchParams, setSearchParams])
 
   async function handlePresentNextPlayer() {
     if (!nextQueuePlayer) return
@@ -151,7 +160,8 @@ export function RecordPurchasePage() {
     try {
       setClosingSpotlight(true)
       const targetId = event?.spotlightPlayer?.playerId ?? playerId
-      if (isRoundActive && targetId) {
+      const targetPlayer = targetId ? playersById.get(targetId) : null
+      if (isRoundActive && targetId && targetPlayer?.status !== 'sold') {
         const res = await markPlayerUnsold(eventId, targetId)
         setPlayerId(null)
         setPriceText('')
@@ -166,10 +176,11 @@ export function RecordPurchasePage() {
         await clearSpotlightPlayer(eventId)
         setPlayerId(null)
         setPriceText('')
+        lastPrefilledPlayerIdRef.current = null
         toast.push({ kind: 'info', message: 'Live auction card closed.' })
       }
-    } catch {
-      toast.push({ kind: 'error', message: 'Failed to close auction card.' })
+    } catch (err) {
+      toast.push({ kind: 'error', message: isCallError(err) ? err.message : 'Failed to close auction card.' })
     } finally {
       setClosingSpotlight(false)
     }
@@ -503,7 +514,9 @@ export function RecordPurchasePage() {
               loading={closingSpotlight}
               onClick={() => void handleCloseSpotlight()}
             >
-              Close card (Unsold)
+              {playersById.get(event.spotlightPlayer.playerId)?.status === 'sold'
+                ? 'Close card'
+                : 'Close card (Unsold)'}
             </Button>
           </div>
         </div>

@@ -808,6 +808,7 @@ export async function syncRoundProgressAfterSale(params: {
   await supabase.from('events').update({
     data: {
       ...rawEventData,
+      spotlightPlayer: null,
       unsoldPlayerIds: unsold,
       activePoolIndex: nextIdx >= 0 ? nextIdx : (event.activePoolIndex ?? 0),
       updatedAt: new Date().toISOString(),
@@ -1157,11 +1158,17 @@ export const markPlayerUnsold = adminCallable({
     if (!player) {
       fail('player-not-found')
     }
-    if (player.status === 'sold') {
-      fail('player-already-sold')
-    }
-
     const phase = event.roundPhase ?? 'not_started'
+    if (player.status === 'sold') {
+      await supabase.from('events').update({
+        data: {
+          ...rawEventData,
+          spotlightPlayer: null,
+          updatedAt: new Date().toISOString(),
+        },
+      }).eq('id', input.eventId)
+      return { ok: true, eventId: input.eventId, roundEnded: false, roundPhase: phase }
+    }
     if (phase !== 'round1_active' && phase !== 'round2_active') {
       await supabase.from('events').update({
         data: {
