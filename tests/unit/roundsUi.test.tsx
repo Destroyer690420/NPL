@@ -292,9 +292,9 @@ describe('Director Screen (DashboardPage)', () => {
     expect(screen.getByRole('button', { name: /Break Screen/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Show R1 Results/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Show R2 Results/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Live Standings/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Standby Screen/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Clear Sold/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Live Auction View/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Clear Sold/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Pick Player/i })).not.toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: /Show R1 Results/i }))
     expect(mockSetPresenterView).toHaveBeenCalledWith('default', 'round1_results')

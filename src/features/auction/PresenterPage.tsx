@@ -391,6 +391,8 @@ export function PresenterPage() {
   const [soldAnnouncement, setSoldAnnouncement] = useState<SoldPlayerAnnouncement | null>(null)
   const soldAtSpotlightIdRef = useRef<string | null>(null)
   const lastSpotlightIdRef = useRef<string | null>(null)
+  const handledSoldIdRef = useRef<string | null>(null)
+  const clearedSoldIdRef = useRef<string | null>(null)
   const hideControlsTimerRef = useRef<number | null>(null)
 
   const [spotlightMeta, setSpotlightMeta] = useState<{
@@ -474,6 +476,9 @@ export function PresenterPage() {
 
   const showSoldCelebration = useCallback(
     (announcement: SoldPlayerAnnouncement) => {
+      const key = announcement.purchaseId ?? `${announcement.playerId ?? announcement.playerName}:${announcement.soldAt ?? ''}`
+      if (clearedSoldIdRef.current === key) return
+      handledSoldIdRef.current = key
       soldAtSpotlightIdRef.current = spotlightRef.current?.spotlightId ?? null
       setSoldAnnouncement(announcement)
       if (!muted) {
@@ -484,9 +489,32 @@ export function PresenterPage() {
   )
 
   const clearSoldCelebration = useCallback(() => {
-    setSoldAnnouncement(null)
+    setSoldAnnouncement((prev) => {
+      if (prev) {
+        const key = prev.purchaseId ?? `${prev.playerId ?? prev.playerName}:${prev.soldAt ?? ''}`
+        clearedSoldIdRef.current = key
+      }
+      return null
+    })
     stopIplSoldTune()
   }, [])
+
+  // Fallback: if Realtime broadcast was missed across tabs/devices, pick up fresh
+  // `lastSoldPlayer` updates from `useEvent` polling so the SOLD screen still shows
+  // and keeps playing until the admin draws the next player in Record Purchase.
+  useEffect(() => {
+    const last = event?.lastSoldPlayer
+    if (!last || !last.playerName || !last.teamName) return
+    if (event?.spotlightPlayer) return
+    const key = last.purchaseId ?? `${last.playerId ?? last.playerName}:${last.soldAt ?? ''}`
+    if (handledSoldIdRef.current === key || clearedSoldIdRef.current === key) return
+    const soldMs = last.soldAt ? Date.parse(last.soldAt) : NaN
+    if (Number.isFinite(soldMs) && Date.now() - soldMs <= 30_000) {
+      showSoldCelebration(last)
+    } else {
+      handledSoldIdRef.current = key
+    }
+  }, [event?.lastSoldPlayer, event?.spotlightPlayer, showSoldCelebration])
 
   useEffect(() => {
     function onPlayerSold(e: Event) {
@@ -508,8 +536,7 @@ export function PresenterPage() {
     if (id && id !== lastSpotlightIdRef.current) {
       lastSpotlightIdRef.current = id
       if (id !== soldAtSpotlightIdRef.current) {
-        setSoldAnnouncement(null)
-        stopIplSoldTune()
+        clearSoldCelebration()
       }
       if (!muted) {
         void playPlayerIntroCue()
@@ -517,46 +544,42 @@ export function PresenterPage() {
     } else if (!id) {
       lastSpotlightIdRef.current = null
     }
-  }, [spotlight?.spotlightId, muted])
+  }, [spotlight?.spotlightId, muted, clearSoldCelebration])
 
   useEffect(() => {
     if (event?.break?.active || event?.countdown?.targetTime) {
-      setSoldAnnouncement(null)
-      stopIplSoldTune()
+      clearSoldCelebration()
     }
-  }, [event?.break?.active, event?.countdown?.targetTime])
+  }, [event?.break?.active, event?.countdown?.targetTime, clearSoldCelebration])
 
   useEffect(() => {
     if (event?.roundPhase === 'round1_ended' || event?.roundPhase === 'round2_ended') {
-      setSoldAnnouncement(null)
-      stopIplSoldTune()
+      clearSoldCelebration()
     }
-  }, [event?.roundPhase])
+  }, [event?.roundPhase, clearSoldCelebration])
 
   useEffect(() => {
     function onRoundChange(e: Event) {
       const custom = e as CustomEvent<{ roundPhase?: string }>
       const phase = custom.detail?.roundPhase
       if (phase === 'round1_ended' || phase === 'round2_ended') {
-        setSoldAnnouncement(null)
-        stopIplSoldTune()
+        clearSoldCelebration()
       }
     }
     window.addEventListener('auction:round_change', onRoundChange)
     return () => window.removeEventListener('auction:round_change', onRoundChange)
-  }, [])
+  }, [clearSoldCelebration])
 
   useEffect(() => {
     function onPresenterViewChange(e: Event) {
       const custom = e as CustomEvent<{ presenterView?: string }>
       if (custom.detail?.presenterView && custom.detail.presenterView !== 'auto') {
-        setSoldAnnouncement(null)
-        stopIplSoldTune()
+        clearSoldCelebration()
       }
     }
     window.addEventListener('auction:presenter_view_change', onPresenterViewChange)
     return () => window.removeEventListener('auction:presenter_view_change', onPresenterViewChange)
-  }, [])
+  }, [clearSoldCelebration])
 
   const lastSoldRef = useRef(event?.lastSoldPlayer ?? null)
   lastSoldRef.current = event?.lastSoldPlayer ?? null

@@ -1,56 +1,34 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { useNavigate, useOutletContext } from 'react-router'
+import { useOutletContext } from 'react-router'
 import {
   AlertTriangle,
-  BarChart3,
   CheckCircle2,
   Coffee,
-  Eraser,
-  ExternalLink,
   Flag,
-  Gavel,
-  Monitor,
-  MonitorPlay,
-  PauseCircle,
   Play,
   PlayCircle,
   Radio,
-  RotateCcw,
-  Search,
   ShieldAlert,
-  ShoppingCart,
-  SkipForward,
-  Sparkles,
   Timer,
   Trophy,
-  UserCheck,
-  Volume2,
-  X,
-  XCircle,
 } from 'lucide-react'
 import type { AdminOutletContext } from '@/app/outlet'
 import { useAdminEvent } from '@/app/AdminEventProvider'
 import { usePlayers, useTeams } from '@/data/hooks'
 import { currency, points as formatPoints } from '@/lib/format'
-import { findNextUnprocessedIndex, normalizeRole } from '@shared/rounds'
 import { ROUND_2_STARTING_PURSE } from '@shared/constants'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { InputField } from '@/components/ui/Field'
-import { Combobox, type ComboboxItem } from '@/components/ui/Combobox'
 import { useToast } from '@/components/ui/Toast'
 import {
-  clearSpotlightPlayer,
   endRound1,
   endRound2,
-  markPlayerUnsold,
   resumeRound1,
   resumeRound2,
-  sendPresenterCommand,
   setAuctionBreak,
   setAuctionCountdown,
   setPresenterView,
-  setSpotlightPlayer,
   startRound1,
   startRound2,
   updateEvent,
@@ -59,7 +37,7 @@ import { isCallError } from '@/services/callables'
 import { errorMessage } from '@/lib/errors'
 import { cn } from '@/lib/cn'
 
-type TileTone = 'default' | 'primary' | 'active' | 'danger' | 'success' | 'info'
+type TileTone = 'default' | 'primary' | 'active' | 'danger' | 'success'
 
 interface DirectorTileProps {
   icon: ReactNode
@@ -93,8 +71,6 @@ function DirectorSquareTile({
       'border-rose-500/45 bg-rose-950/25 text-rose-100 hover:border-rose-400 hover:bg-rose-950/45',
     success:
       'border-emerald-500/50 bg-emerald-950/25 text-emerald-100 hover:border-emerald-400 hover:bg-emerald-950/40',
-    info:
-      'border-sky-500/45 bg-sky-950/25 text-sky-100 hover:border-sky-400 hover:bg-sky-950/40',
   }
 
   return (
@@ -103,7 +79,7 @@ function DirectorSquareTile({
       disabled={disabled || loading}
       onClick={onClick}
       className={cn(
-        'group relative flex aspect-square w-full flex-col items-center justify-between rounded-2xl border p-3.5 text-center transition-all duration-150 select-none',
+        'group relative flex aspect-square w-full flex-col items-center justify-between rounded-2xl border p-4 text-center transition-all duration-150 select-none',
         'active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer',
         toneClasses[tone],
       )}
@@ -124,29 +100,27 @@ function DirectorSquareTile({
         ) : null}
       </div>
 
-      <div className="flex flex-col items-center justify-center gap-2 my-auto">
+      <div className="flex flex-col items-center justify-center gap-2.5 my-auto">
         <div
           className={cn(
-            'flex size-11 items-center justify-center rounded-xl border transition-transform duration-150 group-hover:scale-105',
+            'flex size-12 items-center justify-center rounded-xl border transition-transform duration-150 group-hover:scale-105',
             tone === 'active' || tone === 'primary'
               ? 'border-accent/50 bg-accent/20 text-accent'
               : tone === 'danger'
                 ? 'border-rose-400/40 bg-rose-500/15 text-rose-300'
                 : tone === 'success'
                   ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-300'
-                  : tone === 'info'
-                    ? 'border-sky-400/40 bg-sky-500/15 text-sky-300'
-                    : 'border-white/10 bg-black/45 text-accent',
+                  : 'border-white/10 bg-black/45 text-accent',
           )}
         >
           {icon}
         </div>
-        <span className="font-['Outfit',sans-serif] text-xs sm:text-[13px] font-extrabold uppercase tracking-wide leading-tight text-white">
+        <span className="font-['Outfit',sans-serif] text-xs sm:text-sm font-extrabold uppercase tracking-wide leading-tight text-white">
           {loading ? 'Working…' : label}
         </span>
       </div>
 
-      <span className="w-full truncate text-[10px] font-semibold text-ink-muted min-h-[14px]">
+      <span className="w-full truncate text-[11px] font-semibold text-ink-muted min-h-[14px]">
         {statusText ?? ''}
       </span>
     </button>
@@ -156,7 +130,6 @@ function DirectorSquareTile({
 export function DashboardPage() {
   const { eventId } = useOutletContext<AdminOutletContext>()
   const { event } = useAdminEvent()
-  const navigate = useNavigate()
   const toast = useToast()
 
   const teams = useTeams(eventId)
@@ -166,9 +139,6 @@ export function DashboardPage() {
   const [countdownDialogOpen, setCountdownDialogOpen] = useState(false)
   const [breakDialogOpen, setBreakDialogOpen] = useState(false)
   const [confirmEndRound, setConfirmEndRound] = useState<1 | 2 | null>(null)
-  const [spotlightPickerOpen, setSpotlightPickerOpen] = useState(false)
-  const [pickerPlayerId, setPickerPlayerId] = useState<string | null>(null)
-  const [presenterMuted, setPresenterMuted] = useState(false)
 
   // Countdown form state
   const [countdownMinutes, setCountdownMinutes] = useState(5)
@@ -226,34 +196,6 @@ export function DashboardPage() {
   }, [poolIds, playersById, unsoldSet])
 
   const isRoundActive = roundPhase === 'round1_active' || roundPhase === 'round2_active'
-  const nextQueueIndex = useMemo(() => {
-    if (!isRoundActive || poolIds.length === 0) return -1
-    return findNextUnprocessedIndex(poolIds, playersById, unsoldSet, event?.activePoolIndex ?? 0)
-  }, [isRoundActive, poolIds, playersById, unsoldSet, event?.activePoolIndex])
-
-  const nextQueuePlayer =
-    nextQueueIndex >= 0 ? (playersById.get(poolIds[nextQueueIndex]!) ?? null) : null
-
-  const pickerItems: ComboboxItem[] = useMemo(() => {
-    const list =
-      isRoundActive && poolIds.length > 0
-        ? poolIds
-            .map((id) => playersById.get(id))
-            .filter((p): p is NonNullable<typeof p> => p !== undefined)
-        : players.data
-
-    return list.map((p, idx) => {
-      const roleCode = normalizeRole(p.role)
-      return {
-        id: p.id,
-        label: p.name,
-        keywords: `${p.role ?? ''} ${roleCode ?? ''} ${p.externalReference ?? ''}`,
-        disabled: p.status !== 'available',
-        disabledReason: p.status === 'sold' ? 'Sold' : p.status === 'withdrawn' ? 'Withdrawn' : undefined,
-        sublabel: `${isRoundActive && poolIds.length > 0 ? `#${idx + 1} · ` : ''}${p.role ?? 'Player'} · ${formatPoints(p.points)} pts · ${currency(p.basePrice, currencyLabel)}`,
-      }
-    })
-  }, [isRoundActive, poolIds, playersById, players.data, currencyLabel])
 
   async function runAction(key: string, fn: () => Promise<void>) {
     setActionBusy(key)
@@ -276,18 +218,6 @@ export function DashboardPage() {
     })
   }
 
-  async function handleToggleBidding() {
-    if (!event) return
-    const next = !event.purchasesEnabled
-    await runAction('toggle-bidding', async () => {
-      await updateEvent({ eventId, purchasesEnabled: next })
-      toast.push({
-        kind: next ? 'success' : 'info',
-        message: next ? 'Bidding resumed.' : 'Bidding paused.',
-      })
-    })
-  }
-
   async function handleStartRound1() {
     await runAction('start-r1', async () => {
       const res = await startRound1(eventId)
@@ -302,10 +232,7 @@ export function DashboardPage() {
   async function handleResumeRound1() {
     await runAction('start-r1', async () => {
       await resumeRound1(eventId)
-      toast.push({
-        kind: 'success',
-        message: 'Round 1 resumed! Live bidding is active again.',
-      })
+      toast.push({ kind: 'success', message: 'Round 1 resumed!' })
     })
   }
 
@@ -323,10 +250,7 @@ export function DashboardPage() {
   async function handleResumeRound2() {
     await runAction('start-r2', async () => {
       await resumeRound2(eventId)
-      toast.push({
-        kind: 'success',
-        message: 'Round 2 resumed! Live bidding is active again.',
-      })
+      toast.push({ kind: 'success', message: 'Round 2 resumed!' })
     })
   }
 
@@ -356,7 +280,7 @@ export function DashboardPage() {
   }
 
   async function handleSwitchView(
-    view: 'auto' | 'standby' | 'standings' | 'round1_results' | 'round2_results',
+    view: 'auto' | 'round1_results' | 'round2_results',
     label: string,
   ) {
     await runAction(`view-${view}`, async () => {
@@ -411,70 +335,6 @@ export function DashboardPage() {
     })
   }
 
-  async function handlePresentNext() {
-    if (!nextQueuePlayer) return
-    await runAction('present-next', async () => {
-      await setSpotlightPlayer(eventId, nextQueuePlayer.id)
-      toast.push({
-        kind: 'success',
-        message: `Queue #${nextQueueIndex + 1}: ${nextQueuePlayer.name} is now ON AIR.`,
-      })
-    })
-  }
-
-  async function handleSpotlightPicked() {
-    if (!pickerPlayerId) return
-    const target = playersById.get(pickerPlayerId)
-    await runAction('pick-spotlight', async () => {
-      await setSpotlightPlayer(eventId, pickerPlayerId)
-      setSpotlightPickerOpen(false)
-      setPickerPlayerId(null)
-      toast.push({
-        kind: 'success',
-        message: `${target?.name ?? 'Player'} is now ON AIR on Presenter.`,
-      })
-    })
-  }
-
-  async function handleMarkUnsold() {
-    const targetId = event?.spotlightPlayer?.playerId
-    if (!targetId) return
-    await runAction('mark-unsold', async () => {
-      if (isRoundActive) {
-        const res = await markPlayerUnsold(eventId, targetId)
-        toast.push({
-          kind: res.roundEnded ? 'success' : 'info',
-          message: res.roundEnded
-            ? 'All pool players processed — round ended!'
-            : `${event?.spotlightPlayer?.name} marked unsold.`,
-        })
-      } else {
-        await clearSpotlightPlayer(eventId)
-        toast.push({ kind: 'info', message: 'Spotlight cleared.' })
-      }
-    })
-  }
-
-  async function handleClearSpotlight() {
-    await runAction('clear-spotlight', async () => {
-      await clearSpotlightPlayer(eventId)
-      toast.push({ kind: 'info', message: 'Spotlight cleared from Presenter.' })
-    })
-  }
-
-  const onAirSummary = useMemo(() => {
-    if (presenterView === 'standby') return 'Standby Broadcast Stage'
-    if (presenterView === 'standings') return 'Live Team Standings'
-    if (presenterView === 'round1_results') return 'Round 1 Results'
-    if (presenterView === 'round2_results') return 'Round 2 Final Results'
-    if (event?.spotlightPlayer) return `Spotlight: ${event.spotlightPlayer.name}`
-    if (event?.break?.active) return `Break Screen (${event.break.message})`
-    if (event?.countdown?.targetTime) return `Countdown (${timerFormatted})`
-    if (roundPhase === 'round1_ended') return 'Round 1 Results'
-    if (roundPhase === 'round2_ended') return 'Round 2 Final Results'
-    return 'Standby Broadcast Stage'
-  }, [presenterView, event?.spotlightPlayer, event?.break, event?.countdown, roundPhase, timerFormatted])
-
   const canStartAuction = Boolean(event?.status === 'setup' && teams.data.length > 0 && players.data.length > 0)
   const canStartRound1 = roundPhase === 'not_started' && teams.data.length > 0 && players.data.length > 0
   const canResumeRound1 = roundPhase === 'round1_ended' && event?.status !== 'finalized'
@@ -483,36 +343,21 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Slim Live Telemetry Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-accent/35 bg-gradient-to-r from-[#171b26] via-[#121620] to-[#1a150e] px-5 py-4 shadow-xl">
         <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="relative flex size-2.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-500 opacity-75" />
-              <span className="relative inline-flex size-2.5 rounded-full bg-rose-500" />
-            </span>
-            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-accent">
-              Director Control Console
-            </p>
-          </div>
-          <h1 className="mt-1 font-['Outfit',sans-serif] text-xl sm:text-2xl font-black text-white truncate">
-            On Air: <span className="text-accent">{onAirSummary}</span>
-          </h1>
+          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-accent">
+            Director Control Console
+          </p>
+          <p className="mt-1 text-xs text-ink-muted">
+            Controls rounds, start/timer, break screen, and results screens. Player presenting &amp; sold celebration are controlled from <strong className="text-white">Record Purchase</strong>.
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 text-xs">
+        <div className="flex items-center gap-3 text-xs">
           <div className="rounded-xl border border-line-strong bg-black/45 px-3 py-2 text-center">
             <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Round</p>
             <p className="font-['Outfit',sans-serif] text-sm font-black text-white">
               {currentRound === 0 ? 'Pre-Auction' : `Round ${currentRound}`}
-            </p>
-          </div>
-          <div className="rounded-xl border border-line-strong bg-black/45 px-3 py-2 text-center">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-ink-muted">Teams</p>
-            <p className="font-['Outfit',sans-serif] text-sm font-black text-white tabular-nums">
-              {currentRound === 2
-                ? `${event?.qualifiedTeamIds?.length ?? 0} / ${teams.data.length}`
-                : teams.data.length}
             </p>
           </div>
           <div className="rounded-xl border border-line-strong bg-black/45 px-3 py-2 text-center">
@@ -526,402 +371,188 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* SECTION 1: AUCTION & ROUND FLOW */}
-      <section className="space-y-2.5">
-        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-ink-muted px-1">
-          Auction &amp; Round Flow
-        </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-6">
-          <DirectorSquareTile
-            icon={<PlayCircle className="size-5" aria-hidden />}
-            label={event?.status === 'active' ? 'Auction Live' : 'Start Auction'}
-            statusText={
-              event?.status === 'active'
-                ? 'Active'
-                : event?.status === 'finalized'
-                  ? 'Finalized'
-                  : 'Activate event'
-            }
-            tone={event?.status === 'active' ? 'success' : 'primary'}
-            disabled={event?.status !== 'setup' || !canStartAuction}
-            loading={actionBusy === 'start-auction'}
-            onClick={() => void handleStartAuction()}
-          />
+      {/* Unified Square Button Director Grid */}
+      <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 md:grid-cols-5">
+        <DirectorSquareTile
+          icon={<PlayCircle className="size-6" aria-hidden />}
+          label={event?.status === 'active' ? 'Auction Live' : 'Start Auction'}
+          statusText={
+            event?.status === 'active'
+              ? 'Active'
+              : event?.status === 'finalized'
+                ? 'Finalized'
+                : 'Start screen'
+          }
+          tone={event?.status === 'active' ? 'success' : 'primary'}
+          disabled={event?.status !== 'setup' || !canStartAuction}
+          loading={actionBusy === 'start-auction'}
+          onClick={() => void handleStartAuction()}
+        />
 
-          <DirectorSquareTile
-            icon={
-              event?.purchasesEnabled === false ? (
-                <Play className="size-5" aria-hidden />
-              ) : (
-                <PauseCircle className="size-5" aria-hidden />
-              )
+        <DirectorSquareTile
+          icon={<Timer className="size-6" aria-hidden />}
+          label={event?.countdown?.targetTime ? 'Stop Timer' : 'Start Timer'}
+          statusText={
+            event?.countdown?.targetTime ? `Live ${timerFormatted}` : 'Starting in…'
+          }
+          tone={event?.countdown?.targetTime ? 'active' : 'default'}
+          loading={actionBusy === 'timer'}
+          onClick={() => {
+            if (event?.countdown?.targetTime) {
+              void handleCancelCountdown()
+            } else {
+              setCountdownDialogOpen(true)
             }
-            label={event?.purchasesEnabled === false ? 'Resume Bidding' : 'Pause Bidding'}
-            statusText={event?.purchasesEnabled === false ? 'Sales locked' : 'Sales enabled'}
-            tone={event?.purchasesEnabled === false ? 'active' : 'default'}
-            disabled={!event || event.status !== 'active'}
-            loading={actionBusy === 'toggle-bidding'}
-            onClick={() => void handleToggleBidding()}
-          />
+          }}
+        />
 
-          <DirectorSquareTile
-            icon={<Play className="size-5" aria-hidden />}
-            label={canResumeRound1 ? 'Resume Round 1' : 'Start Round 1'}
-            badge="187"
-            statusText={
-              roundPhase === 'not_started'
-                ? 'Build R1 pool'
-                : canResumeRound1
-                  ? 'Continue R1'
-                  : currentRound >= 1
-                    ? `${poolStats.total || 187} players`
-                    : 'Ready'
+        <DirectorSquareTile
+          icon={<Coffee className="size-6" aria-hidden />}
+          label={event?.break?.active ? 'End Break' : 'Break Screen'}
+          statusText={event?.break?.active ? 'Intermission live' : 'Back soon'}
+          tone={event?.break?.active ? 'active' : 'default'}
+          loading={actionBusy === 'break'}
+          onClick={() => {
+            if (event?.break?.active) {
+              void handleEndBreak()
+            } else {
+              setBreakDialogOpen(true)
             }
-            tone={
-              roundPhase === 'round1_active'
-                ? 'active'
-                : canStartRound1 || canResumeRound1
-                  ? 'primary'
-                  : 'default'
-            }
-            disabled={!canStartRound1 && !canResumeRound1}
-            loading={actionBusy === 'start-r1'}
-            onClick={() => {
-              if (canResumeRound1) void handleResumeRound1()
-              else void handleStartRound1()
-            }}
-          />
+          }}
+        />
 
-          <DirectorSquareTile
-            icon={<Flag className="size-5" aria-hidden />}
-            label="End Round 1"
-            statusText={
-              roundPhase === 'round1_active'
-                ? `${poolStats.remaining} left`
-                : roundPhase === 'round1_ended' || currentRound === 2
-                  ? 'Completed'
-                  : 'Not started'
-            }
-            tone={roundPhase === 'round1_active' ? 'danger' : 'default'}
-            disabled={roundPhase !== 'round1_active'}
-            loading={actionBusy === 'end-r1'}
-            onClick={() => setConfirmEndRound(1)}
-          />
-
-          <DirectorSquareTile
-            icon={<Play className="size-5" aria-hidden />}
-            label={canResumeRound2 ? 'Resume Round 2' : 'Start Round 2'}
-            badge="132"
-            statusText={
-              roundPhase === 'round1_ended'
-                ? '₹125 Cr reset'
-                : canResumeRound2
-                  ? 'Continue R2'
-                  : roundPhase === 'round2_active'
-                    ? 'Live now'
-                    : 'After Round 1'
-            }
-            tone={
-              roundPhase === 'round2_active'
-                ? 'active'
-                : canStartRound2 || canResumeRound2
-                  ? 'primary'
-                  : 'default'
-            }
-            disabled={!canStartRound2 && !canResumeRound2}
-            loading={actionBusy === 'start-r2'}
-            onClick={() => {
-              if (canResumeRound2) void handleResumeRound2()
-              else void handleStartRound2()
-            }}
-          />
-
-          <DirectorSquareTile
-            icon={<Trophy className="size-5" aria-hidden />}
-            label="End Round 2"
-            statusText={
-              roundPhase === 'round2_active'
-                ? `${poolStats.remaining} left`
-                : roundPhase === 'round2_ended'
-                  ? 'Completed'
-                  : 'Not started'
-            }
-            tone={roundPhase === 'round2_active' ? 'danger' : 'default'}
-            disabled={roundPhase !== 'round2_active'}
-            loading={actionBusy === 'end-r2'}
-            onClick={() => setConfirmEndRound(2)}
-          />
-        </div>
-      </section>
-
-      {/* SECTION 2: PRESENTATION SCREEN VIEWS */}
-      <section className="space-y-2.5">
-        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-ink-muted px-1">
-          Presentation Screen Views
-        </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-7">
-          <DirectorSquareTile
-            icon={<Radio className="size-5" aria-hidden />}
-            label="Auto Live"
-            statusText="Follows auction"
-            tone={presenterView === 'auto' ? 'active' : 'default'}
-            loading={actionBusy === 'view-auto'}
-            onClick={() => void handleSwitchView('auto', 'Auto Live Mode')}
-          />
-
-          <DirectorSquareTile
-            icon={<Monitor className="size-5" aria-hidden />}
-            label="Standby Screen"
-            statusText="NPL overview"
-            tone={presenterView === 'standby' ? 'active' : 'default'}
-            loading={actionBusy === 'view-standby'}
-            onClick={() => void handleSwitchView('standby', 'Standby Screen')}
-          />
-
-          <DirectorSquareTile
-            icon={<Timer className="size-5" aria-hidden />}
-            label={event?.countdown?.targetTime ? 'Stop Timer' : 'Start Timer'}
-            statusText={
-              event?.countdown?.targetTime ? `Live ${timerFormatted}` : 'Countdown'
-            }
-            tone={
-              presenterView === 'auto' && event?.countdown?.targetTime
-                ? 'active'
+        <DirectorSquareTile
+          icon={<Play className="size-6" aria-hidden />}
+          label={canResumeRound1 ? 'Resume Round 1' : 'Start Round 1'}
+          badge="187"
+          statusText={
+            roundPhase === 'not_started'
+              ? 'Build R1 pool'
+              : canResumeRound1
+                ? 'Continue R1'
+                : currentRound >= 1
+                  ? `${poolStats.total || 187} players`
+                  : 'Ready'
+          }
+          tone={
+            roundPhase === 'round1_active'
+              ? 'active'
+              : canStartRound1 || canResumeRound1
+                ? 'primary'
                 : 'default'
-            }
-            loading={actionBusy === 'timer'}
-            onClick={() => {
-              if (event?.countdown?.targetTime) {
-                void handleCancelCountdown()
-              } else {
-                setCountdownDialogOpen(true)
-              }
-            }}
-          />
+          }
+          disabled={!canStartRound1 && !canResumeRound1}
+          loading={actionBusy === 'start-r1'}
+          onClick={() => {
+            if (canResumeRound1) void handleResumeRound1()
+            else void handleStartRound1()
+          }}
+        />
 
-          <DirectorSquareTile
-            icon={<Coffee className="size-5" aria-hidden />}
-            label={event?.break?.active ? 'End Break' : 'Break Screen'}
-            statusText={event?.break?.active ? 'Intermission live' : 'Back soon'}
-            tone={
-              presenterView === 'auto' && event?.break?.active
-                ? 'active'
+        <DirectorSquareTile
+          icon={<Flag className="size-6" aria-hidden />}
+          label="End Round 1"
+          statusText={
+            roundPhase === 'round1_active'
+              ? `${poolStats.remaining} left`
+              : roundPhase === 'round1_ended' || currentRound === 2
+                ? 'Completed'
+                : 'Not started'
+          }
+          tone={roundPhase === 'round1_active' ? 'danger' : 'default'}
+          disabled={roundPhase !== 'round1_active'}
+          loading={actionBusy === 'end-r1'}
+          onClick={() => setConfirmEndRound(1)}
+        />
+
+        <DirectorSquareTile
+          icon={<Play className="size-6" aria-hidden />}
+          label={canResumeRound2 ? 'Resume Round 2' : 'Start Round 2'}
+          badge="132"
+          statusText={
+            roundPhase === 'round1_ended'
+              ? '₹125 Cr reset'
+              : canResumeRound2
+                ? 'Continue R2'
+                : roundPhase === 'round2_active'
+                  ? 'Live now'
+                  : 'After Round 1'
+          }
+          tone={
+            roundPhase === 'round2_active'
+              ? 'active'
+              : canStartRound2 || canResumeRound2
+                ? 'primary'
                 : 'default'
-            }
-            loading={actionBusy === 'break'}
-            onClick={() => {
-              if (event?.break?.active) {
-                void handleEndBreak()
-              } else {
-                setBreakDialogOpen(true)
-              }
-            }}
-          />
+          }
+          disabled={!canStartRound2 && !canResumeRound2}
+          loading={actionBusy === 'start-r2'}
+          onClick={() => {
+            if (canResumeRound2) void handleResumeRound2()
+            else void handleStartRound2()
+          }}
+        />
 
-          <DirectorSquareTile
-            icon={<BarChart3 className="size-5" aria-hidden />}
-            label="Live Standings"
-            statusText={`${teams.data.length} teams`}
-            tone={presenterView === 'standings' ? 'active' : 'info'}
-            loading={actionBusy === 'view-standings'}
-            onClick={() => void handleSwitchView('standings', 'Live Team Standings')}
-          />
+        <DirectorSquareTile
+          icon={<Trophy className="size-6" aria-hidden />}
+          label="End Round 2"
+          statusText={
+            roundPhase === 'round2_active'
+              ? `${poolStats.remaining} left`
+              : roundPhase === 'round2_ended'
+                ? 'Completed'
+                : 'Not started'
+          }
+          tone={roundPhase === 'round2_active' ? 'danger' : 'default'}
+          disabled={roundPhase !== 'round2_active'}
+          loading={actionBusy === 'end-r2'}
+          onClick={() => setConfirmEndRound(2)}
+        />
 
-          <DirectorSquareTile
-            icon={<CheckCircle2 className="size-5" aria-hidden />}
-            label="Show R1 Results"
-            statusText={
-              event?.round1Results
-                ? `${event.round1Results.qualifiedTeamIds.length}Q / ${event.round1Results.eliminatedTeamIds.length}E`
-                : 'R1 qualification'
-            }
-            tone={
-              presenterView === 'round1_results' ||
-              (presenterView === 'auto' && roundPhase === 'round1_ended')
-                ? 'active'
-                : 'default'
-            }
-            loading={actionBusy === 'view-round1_results'}
-            onClick={() => void handleSwitchView('round1_results', 'Round 1 Results')}
-          />
+        <DirectorSquareTile
+          icon={<CheckCircle2 className="size-6" aria-hidden />}
+          label="Show R1 Results"
+          statusText={
+            event?.round1Results
+              ? `${event.round1Results.qualifiedTeamIds.length}Q / ${event.round1Results.eliminatedTeamIds.length}E`
+              : 'R1 results screen'
+          }
+          tone={
+            presenterView === 'round1_results' ||
+            (presenterView === 'auto' && roundPhase === 'round1_ended')
+              ? 'active'
+              : 'default'
+          }
+          loading={actionBusy === 'view-round1_results'}
+          onClick={() => void handleSwitchView('round1_results', 'Round 1 Results')}
+        />
 
-          <DirectorSquareTile
-            icon={<Trophy className="size-5" aria-hidden />}
-            label="Show R2 Results"
-            statusText={
-              event?.round2Results?.results.find((r) => r.qualified)?.teamName ??
-              'Final leaderboard'
-            }
-            tone={
-              presenterView === 'round2_results' ||
-              (presenterView === 'auto' && roundPhase === 'round2_ended')
-                ? 'active'
-                : 'default'
-            }
-            loading={actionBusy === 'view-round2_results'}
-            onClick={() => void handleSwitchView('round2_results', 'Round 2 Final Results')}
-          />
-        </div>
-      </section>
+        <DirectorSquareTile
+          icon={<Trophy className="size-6" aria-hidden />}
+          label="Show R2 Results"
+          statusText={
+            event?.round2Results?.results.find((r) => r.qualified)?.teamName ??
+            'R2 final screen'
+          }
+          tone={
+            presenterView === 'round2_results' ||
+            (presenterView === 'auto' && roundPhase === 'round2_ended')
+              ? 'active'
+              : 'default'
+          }
+          loading={actionBusy === 'view-round2_results'}
+          onClick={() => void handleSwitchView('round2_results', 'Round 2 Final Results')}
+        />
 
-      {/* SECTION 3: LIVE STAGE & PLAYER CONTROLS */}
-      <section className="space-y-2.5">
-        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-ink-muted px-1">
-          Live Stage &amp; Player Controls
-        </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8">
-          <DirectorSquareTile
-            icon={<SkipForward className="size-5" aria-hidden />}
-            label="Present Next"
-            statusText={
-              nextQueuePlayer
-                ? `#${nextQueueIndex + 1} ${nextQueuePlayer.name}`
-                : isRoundActive
-                  ? 'Queue complete'
-                  : 'Start a round'
-            }
-            tone={nextQueuePlayer ? 'primary' : 'default'}
-            disabled={!nextQueuePlayer}
-            loading={actionBusy === 'present-next'}
-            onClick={() => void handlePresentNext()}
-          />
-
-          <DirectorSquareTile
-            icon={<Search className="size-5" aria-hidden />}
-            label="Pick Player"
-            statusText={
-              event?.spotlightPlayer
-                ? `Live: ${event.spotlightPlayer.name}`
-                : 'Spotlight any'
-            }
-            tone={event?.spotlightPlayer ? 'active' : 'default'}
-            disabled={players.data.every((p) => p.status !== 'available')}
-            onClick={() => setSpotlightPickerOpen(true)}
-          />
-
-          <DirectorSquareTile
-            icon={<XCircle className="size-5" aria-hidden />}
-            label="Mark Unsold"
-            statusText={
-              event?.spotlightPlayer
-                ? event.spotlightPlayer.name
-                : 'No live card'
-            }
-            tone={event?.spotlightPlayer ? 'danger' : 'default'}
-            disabled={!event?.spotlightPlayer}
-            loading={actionBusy === 'mark-unsold'}
-            onClick={() => void handleMarkUnsold()}
-          />
-
-          <DirectorSquareTile
-            icon={<Eraser className="size-5" aria-hidden />}
-            label="Clear Spotlight"
-            statusText={event?.spotlightPlayer ? 'Hide card' : 'None active'}
-            disabled={!event?.spotlightPlayer}
-            loading={actionBusy === 'clear-spotlight'}
-            onClick={() => void handleClearSpotlight()}
-          />
-
-          <DirectorSquareTile
-            icon={<X className="size-5" aria-hidden />}
-            label="Clear Sold"
-            statusText="Hide sold card"
-            onClick={() => {
-              sendPresenterCommand(eventId, 'clear_sold')
-              toast.push({ kind: 'info', message: 'Sent Clear Sold command to Presenter.' })
-            }}
-          />
-
-          <DirectorSquareTile
-            icon={<RotateCcw className="size-5" aria-hidden />}
-            label="Replay Sale"
-            statusText={
-              event?.lastSoldPlayer
-                ? event.lastSoldPlayer.playerName
-                : 'No recent sale'
-            }
-            disabled={!event?.lastSoldPlayer}
-            onClick={() => {
-              sendPresenterCommand(eventId, 'replay_last_sold')
-              toast.push({ kind: 'info', message: 'Replaying last sold celebration on Presenter.' })
-            }}
-          />
-
-          <DirectorSquareTile
-            icon={<Volume2 className="size-5" aria-hidden />}
-            label={presenterMuted ? 'Unmute Stage' : 'Mute Stage'}
-            statusText={presenterMuted ? 'Remote muted' : 'Audio on'}
-            tone={presenterMuted ? 'danger' : 'default'}
-            onClick={() => {
-              setPresenterMuted((m) => !m)
-              sendPresenterCommand(eventId, 'toggle_mute')
-              toast.push({
-                kind: 'info',
-                message: presenterMuted ? 'Presenter unmuted.' : 'Presenter muted.',
-              })
-            }}
-          />
-
-          <DirectorSquareTile
-            icon={<ShoppingCart className="size-5" aria-hidden />}
-            label="Record Sale"
-            statusText="Bidding desk"
-            tone="success"
-            onClick={() => navigate('/admin/purchases/new')}
-          />
-        </div>
-      </section>
-
-      {/* SECTION 4: QUICK STAGE LAUNCHERS */}
-      <section className="space-y-2.5">
-        <h2 className="text-xs font-black uppercase tracking-[0.2em] text-ink-muted px-1">
-          Screens &amp; Quick Navigation
-        </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 md:grid-cols-6">
-          <DirectorSquareTile
-            icon={<MonitorPlay className="size-5" aria-hidden />}
-            label="Open Presenter"
-            statusText="Current tab"
-            tone="primary"
-            onClick={() => navigate('/admin/presenter')}
-          />
-
-          <DirectorSquareTile
-            icon={<ExternalLink className="size-5" aria-hidden />}
-            label="Projector Window"
-            statusText="New tab"
-            onClick={() => window.open('/admin/presenter', '_blank', 'noopener')}
-          />
-
-          <DirectorSquareTile
-            icon={<UserCheck className="size-5" aria-hidden />}
-            label="Player Pool"
-            statusText={`${players.data.length} master`}
-            onClick={() => navigate('/admin/players')}
-          />
-
-          <DirectorSquareTile
-            icon={<Gavel className="size-5" aria-hidden />}
-            label="Teams"
-            statusText={`${teams.data.length} squads`}
-            onClick={() => navigate('/admin/teams')}
-          />
-
-          <DirectorSquareTile
-            icon={<Sparkles className="size-5" aria-hidden />}
-            label="Transactions"
-            statusText="Audit & reversals"
-            onClick={() => navigate('/admin/transactions')}
-          />
-
-          <DirectorSquareTile
-            icon={<ShieldAlert className="size-5" aria-hidden />}
-            label="Settings"
-            statusText="Config & reset"
-            onClick={() => navigate('/admin/settings')}
-          />
-        </div>
-      </section>
+        <DirectorSquareTile
+          icon={<Radio className="size-6" aria-hidden />}
+          label="Live Auction View"
+          statusText="Exit results view"
+          tone={presenterView === 'auto' ? 'active' : 'default'}
+          loading={actionBusy === 'view-auto'}
+          onClick={() => void handleSwitchView('auto', 'Live Auction View')}
+        />
+      </div>
 
       {/* End Round Confirmation Modal */}
       <Dialog
@@ -962,41 +593,6 @@ export function DashboardPage() {
               <p>All players in the Round {confirmEndRound} pool have been processed.</p>
             )}
           </div>
-        </div>
-      </Dialog>
-
-      {/* Quick Pick Spotlight Player Modal */}
-      <Dialog
-        open={spotlightPickerOpen}
-        onClose={() => setSpotlightPickerOpen(false)}
-        title="Put Player on Presenter Spotlight"
-        description="Search and push any available player immediately onto the Presentation Screen and all team screens."
-        size="md"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setSpotlightPickerOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={!pickerPlayerId}
-              loading={actionBusy === 'pick-spotlight'}
-              icon={<Radio className="size-4" aria-hidden />}
-              onClick={() => void handleSpotlightPicked()}
-            >
-              Go Live on Presenter
-            </Button>
-          </>
-        }
-      >
-        <div className="space-y-3">
-          <Combobox
-            items={pickerItems}
-            value={pickerPlayerId}
-            onChange={setPickerPlayerId}
-            placeholder="Search player by name, role, or ID…"
-            emptyMessage="No available players match."
-            ariaLabel="Select player to spotlight"
-          />
         </div>
       </Dialog>
 
