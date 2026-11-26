@@ -215,6 +215,11 @@ export const updateEventSchema = z.object({
 
 export const eventIdSchema = z.object({ eventId: idSchema })
 
+export const markPlayerUnsoldSchema = z.object({
+  eventId: idSchema,
+  playerId: idSchema,
+})
+
 export const setSpotlightPlayerSchema = z.object({
   eventId: idSchema,
   playerId: z.union([idSchema, z.null()]),

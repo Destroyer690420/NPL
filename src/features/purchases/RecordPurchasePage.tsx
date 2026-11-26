@@ -8,6 +8,7 @@ import {
   Radio,
   Search,
   ShoppingCart,
+  SkipForward,
   Star,
 } from 'lucide-react'
 import type { AdminOutletContext } from '@/app/outlet'
@@ -15,7 +16,14 @@ import { useAdminEvent } from '@/app/AdminEventProvider'
 import { usePlayers, usePurchases, useTeams } from '@/data/hooks'
 import { isOverseas, isStar } from '@/lib/playerBadges'
 import { isCallError } from '@/services/callables'
-import { recordPurchase, clearSpotlightPlayer, setSpotlightPlayer } from '@/services/admin'
+import {
+  clearSpotlightPlayer,
+  markPlayerUnsold,
+  recordPurchase,
+  setSpotlightPlayer,
+} from '@/services/admin'
+import { RoundControlsBar } from '@/features/auction/RoundControlsBar'
+import { findNextUnprocessedIndex, normalizeRole } from '@shared/rounds'
 import { fetchPurchaseFromServer } from '@/services/reads'
 import { newRequestId } from '@/lib/ids'
 import { errorMessage, toFriendlyError, type FriendlyError } from '@/lib/errors'
@@ -66,7 +74,48 @@ export function RecordPurchasePage() {
   const [priceText, setPriceText] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [submit, setSubmit] = useState<SubmitState>({ kind: 'idle' })
+  const [advancingQueue, setAdvancingQueue] = useState(false)
   const lastAttempt = useRef<Attempt | null>(null)
+
+  const roundPhase = event?.roundPhase ?? 'not_started'
+  const isRoundActive = roundPhase === 'round1_active' || roundPhase === 'round2_active'
+  const isRound2 = (event?.currentRound ?? 0) === 2
+  const eliminatedTeamSet = useMemo(
+    () => new Set(event?.eliminatedTeamIds ?? []),
+    [event?.eliminatedTeamIds],
+  )
+  const unsoldSet = useMemo(
+    () => new Set(event?.unsoldPlayerIds ?? []),
+    [event?.unsoldPlayerIds],
+  )
+  const roundPoolIds = useMemo(
+    () => event?.roundPoolPlayerIds ?? [],
+    [event?.roundPoolPlayerIds],
+  )
+  const playersById = useMemo(
+    () => new Map(players.data.map((p) => [p.id, p])),
+    [players.data],
+  )
+
+  const nextQueueIndex = useMemo(() => {
+    if (!isRoundActive || roundPoolIds.length === 0) return -1
+    return findNextUnprocessedIndex(
+      roundPoolIds,
+      playersById,
+      unsoldSet,
+      event?.activePoolIndex ?? 0,
+    )
+  }, [isRoundActive, roundPoolIds, playersById, unsoldSet, event?.activePoolIndex])
+
+  const nextQueuePlayer =
+    nextQueueIndex >= 0 ? (playersById.get(roundPoolIds[nextQueueIndex]!) ?? null) : null
+
+  // Lock out eliminated team if one was previously selected before Round 2 started
+  useEffect(() => {
+    if (isRound2 && teamId && eliminatedTeamSet.has(teamId)) {
+      setTeamId(null)
+    }
+  }, [isRound2, teamId, eliminatedTeamSet])
 
   // Auto-fill player from query parameter or live spotlight player if unselected
   useEffect(() => {
@@ -80,13 +129,45 @@ export function RecordPurchasePage() {
     }
   }, [queryPlayerId, event?.spotlightPlayer?.playerId])
 
+  async function handlePresentNextPlayer() {
+    if (!nextQueuePlayer) return
+    try {
+      setAdvancingQueue(true)
+      setPlayerId(nextQueuePlayer.id)
+      setSubmit((current) => (current.kind === 'failed' ? { kind: 'idle' } : current))
+      await setSpotlightPlayer(eventId, nextQueuePlayer.id)
+      toast.push({
+        kind: 'info',
+        message: `Queue #${nextQueueIndex + 1}: ${nextQueuePlayer.name} is now live.`,
+      })
+    } catch (err) {
+      toast.push({ kind: 'error', message: isCallError(err) ? err.message : errorMessage(err) })
+    } finally {
+      setAdvancingQueue(false)
+    }
+  }
+
   async function handleCloseSpotlight() {
     try {
       setClosingSpotlight(true)
-      await clearSpotlightPlayer(eventId)
-      setPlayerId(null)
-      setPriceText('')
-      toast.push({ kind: 'info', message: 'Live auction card closed.' })
+      const targetId = event?.spotlightPlayer?.playerId ?? playerId
+      if (isRoundActive && targetId) {
+        const res = await markPlayerUnsold(eventId, targetId)
+        setPlayerId(null)
+        setPriceText('')
+        lastPrefilledPlayerIdRef.current = null
+        toast.push({
+          kind: res.roundEnded ? 'success' : 'info',
+          message: res.roundEnded
+            ? 'All pool players processed — round ended!'
+            : 'Marked unsold & advanced queue.',
+        })
+      } else {
+        await clearSpotlightPlayer(eventId)
+        setPlayerId(null)
+        setPriceText('')
+        toast.push({ kind: 'info', message: 'Live auction card closed.' })
+      }
     } catch {
       toast.push({ kind: 'error', message: 'Failed to close auction card.' })
     } finally {
@@ -140,6 +221,16 @@ export function RecordPurchasePage() {
   }
   if (selectedTeam && !selectedTeam.active) {
     blocking.push('This team is deactivated and cannot buy players.')
+  }
+  if (selectedTeam && isRound2 && eliminatedTeamSet.has(selectedTeam.id)) {
+    blocking.push('This team was eliminated in Round 1 and is locked out of Round 2.')
+  }
+  if (roundPhase === 'round1_ended' || roundPhase === 'round2_ended') {
+    blocking.push(
+      roundPhase === 'round1_ended'
+        ? 'Round 1 has ended. Click Start Round 2 to resume bidding.'
+        : 'Round 2 has ended. Final results are now displayed.',
+    )
   }
   if (selectedTeam && price !== null && price > selectedTeam.remainingPurse) {
     blocking.push(
@@ -269,36 +360,98 @@ export function RecordPurchasePage() {
     }
   }
 
-  const playerItems: ComboboxItem[] = useMemo(
-    () =>
-      players.data.map((player) => ({
+  const playerItems: ComboboxItem[] = useMemo(() => {
+    const orderedPlayers =
+      isRoundActive && roundPoolIds.length > 0
+        ? roundPoolIds
+            .map((id) => playersById.get(id))
+            .filter((p): p is NonNullable<typeof p> => p !== undefined)
+        : players.data
+
+    return orderedPlayers.map((player, index) => {
+      const roleCode = normalizeRole(player.role)
+      const isUnsoldInRound = isRoundActive && player.status === 'available' && unsoldSet.has(player.id)
+      const queuePrefix = isRoundActive && roundPoolIds.length > 0 ? `#${index + 1} · ` : ''
+      const roleText = player.role ? `${player.role}${roleCode ? ` (${roleCode})` : ''} · ` : ''
+      return {
         id: player.id,
         label: player.name,
-        keywords: `${player.externalReference ?? ''} ${player.notes ?? ''}`,
+        keywords: `${player.role ?? ''} ${roleCode ?? ''} ${player.externalReference ?? ''} ${player.notes ?? ''}`,
         disabled: player.status !== 'available',
-        disabledReason: player.status === 'sold' ? 'Sold' : player.status === 'withdrawn' ? 'Withdrawn' : undefined,
-        sublabel: `${formatPoints(player.points)} pts · base ${currency(player.basePrice, currencyLabel)}${isOverseas(player.nationality) ? ' · ✈ Overseas' : ''}${isStar(player.star) ? ' · ★ Star' : ''}${player.externalReference ? ` · ${player.externalReference}` : ''}`,
-      })),
-    [players.data, currencyLabel],
-  )
+        disabledReason:
+          player.status === 'sold'
+            ? 'Sold'
+            : player.status === 'withdrawn'
+              ? 'Withdrawn'
+              : undefined,
+        sublabel: `${queuePrefix}${roleText}${formatPoints(player.points)} pts · base ${currency(player.basePrice, currencyLabel)}${isUnsoldInRound ? ' · Unsold' : ''}${isOverseas(player.nationality) ? ' · ✈ Overseas' : ''}${isStar(player.star) ? ' · ★ Star' : ''}${player.externalReference ? ` · ${player.externalReference}` : ''}`,
+      }
+    })
+  }, [players.data, playersById, roundPoolIds, isRoundActive, unsoldSet, currencyLabel])
 
   const teamItems: ComboboxItem[] = useMemo(
     () =>
-      teams.data.map((team) => ({
-        id: team.id,
-        label: team.name,
-        keywords: team.name,
-        disabled: !team.active,
-        disabledReason: team.active ? undefined : 'Inactive',
-        sublabel: `${currency(team.remainingPurse, currencyLabel)} purse · ${team.playerCount} players`,
-      })),
-    [teams.data, currencyLabel],
+      teams.data
+        .filter((team) => !(isRound2 && eliminatedTeamSet.has(team.id)))
+        .map((team) => ({
+          id: team.id,
+          label: team.name,
+          keywords: team.name,
+          disabled: !team.active,
+          disabledReason: team.active ? undefined : 'Inactive',
+          sublabel: `${currency(team.remainingPurse, currencyLabel)} purse · ${team.playerCount} players`,
+        })),
+    [teams.data, currencyLabel, isRound2, eliminatedTeamSet],
   )
 
   const recent = purchases.data.slice(0, 8)
 
   return (
     <div>
+      {event ? (
+        <RoundControlsBar
+          eventId={eventId}
+          event={event}
+          players={players.data}
+          teams={teams.data}
+          compact
+        />
+      ) : null}
+
+      {isRoundActive && roundPoolIds.length > 0 ? (
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line-strong bg-surface/90 px-4 py-3 shadow-md">
+          <div className="min-w-0">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-accent">
+              Round {event?.currentRound} Queue (BAT → BOWL → AR → WK)
+            </p>
+            <p className="mt-0.5 text-xs text-ink-muted">
+              {nextQueuePlayer ? (
+                <>
+                  Next up <span className="font-bold text-white">#{nextQueueIndex + 1}</span>:{' '}
+                  <span className="font-bold text-white">{nextQueuePlayer.name}</span>{' '}
+                  {nextQueuePlayer.role ? `(${nextQueuePlayer.role})` : ''} · Rating{' '}
+                  <span className="font-semibold text-sky-400">{formatPoints(nextQueuePlayer.points)}</span>
+                </>
+              ) : (
+                'All players in this round queue have been processed.'
+              )}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {nextQueuePlayer ? (
+              <Button
+                size="sm"
+                variant="secondary"
+                loading={advancingQueue}
+                icon={<SkipForward className="size-3.5" aria-hidden />}
+                onClick={() => void handlePresentNextPlayer()}
+              >
+                Present Next (#{nextQueueIndex + 1})
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
       {event?.spotlightPlayer ? (
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3 shadow-[0_0_20px_rgba(245,175,25,0.15)] animate-in fade-in">
           <div className="flex items-center gap-3">
@@ -419,7 +572,14 @@ export function RecordPurchasePage() {
             </div>
 
             <div className="space-y-1.5">
-              <span className="block text-[13px] font-medium text-ink-soft">Winning team</span>
+              <div className="flex items-center justify-between gap-2">
+                <span className="block text-[13px] font-medium text-ink-soft">Winning team</span>
+                {isRound2 ? (
+                  <span className="text-[11px] font-semibold text-emerald-400">
+                    Qualified teams only ({teamItems.length} active · {eliminatedTeamSet.size} locked out)
+                  </span>
+                ) : null}
+              </div>
               <Combobox
                 items={teamItems}
                 value={teamId}

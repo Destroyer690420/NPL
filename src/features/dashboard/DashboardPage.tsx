@@ -13,6 +13,7 @@ import { EmptyState, Skeleton } from '@/components/ui/Feedback'
 import { Pill, PurchaseStatusPill } from '@/components/ui/StatusPill'
 import { useToast } from '@/components/ui/Toast'
 import { setAuctionBreak, setAuctionCountdown, updateEvent } from '@/services/admin'
+import { RoundControlsBar } from '@/features/auction/RoundControlsBar'
 import { errorMessage } from '@/lib/errors'
 import { cn } from '@/lib/cn'
 
@@ -208,6 +209,15 @@ export function DashboardPage() {
 
   return (
     <div>
+      {event ? (
+        <RoundControlsBar
+          eventId={eventId}
+          event={event}
+          players={players.data}
+          teams={teams.data}
+        />
+      ) : null}
+
       {/* Live Auction Broadcast & Screen Intermission Control Bar */}
       <div className="mb-6 rounded-2xl border border-line-strong bg-surface/90 p-4 shadow-xl backdrop-blur-md sm:p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -423,6 +433,11 @@ export function DashboardPage() {
                         {team.name}
                       </Link>
                       {!team.active ? <Pill tone="neutral">Inactive</Pill> : null}
+                      {event?.eliminatedTeamIds?.includes(team.id) ? (
+                        <Pill tone="danger">Eliminated (R1)</Pill>
+                      ) : (event?.currentRound ?? 0) >= 2 && event?.qualifiedTeamIds?.includes(team.id) ? (
+                        <Pill tone="success">R2 Active</Pill>
+                      ) : null}
                     </div>
                     <p className="mt-0.5 text-xs text-ink-muted">
                       {team.playerCount} player{team.playerCount === 1 ? '' : 's'} ·{' '}

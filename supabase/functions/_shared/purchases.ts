@@ -107,6 +107,9 @@ export function planPurchase(
   if (state.event.status === 'finalized') return fail('event-finalized')
   if (state.event.status === 'setup') return fail('event-not-started')
   if (!state.event.purchasesEnabled) return fail('purchases-disabled')
+  if (state.event.roundPhase === 'round1_ended' || state.event.roundPhase === 'round2_ended') {
+    return fail('failed-precondition', 'The current round has ended. Start the next round before selling.')
+  }
 
   // --- player ----------------------------------------------------------------
   const player = state.player
@@ -116,6 +119,16 @@ export function planPurchase(
   if (player.purchaseId !== null || player.soldToTeamId !== null) {
     return fail('player-status-conflict', undefined, { playerId: player.id })
   }
+  if (
+    (state.event.roundPhase === 'round1_active' || state.event.roundPhase === 'round2_active') &&
+    state.event.roundPoolPlayerIds &&
+    state.event.roundPoolPlayerIds.length > 0 &&
+    !state.event.roundPoolPlayerIds.includes(player.id)
+  ) {
+    return fail('player-status-conflict', 'This player is not in the active round pool.', {
+      playerId: player.id,
+    })
+  }
   if (!isValidPoints(player.points)) {
     return fail('player-invalid', 'Player points are invalid.', { playerId: player.id })
   }
@@ -124,6 +137,17 @@ export function planPurchase(
   const team = state.team
   if (!team) return fail('team-not-found')
   if (!team.active) return fail('team-inactive')
+  if (
+    state.event.currentRound === 2 &&
+    state.event.eliminatedTeamIds &&
+    state.event.eliminatedTeamIds.includes(team.id)
+  ) {
+    return fail(
+      'team-inactive',
+      'This team was eliminated in Round 1 and cannot buy players in Round 2.',
+      { teamId: team.id },
+    )
+  }
   if (!isTeamConsistent(team)) {
     return fail('team-state-inconsistent', undefined, { teamId: team.id })
   }

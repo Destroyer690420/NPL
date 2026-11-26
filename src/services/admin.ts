@@ -1,7 +1,20 @@
 import { callFunction } from './callables'
-import { broadcastBreak, broadcastCountdown, broadcastPlayerSold, broadcastSpotlight } from '@/lib/realtime'
-import type { AuctionBreak, AuctionCountdown, EventStatus, PlayerStatus } from '@shared/types'
-import type { TeamSummary } from '@shared/types'
+import {
+  broadcastBreak,
+  broadcastCountdown,
+  broadcastPlayerSold,
+  broadcastRoundChange,
+  broadcastSpotlight,
+} from '@/lib/realtime'
+import type {
+  AuctionBreak,
+  AuctionCountdown,
+  EventStatus,
+  PlayerStatus,
+  RoundPhase,
+  RoundSnapshot,
+  TeamSummary,
+} from '@shared/types'
 
 /**
  * Typed admin callables. Inputs mirror `functions/src/shared/schemas.ts` and
@@ -262,6 +275,8 @@ export interface RecordPurchaseResult {
   finalPrice: number
   teamSummary: TeamSummary
   idempotentReplay: boolean
+  roundEnded?: boolean
+  roundPhase?: RoundPhase
 }
 
 export async function recordPurchase(input: RecordPurchaseInput): Promise<RecordPurchaseResult> {
@@ -286,6 +301,9 @@ export async function recordPurchase(input: RecordPurchaseInput): Promise<Record
     role: input.role ?? null,
     star: input.star ?? null,
   })
+  if (result.roundEnded && result.roundPhase) {
+    broadcastRoundChange(input.eventId, result.roundPhase)
+  }
   return result
 }
 
@@ -397,5 +415,72 @@ export async function setAuctionBreak(input: SetAuctionBreakInput): Promise<void
 
   await callFunction('setAuctionBreak', input)
   broadcastBreak(input.eventId, breakState)
+}
+
+/* -------------------------- 2-round auction flow -------------------------- */
+
+export interface StartRoundResult {
+  ok: boolean
+  eventId: string
+  currentRound: 1 | 2
+  roundPhase: RoundPhase
+  poolSize: number
+  roundPoolPlayerIds: string[]
+  qualifiedTeamIds?: string[]
+  eliminatedTeamIds?: string[]
+}
+
+export interface EndRoundResult {
+  ok: boolean
+  eventId: string
+  roundPhase: RoundPhase
+  snapshot: RoundSnapshot
+}
+
+export interface MarkPlayerUnsoldResult {
+  ok: boolean
+  eventId: string
+  roundEnded: boolean
+  roundPhase: RoundPhase
+  activePoolIndex?: number
+  snapshot?: RoundSnapshot
+}
+
+export async function startRound1(eventId: string): Promise<StartRoundResult> {
+  const result = await callFunction<{ eventId: string }, StartRoundResult>('startRound1', { eventId })
+  broadcastSpotlight(eventId, null)
+  broadcastRoundChange(eventId, result.roundPhase)
+  return result
+}
+
+export async function endRound1(eventId: string): Promise<EndRoundResult> {
+  const result = await callFunction<{ eventId: string }, EndRoundResult>('endRound1', { eventId })
+  broadcastSpotlight(eventId, null)
+  broadcastRoundChange(eventId, result.roundPhase)
+  return result
+}
+
+export async function startRound2(eventId: string): Promise<StartRoundResult> {
+  const result = await callFunction<{ eventId: string }, StartRoundResult>('startRound2', { eventId })
+  broadcastSpotlight(eventId, null)
+  broadcastRoundChange(eventId, result.roundPhase)
+  return result
+}
+
+export async function endRound2(eventId: string): Promise<EndRoundResult> {
+  const result = await callFunction<{ eventId: string }, EndRoundResult>('endRound2', { eventId })
+  broadcastSpotlight(eventId, null)
+  broadcastRoundChange(eventId, result.roundPhase)
+  return result
+}
+
+export async function markPlayerUnsold(eventId: string, playerId: string): Promise<MarkPlayerUnsoldResult> {
+  const result = await callFunction<{ eventId: string; playerId: string }, MarkPlayerUnsoldResult>(
+    'markPlayerUnsold',
+    { eventId, playerId },
+  )
+  broadcastSpotlight(eventId, null)
+  broadcastRoundChange(eventId, result.roundPhase)
+  return result
 }
 

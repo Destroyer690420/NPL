@@ -289,6 +289,16 @@ export function TeamPanelPage() {
         </>
       ) : (
         <>
+          {eventLive.data?.eliminatedTeamIds?.includes(context.teamId) ? (
+            <div className="mb-4 rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+              <p className="font-bold text-rose-300">Eliminated in Round 1</p>
+              <p className="mt-0.5 text-xs text-rose-200/80">
+                {eventLive.data.round1Results?.results.find((r) => r.teamId === context.teamId)?.missingSummary ||
+                  'Your team did not meet the Round 1 qualification criteria and cannot bid in Round 2.'}
+              </p>
+            </div>
+          ) : null}
+
           {teamData ? (
             <div className="overflow-hidden rounded-2xl border border-line-strong bg-gradient-to-br from-[#181c26] via-[#12151f] to-[#1c101d] p-6 shadow-2xl">
               <div>

@@ -25,6 +25,9 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   'session.created': 'Team session started',
   'session.revoked': 'Team session revoked',
   'config.updated': 'Configuration updated',
+  'round.started': 'Round started',
+  'round.ended': 'Round ended',
+  'player.unsold': 'Player marked unsold',
 }
 
 export const EVENT_STATUS_LABELS: Record<EventStatus, string> = {

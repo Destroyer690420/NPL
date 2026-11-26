@@ -238,11 +238,17 @@ function usePolled<T>(key: string | null, initial: T, fetcher: () => Promise<T>)
       void load()
     }
 
+    const onRoundChange = (): void => {
+      if (!active) return
+      void load()
+    }
+
     document.addEventListener('visibilitychange', refresh)
     window.addEventListener('focus', refresh)
     window.addEventListener('auction:spotlight_change', onSpotlightChange)
     window.addEventListener('auction:countdown_change', onCountdownChange)
     window.addEventListener('auction:break_change', onBreakChange)
+    window.addEventListener('auction:round_change', onRoundChange)
 
     return () => {
       active = false
@@ -252,6 +258,7 @@ function usePolled<T>(key: string | null, initial: T, fetcher: () => Promise<T>)
       window.removeEventListener('auction:spotlight_change', onSpotlightChange)
       window.removeEventListener('auction:countdown_change', onCountdownChange)
       window.removeEventListener('auction:break_change', onBreakChange)
+      window.removeEventListener('auction:round_change', onRoundChange)
     }
     // The fetcher closes over the same parameters as `key`.
     // eslint-disable-next-line react-hooks/exhaustive-deps

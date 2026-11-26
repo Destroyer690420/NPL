@@ -13,11 +13,16 @@ import {
   deletePlayersData,
   deleteTeamsData,
   deleteTransactionsData,
+  endRound1,
+  endRound2,
+  markPlayerUnsold,
   resetEventData,
   setAuctionBreak,
   setAuctionCountdown,
   setDefaultEvent,
   setSpotlightPlayer,
+  startRound1,
+  startRound2,
   updateEvent,
 } from './handlers/event.ts'
 
@@ -64,6 +69,12 @@ const registry: Record<string, Descriptor> = {
   setSpotlightPlayer,
   setAuctionCountdown,
   setAuctionBreak,
+  // 2-round auction
+  startRound1,
+  endRound1,
+  startRound2,
+  endRound2,
+  markPlayerUnsold,
 }
 
 function buildCorsHeaders(request: Request): Record<string, string> {

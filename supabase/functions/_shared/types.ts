@@ -11,6 +11,42 @@ export type EventStatus = 'setup' | 'active' | 'finalized'
 export type PlayerStatus = 'available' | 'sold' | 'withdrawn'
 export type PurchaseStatus = 'confirmed' | 'reversed'
 export type AdminRole = 'admin' | 'superAdmin'
+export type RoundPhase =
+  | 'not_started'
+  | 'round1_active'
+  | 'round1_ended'
+  | 'round2_active'
+  | 'round2_ended'
+
+export interface TeamQualificationResult {
+  teamId: string
+  teamName: string
+  qualified: boolean
+  playerCount: number
+  batCount: number
+  bowlCount: number
+  arCount: number
+  wkCount: number
+  totalPoints: number
+  totalSpent: number
+  remainingPurse: number
+  missingPlayers: number
+  missingBat: number
+  missingBowl: number
+  missingAr: number
+  missingWk: number
+  missingReasons: string[]
+  missingSummary: string
+}
+
+export interface RoundSnapshot {
+  round: 1 | 2
+  endedAt: string
+  poolSize: number
+  qualifiedTeamIds: string[]
+  eliminatedTeamIds: string[]
+  results: TeamQualificationResult[]
+}
 
 /** Opaque timestamp value (Firestore Timestamp, Date, or epoch millis). */
 export type TimestampValue =
@@ -85,6 +121,16 @@ export interface EventDoc {
   countdown?: AuctionCountdown | null
   /** Auction break / intermission state */
   break?: AuctionBreak | null
+  /** Multi-round auction state (persisted so page refreshes keep progress). */
+  currentRound?: 0 | 1 | 2
+  roundPhase?: RoundPhase
+  roundPoolPlayerIds?: string[]
+  activePoolIndex?: number
+  unsoldPlayerIds?: string[]
+  eliminatedTeamIds?: string[]
+  qualifiedTeamIds?: string[]
+  round1Results?: RoundSnapshot | null
+  round2Results?: RoundSnapshot | null
 }
 
 export interface TeamDoc {
@@ -165,6 +211,9 @@ export type AuditAction =
   | 'session.created'
   | 'session.revoked'
   | 'config.updated'
+  | 'round.started'
+  | 'round.ended'
+  | 'player.unsold'
 
 export type AuditTargetType = 'event' | 'team' | 'player' | 'purchase' | 'session' | 'config'
 

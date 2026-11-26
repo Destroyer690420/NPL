@@ -25,3 +25,9 @@ export const REQUEST_ID_PATTERN = /^[A-Za-z0-9_-]{8,72}$/
 export const DEFAULT_EVENT_ID = 'default'
 
 export const ICON_FALLBACK_NAME = '—'
+
+/** Round 1 & Round 2 auction configuration constants. */
+export const ROUND_1_TARGET_TEAMS = 17
+export const ROUND_2_TARGET_TEAMS = 12
+/** ₹125 Crore in smallest currency unit (1 Crore = 10,000,000). */
+export const ROUND_2_STARTING_PURSE = 1_250_000_000

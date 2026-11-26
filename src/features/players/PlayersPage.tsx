@@ -23,7 +23,8 @@ import { cn } from '@/lib/cn'
 import { PlayerFormDialog, type PlayerFormValues } from './PlayerFormDialog'
 
 type StatusFilter = 'all' | PlayerStatus
-type SortKey = 'order' | 'name' | 'points' | 'basePrice' | 'status'
+type PoolFilter = 'all' | 'active_pool' | 'overflow'
+type SortKey = 'queue' | 'order' | 'name' | 'points' | 'basePrice' | 'status'
 
 const PAGE_SIZE = 100
 
@@ -37,6 +38,7 @@ export function PlayersPage() {
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [poolFilter, setPoolFilter] = useState<PoolFilter>('all')
   const [sortKey, setSortKey] = useState<SortKey>('order')
   const [visible, setVisible] = useState(PAGE_SIZE)
 
@@ -48,16 +50,31 @@ export function PlayersPage() {
 
   const currencyLabel = event?.currencyLabel ?? '₹'
   const teamNames = useMemo(() => new Map(teams.data.map((team) => [team.id, team.name])), [teams.data])
+  const roundPoolIndexMap = useMemo(
+    () => new Map((event?.roundPoolPlayerIds ?? []).map((id, idx) => [id, idx])),
+    [event?.roundPoolPlayerIds],
+  )
+  const unsoldSet = useMemo(() => new Set(event?.unsoldPlayerIds ?? []), [event?.unsoldPlayerIds])
+  const hasRoundPool = roundPoolIndexMap.size > 0
 
   const filtered = useMemo(() => {
     const term = normalizeName(search)
     const list = players.data.filter((player) => {
       if (statusFilter !== 'all' && player.status !== statusFilter) return false
+      if (hasRoundPool && poolFilter === 'active_pool' && !roundPoolIndexMap.has(player.id)) return false
+      if (hasRoundPool && poolFilter === 'overflow' && roundPoolIndexMap.has(player.id)) return false
       if (term === '') return true
       return normalizeName(`${player.name} ${player.externalReference ?? ''}`).includes(term)
     })
     const sorted = [...list]
-    if (sortKey === 'order') {
+    if (sortKey === 'queue' && hasRoundPool) {
+      sorted.sort((a, b) => {
+        const idxA = roundPoolIndexMap.get(a.id) ?? 999999
+        const idxB = roundPoolIndexMap.get(b.id) ?? 999999
+        if (idxA !== idxB) return idxA - idxB
+        return a.name.localeCompare(b.name)
+      })
+    } else if (sortKey === 'order') {
       sorted.sort((a, b) => {
         const orderA = getPlayerSortOrder(a)
         const orderB = getPlayerSortOrder(b)
@@ -70,7 +87,7 @@ export function PlayersPage() {
     else if (sortKey === 'basePrice') sorted.sort((a, b) => b.basePrice - a.basePrice)
     else sorted.sort((a, b) => a.status.localeCompare(b.status) || a.name.localeCompare(b.name))
     return sorted
-  }, [players.data, search, statusFilter, sortKey])
+  }, [players.data, search, statusFilter, poolFilter, sortKey, hasRoundPool, roundPoolIndexMap])
 
   const shown = filtered.slice(0, visible)
 
@@ -151,7 +168,7 @@ export function PlayersPage() {
     <div>
 
       <Card>
-        <CardBody className="grid gap-3 pb-3 sm:grid-cols-[1fr_170px_170px]">
+        <CardBody className={cn('grid gap-3 pb-3', hasRoundPool ? 'sm:grid-cols-[1fr_150px_170px_190px]' : 'sm:grid-cols-[1fr_170px_170px]')}>
           <InputField
             label="Search"
             value={search}
@@ -174,7 +191,22 @@ export function PlayersPage() {
             <option value="sold">Sold</option>
             <option value="withdrawn">Withdrawn</option>
           </SelectField>
+          {hasRoundPool ? (
+            <SelectField
+              label={`Round ${event?.currentRound ?? ''} Pool`}
+              value={poolFilter}
+              onChange={(event) => {
+                setPoolFilter(event.target.value as PoolFilter)
+                setVisible(PAGE_SIZE)
+              }}
+            >
+              <option value="all">All Master ({players.data.length})</option>
+              <option value="active_pool">Round Pool ({roundPoolIndexMap.size})</option>
+              <option value="overflow">Overflow ({Math.max(0, players.data.length - roundPoolIndexMap.size)})</option>
+            </SelectField>
+          ) : null}
           <SelectField label="Sort by" value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}>
+            {hasRoundPool ? <option value="queue">Round Queue (BAT → BOWL → AR → WK)</option> : null}
             <option value="order">CSV list order (Default)</option>
             <option value="name">Name (A → Z)</option>
             <option value="points">Rating (high → low)</option>
@@ -219,6 +251,8 @@ export function PlayersPage() {
                 <tbody className="divide-y divide-line">
                   {shown.map((player) => {
                     const isSpotlighted = event?.spotlightPlayer?.playerId === player.id
+                    const queueIdx = roundPoolIndexMap.get(player.id)
+                    const isUnsoldInRound = hasRoundPool && player.status === 'available' && unsoldSet.has(player.id)
                     return (
                       <tr
                         key={player.id}
@@ -234,6 +268,15 @@ export function PlayersPage() {
                             <PlayerAvatar name={player.name} photoUrl={player.photoUrl} size="sm" />
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
+                                {queueIdx !== undefined ? (
+                                  <span className="rounded bg-accent/15 px-1.5 py-0.5 font-mono text-[10px] font-bold text-accent">
+                                    #{queueIdx + 1}
+                                  </span>
+                                ) : hasRoundPool ? (
+                                  <span className="rounded bg-surface-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted">
+                                    Overflow
+                                  </span>
+                                ) : null}
                                 <button
                                   type="button"
                                   onClick={() => openEdit(player)}
@@ -241,6 +284,11 @@ export function PlayersPage() {
                                 >
                                   {player.name}
                                 </button>
+                                {isUnsoldInRound ? (
+                                  <span className="rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                                    Unsold (R{event?.currentRound})
+                                  </span>
+                                ) : null}
                                 {isStar(player.star) ? (
                                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-400 border border-amber-500/30">
                                     <Star className="size-2.5 fill-amber-400 text-amber-400" />

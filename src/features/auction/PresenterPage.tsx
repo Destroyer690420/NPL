@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router'
 import {
+  Gavel,
   Maximize2,
   Minimize2,
   Music,
@@ -26,6 +27,7 @@ import {
 import { getSupabase } from '@/lib/supabase'
 import { StartingInCountdownScreen } from './StartingInCountdownScreen'
 import { AuctionBreakScreen } from './AuctionBreakScreen'
+import { Round1ResultsStage, Round2FinalResultsStage } from './RoundResultsViews'
 import { Button } from '@/components/ui/Button'
 
 function resolvePhotoSrc(photoUrl: string | null | undefined): string | null {
@@ -281,6 +283,7 @@ function CircularPlayerShowcase({
         style={{ background: fillCircle }}
       />
 
+      {/* Rotating yellow circular text ring (STAR PLAYER STAR PLAYER ...) */}
       {/* Rotating yellow circular text ring filling the full 360° circle */}
       <div
         className="pointer-events-none absolute inset-0 animate-presenter-spin-slow will-change-transform"
@@ -368,6 +371,33 @@ const CELEBRATION_SPARKS = [
   { left: '29%', bottom: '4%', size: 5, delay: '2.6s', dur: '4.7s', color: '#f5af19' },
   { left: '68%', bottom: '5%', size: 6, delay: '2.9s', dur: '5.2s', color: '#fde047' },
 ] as const
+
+/** Championship angled SOLD stamp badge with gavel icon & pulsing golden glow. */
+function SoldChampionshipStamp({ tilt = 'left' }: { tilt?: 'left' | 'right' }) {
+  return (
+    <div className="animate-presenter-stamp-slam">
+      <div
+        className={`flex flex-col items-center justify-center rounded-2xl border-2 border-[#f5eb3b]/90 bg-gradient-to-b from-[#2b0509]/90 via-[#160205]/95 to-black/95 px-7 py-3.5 backdrop-blur-md animate-presenter-sold-glow ${
+          tilt === 'left' ? '-rotate-6' : 'rotate-6'
+        }`}
+      >
+        <div className="flex items-center gap-2.5">
+          <Gavel className="size-7 lg:size-8 text-[#f5eb3b]" aria-hidden="true" />
+          <span className="font-['Outfit',sans-serif] text-4xl lg:text-5xl font-black uppercase tracking-[0.14em] text-white drop-shadow-[0_2px_12px_rgba(245,235,59,0.45)]">
+            SOLD
+          </span>
+        </div>
+        <div className="mt-1 flex items-center gap-1.5">
+          <span className="h-[1px] w-5 bg-[#f5eb3b]/60" />
+          <span className="font-['Outfit',sans-serif] text-[10px] font-extrabold uppercase tracking-[0.28em] text-[#f5eb3b]">
+            HAMMER DOWN
+          </span>
+          <span className="h-[1px] w-5 bg-[#f5eb3b]/60" />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 /**
  * Full-screen widescreen Presenter stage matching the reference broadcast design.
@@ -522,6 +552,26 @@ export function PresenterPage() {
       stopIplSoldTune()
     }
   }, [event?.break?.active, event?.countdown?.targetTime])
+
+  useEffect(() => {
+    if (event?.roundPhase === 'round1_ended' || event?.roundPhase === 'round2_ended') {
+      setSoldAnnouncement(null)
+      stopIplSoldTune()
+    }
+  }, [event?.roundPhase])
+
+  useEffect(() => {
+    function onRoundChange(e: Event) {
+      const custom = e as CustomEvent<{ roundPhase?: string }>
+      const phase = custom.detail?.roundPhase
+      if (phase === 'round1_ended' || phase === 'round2_ended') {
+        setSoldAnnouncement(null)
+        stopIplSoldTune()
+      }
+    }
+    window.addEventListener('auction:round_change', onRoundChange)
+    return () => window.removeEventListener('auction:round_change', onRoundChange)
+  }, [])
 
   useEffect(() => {
     if (muted) {
@@ -760,24 +810,44 @@ export function PresenterPage() {
           </header>
 
           {/* Centerpiece SOLD Stage */}
-          <div className="relative z-10 my-auto flex flex-col items-center justify-center py-1">
-            {/* Center Circular Player Showcase with Breathing Stadium Halo */}
-            <div className="relative flex items-center justify-center">
-              <div
-                className="pointer-events-none absolute -inset-12 rounded-full blur-3xl animate-presenter-halo-breathe"
-                style={{
-                  background:
-                    'radial-gradient(circle, rgba(245, 235, 59, 0.3) 0%, rgba(220, 38, 38, 0.36) 48%, transparent 72%)',
-                }}
-              />
-              <CircularPlayerShowcase
-                name={soldData.playerName}
-                photoUrl={soldData.playerPhotoUrl}
-                rating={soldPoints}
-                ringText="SOLD OUT"
-                circleTone="crimson"
-                size="sold"
-              />
+          <div className="relative z-10 my-auto flex flex-col items-center justify-center py-2">
+            <div className="relative flex w-full max-w-6xl items-center justify-center gap-6 sm:gap-12 lg:gap-16">
+              {/* Left Championship SOLD Stamp */}
+              <div className="hidden md:block">
+                <SoldChampionshipStamp tilt="left" />
+              </div>
+
+              {/* Center Circular Player Showcase with Breathing Stadium Halo */}
+              <div className="relative flex items-center justify-center">
+                <div
+                  className="pointer-events-none absolute -inset-10 rounded-full blur-3xl animate-presenter-halo-breathe"
+                  style={{
+                    background:
+                      'radial-gradient(circle, rgba(245, 235, 59, 0.28) 0%, rgba(220, 38, 38, 0.32) 48%, transparent 72%)',
+                  }}
+                />
+                <CircularPlayerShowcase
+                  name={soldData.playerName}
+                  photoUrl={soldData.playerPhotoUrl}
+                  rating={soldPoints}
+                  ringText={soldStar ? 'STAR PLAYER' : 'SOLD OUT'}
+                  circleTone="crimson"
+                  size="sold"
+                />
+              </div>
+
+              {/* Right Championship SOLD Stamp */}
+              <div className="hidden md:block">
+                <SoldChampionshipStamp tilt="right" />
+              </div>
+            </div>
+
+            {/* Mobile SOLD stamp */}
+            <div className="mt-3 flex md:hidden items-center gap-2 rounded-full border border-[#f5eb3b]/80 bg-black/75 px-5 py-1.5 animate-presenter-stamp-slam">
+              <Gavel className="size-4 text-[#f5eb3b]" />
+              <span className="font-['Outfit',sans-serif] text-xl font-black uppercase tracking-widest text-white">
+                SOLD
+              </span>
             </div>
 
             {/* Slanted Yellow Player Name Bar with Shimmer Sweep */}
@@ -1004,9 +1074,29 @@ export function PresenterPage() {
             <StartingInCountdownScreen countdown={event.countdown} eventName={eventName} />
           </div>
         </div>
+      ) : event?.roundPhase === 'round1_ended' ? (
+        /* ===================================================================
+           VIEW 5A: ROUND 1 RESULTS (Eliminated & Qualified Teams)
+           =================================================================== */
+        <div className="relative flex h-full min-h-[inherit] w-full flex-col overflow-hidden">
+          <BroadcastBackdrop variant="crimson" />
+          <Round1ResultsStage snapshot={event.round1Results} eventName={eventName} />
+        </div>
+      ) : event?.roundPhase === 'round2_ended' ? (
+        /* ===================================================================
+           VIEW 5B: ROUND 2 FINAL RESULTS LEADERBOARD & NPL WINNER
+           =================================================================== */
+        <div className="relative flex h-full min-h-[inherit] w-full flex-col overflow-hidden">
+          <BroadcastBackdrop variant="gold" />
+          <Round2FinalResultsStage
+            snapshot={event.round2Results}
+            eventName={eventName}
+            currencyLabel={currencyLabel}
+          />
+        </div>
       ) : (
         /* ===================================================================
-           VIEW 5: STANDBY BROADCAST STAGE (Matching Gold-Black Backdrop)
+           VIEW 6: STANDBY BROADCAST STAGE (Matching Gold-Black Backdrop)
            =================================================================== */
         <div className="relative flex h-full min-h-[inherit] w-full flex-col justify-between px-6 py-8 sm:px-12 sm:py-10">
           <BroadcastBackdrop variant="gold" />

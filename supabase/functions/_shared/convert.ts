@@ -5,6 +5,7 @@ import type {
   PlayerDoc,
   PublicConfigDoc,
   PurchaseDoc,
+  RoundPhase,
   TeamDoc,
   TeamSecretDoc,
   TeamSessionDoc,
@@ -96,8 +97,26 @@ function toSpotlightPlayer(data: unknown): import('./types.ts').SpotlightPlayer 
   }
 }
 
+function asStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.filter((item): item is string => typeof item === 'string' && item.length > 0)
+}
+
+function toRoundPhase(value: unknown): RoundPhase {
+  if (
+    value === 'round1_active' ||
+    value === 'round1_ended' ||
+    value === 'round2_active' ||
+    value === 'round2_ended'
+  ) {
+    return value
+  }
+  return 'not_started'
+}
+
 export function toEventDoc(id: string, data: Data): EventDoc | null {
   if (!data) return null
+  const currentRound = data.currentRound === 1 || data.currentRound === 2 ? data.currentRound : 0
   return {
     id,
     name: asString(data.name),
@@ -116,6 +135,15 @@ export function toEventDoc(id: string, data: Data): EventDoc | null {
     lastSoldPlayer: data.lastSoldPlayer ? (data.lastSoldPlayer as EventDoc['lastSoldPlayer']) : null,
     countdown: data.countdown ? (data.countdown as EventDoc['countdown']) : null,
     break: data.break ? (data.break as EventDoc['break']) : null,
+    currentRound,
+    roundPhase: toRoundPhase(data.roundPhase),
+    roundPoolPlayerIds: asStringArray(data.roundPoolPlayerIds),
+    activePoolIndex: asInt(data.activePoolIndex, 0),
+    unsoldPlayerIds: asStringArray(data.unsoldPlayerIds),
+    eliminatedTeamIds: asStringArray(data.eliminatedTeamIds),
+    qualifiedTeamIds: asStringArray(data.qualifiedTeamIds),
+    round1Results: data.round1Results ? (data.round1Results as EventDoc['round1Results']) : null,
+    round2Results: data.round2Results ? (data.round2Results as EventDoc['round2Results']) : null,
   }
 }
 

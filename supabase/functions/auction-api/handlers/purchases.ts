@@ -10,6 +10,7 @@ import {
   readPurchaseTx,
   readTeamTx,
 } from '../lib/store.ts'
+import { syncRoundProgressAfterSale } from './event.ts'
 
 /**
  * Records a purchase.
@@ -26,7 +27,7 @@ export const recordPurchase = adminCallable({
   handler: async (input, context) => {
     const auditLogId = auditRef(input.eventId).id
 
-    return db().runTransaction(async (tx) => {
+    const result = await db().runTransaction(async (tx) => {
       const event = await readEventTx(tx, input.eventId)
       const player = await readPlayerTx(tx, input.eventId, input.playerId)
       const team = await readTeamTx(tx, input.eventId, input.teamId)
@@ -76,6 +77,18 @@ export const recordPurchase = adminCallable({
       )
       return result
     })
+
+    if (!result.idempotentReplay) {
+      const progress = await syncRoundProgressAfterSale({
+        eventId: input.eventId,
+        soldPlayerId: input.playerId,
+        actorUid: context.uid,
+        actorEmail: context.email,
+      })
+      return { ...result, roundEnded: progress.roundEnded, roundPhase: progress.roundPhase }
+    }
+
+    return { ...result, roundEnded: false }
   },
 })
 

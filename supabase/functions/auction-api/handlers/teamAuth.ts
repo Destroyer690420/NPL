@@ -261,6 +261,16 @@ export const getTeamLineup = teamCallable({
       fail('team-inactive', 'This team is deactivated. Ask the organizer to reactivate it.')
     }
 
+    const event = await getEvent(context.eventId)
+    const activePoolIds =
+      event &&
+      (event.roundPhase === 'round1_active' || event.roundPhase === 'round2_active') &&
+      event.roundPoolPlayerIds &&
+      event.roundPoolPlayerIds.length > 0
+        ? event.roundPoolPlayerIds
+        : null
+    const poolOrder = activePoolIds ? new Map(activePoolIds.map((id, i) => [id, i])) : null
+
     const rows = await fetchQueryRows(playersCollection(context.eventId))
     return rows
       .map((r) => {
@@ -278,8 +288,11 @@ export const getTeamLineup = teamCallable({
           status,
         }
       })
-      .filter((p) => p.status === 'available')
+      .filter((p) => p.status === 'available' && (!poolOrder || poolOrder.has(p.id)))
       .sort((a, b) => {
+        if (poolOrder) {
+          return (poolOrder.get(a.id) ?? 999999) - (poolOrder.get(b.id) ?? 999999)
+        }
         const orderA = getPlayerSortOrder(a)
         const orderB = getPlayerSortOrder(b)
         if (orderA !== orderB) return orderA - orderB

@@ -1,6 +1,17 @@
 import { getSupabase } from './supabase'
-import type { AuctionBreak, AuctionCountdown, SoldPlayerAnnouncement, SpotlightPlayer } from '@shared/types'
+import type {
+  AuctionBreak,
+  AuctionCountdown,
+  RoundPhase,
+  SoldPlayerAnnouncement,
+  SpotlightPlayer,
+} from '@shared/types'
 import type { RealtimeChannel } from '@supabase/supabase-js'
+
+export interface RoundBroadcastPayload {
+  eventId: string
+  roundPhase: RoundPhase
+}
 
 export interface SpotlightBroadcastPayload {
   eventId: string
@@ -121,6 +132,21 @@ export function subscribeToAuctionRealtime(eventId: string): () => void {
       },
     )
 
+    // Listen for Round transition broadcasts (Start/End Round 1 & Round 2)
+    channel.on(
+      'broadcast',
+      { event: 'round_change' },
+      ({ payload }: { payload: RoundBroadcastPayload }) => {
+        if (payload?.eventId === eventId) {
+          window.dispatchEvent(
+            new CustomEvent('auction:round_change', {
+              detail: payload,
+            }),
+          )
+        }
+      },
+    )
+
     // Also listen for Postgres table updates as a fallback
     channel.on(
       'postgres_changes',
@@ -138,6 +164,7 @@ export function subscribeToAuctionRealtime(eventId: string): () => void {
               lastSoldPlayer?: SoldPlayerAnnouncement | null
               countdown?: AuctionCountdown | null
               break?: AuctionBreak | null
+              roundPhase?: RoundPhase
             }
           }
         )?.data
@@ -176,6 +203,16 @@ export function subscribeToAuctionRealtime(eventId: string): () => void {
                 detail: {
                   eventId,
                   break: newData.break ?? null,
+                },
+              }),
+            )
+          }
+          if (newData.roundPhase) {
+            window.dispatchEvent(
+              new CustomEvent('auction:round_change', {
+                detail: {
+                  eventId,
+                  roundPhase: newData.roundPhase,
                 },
               }),
             )
@@ -360,6 +397,44 @@ export function broadcastBreak(eventId: string, breakState: AuctionBreak | null)
     })
   } catch (err) {
     console.warn('[realtime] broadcast break_change error:', err)
+  }
+}
+
+/**
+ * Broadcasts a 2-round auction phase transition to all connected screens.
+ */
+export function broadcastRoundChange(eventId: string, roundPhase: RoundPhase): void {
+  if (!eventId) return
+
+  const payload: RoundBroadcastPayload = { eventId, roundPhase }
+
+  window.dispatchEvent(
+    new CustomEvent('auction:round_change', {
+      detail: payload,
+    }),
+  )
+
+  try {
+    const supabase = getSupabase()
+    if (!supabase) return
+
+    const topic = `auction-spotlight:${eventId}`
+    let channel = activeChannels.get(topic)
+    if (!channel) {
+      channel = supabase.channel(topic, {
+        config: { broadcast: { self: true } },
+      })
+      channel.subscribe()
+      activeChannels.set(topic, channel)
+    }
+
+    void channel.send({
+      type: 'broadcast',
+      event: 'round_change',
+      payload,
+    })
+  } catch (err) {
+    console.warn('[realtime] broadcast round_change error:', err)
   }
 }
 

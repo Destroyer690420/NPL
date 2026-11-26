@@ -136,7 +136,14 @@ export function TeamsPage() {
                     </td>
                     <td className="px-3 py-3 text-right tabular-nums">{team.playerCount}</td>
                     <td className="px-3 py-3">
-                      {team.active ? <Pill tone="success">Active</Pill> : <Pill tone="neutral">Inactive</Pill>}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {team.active ? <Pill tone="success">Active</Pill> : <Pill tone="neutral">Inactive</Pill>}
+                        {event?.eliminatedTeamIds?.includes(team.id) ? (
+                          <Pill tone="danger">Eliminated (R1)</Pill>
+                        ) : (event?.currentRound ?? 0) >= 2 && event?.qualifiedTeamIds?.includes(team.id) ? (
+                          <Pill tone="info">Round 2</Pill>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-right sm:px-5">
                       <Link to={`/admin/teams/${team.id}`} className="text-xs font-medium text-accent hover:underline">
