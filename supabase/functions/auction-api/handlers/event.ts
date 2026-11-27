@@ -841,7 +841,10 @@ export const startRound1 = adminCallable({
       fail('event-not-ready', 'Add at least one team and players before starting Round 1.')
     }
 
-    const pool = buildRoundPool(players, ROUND_1_TARGET_TEAMS)
+    const poolCandidates = players.filter(
+      (p) => p.name.trim().toLowerCase() !== 'mustafizur rahman',
+    )
+    const pool = buildRoundPool(poolCandidates, ROUND_1_TARGET_TEAMS)
     const poolIds = pool.map((p) => p.id)
     const qualifiedTeamIds = teams.filter((t) => t.active).map((t) => t.id)
     const nowIso = new Date().toISOString()
@@ -1002,7 +1005,10 @@ export const startRound2 = adminCallable({
     }
 
     // 4. Generate 132-player Round 2 pool from all master players
-    const pool = buildRoundPool(players, ROUND_2_TARGET_TEAMS)
+    const poolCandidates = players.filter(
+      (p) => p.name.trim().toLowerCase() !== 'mustafizur rahman',
+    )
+    const pool = buildRoundPool(poolCandidates, ROUND_2_TARGET_TEAMS)
     const poolIds = pool.map((p) => p.id)
 
     await supabase.from('events').update({
